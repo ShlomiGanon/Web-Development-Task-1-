@@ -1,0 +1,21 @@
+
+#main-menu-container{
+    background-color: #544f4f;
+    direction: rtl;
+    display: flexbox;
+    width: 300px;
+    height: 300px;
+    font-size: 20px;
+}
+
+#login-main-title-form{
+    font-size: 16px;
+}
+
+#Non-Robot-Verification-text-container{
+    font-size: 14px;
+}
+
+#more-information-container{
+    font-size: 14px;
+}
