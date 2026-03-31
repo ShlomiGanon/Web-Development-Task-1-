@@ -1,49 +1,11 @@
-
-
 body{
-    background-image: url("../assets/background.jpg");
+    direction: rtl;
 }
 
-
-#menu-container{
-    background-color: rgba(0, 0, 0, 0.70);
-    color:white;
-    direction:rtl;
+.button{
+    display:block
+}
+.menu{
+    display: grid;
     text-align: center;
-    display:flex;
-    width: 20%;
-    margin: 0 auto;
-    height: 50%;
-    font-size: 20px;
-}
-
-#login-main-title-form{
-    font-size: 20px;
-    font-weight: bold;
-    text-align: center;
-}
-
-#create-account-container{
-    font-size: 16px;
-}
-
-#Non-Robot-Verification-container{
-    font-size: 8px;
-}
-
-#Non-Robot-Verification-text-strong-container{
-    font-size: 12px;
-    color: yellow;
-}
-
-#login-main-title-form{
-    font-size: 16px;
-}
-
-#Non-Robot-Verification-text-container{
-    font-size: 12px;
-}
-
-#more-information-container{
-    font-size: 14px;
 }
