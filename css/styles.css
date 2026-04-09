@@ -1,11 +1,97 @@
-body{
+.menu
+{
+    width: 300px;
+    height: 500px;
+    background-color: rgb(33, 33, 42);
+    color: white;
     direction: rtl;
+    display: grid;
+    align-items: center;
+    justify-items: center;
+}
+.menu_item
+{
+    position: relative;
+    width: 220px;
+    min-height: 50px;
+    display: grid;
+    align-items: center;
+    justify-items: start;
+    
 }
 
-.button{
-    display:block
-}
-.menu{
+
+.menu_item_buttons
+{
+    position: relative;
+    width: 220px;
+    min-height: 50px;
     display: grid;
-    text-align: center;
+    align-items: center;
+    justify-items: center;
+}
+
+
+.buttons_login
+{
+    display: grid;
+    width: 90%;
+    height: 75%;
+    color: white;
+    align-items: center;
+    justify-items: center;
+    background-color: rgb(255, 0, 0); 
+    font-size: 16px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.buttons_get_code
+{
+    display: grid;
+    width: 90%;
+    height: 75%;
+    color: white;
+    align-items: center;
+    justify-items: center;
+    background-color: rgba(86, 81, 81, 0.801); 
+    font-size: 16px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.inputs
+{
+    font-size: 20px;
+    width: 90%;
+    height: 80%;
+    background-color: rgba(68, 65, 65, 0.318);
+    color: white;
+}
+
+.inputs::placeholder
+{
+    font-size: 20px;
+
+}
+
+.menu_title
+{
+    width: 100%;
+    height: 100%;
+    font-size: 36px;
+    background-color: aqua;
+    font-weight: bold;
+    text-align: right;
+}
+
+
+.menu_buttons_table
+{
+    margin: 10px 10px;
+    display: grid;
+    align-items: center;
+    justify-items: center;
+    width: 200px;
+    background-color: red;
 }
