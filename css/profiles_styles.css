@@ -30,17 +30,19 @@ body {
     display: flex;
     align-items: center;
     color: gray;
+    padding: 20px 20px;
+    transition: all 0.4s ease;
 }
 
 .profile:hover
 {
-
+    padding: 40px;
 }
 
 .profile:hover img
 {
     scale: 1.15;
-    padding: 40px;
+    padding: 20px;
     
 }
 
@@ -48,7 +50,7 @@ body {
 .profile:hover .profile_name
 {
     color: white;
-    font-size: 20px;
+    font-size: 24px;
 }
 
 .profiles a
@@ -76,10 +78,11 @@ body {
 
 .profiles img
 {
-    width: 200px;
-    height: 250px;
+    width: 150px;
+    height: 200px;
     object-fit: cover;
     border-radius: 4px;
+    transition: all 0.4s ease;
 }
 
 .menu_item
