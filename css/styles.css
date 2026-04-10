@@ -111,6 +111,22 @@ body {
     justify-items: center;
 }
 
+.menu_item_forget_pass a
+{   
+    color: white;
+    text-decoration: none;   
+
+}
+
+.menu_item_forget_pass
+{
+    display: flex;          
+    justify-content: center;
+    align-items: center;    
+    text-align: center;       
+    width: 100%;
+}
+
 .menu_item_checkbox
 {
     position: relative;
