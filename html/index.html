@@ -1,65 +1,102 @@
 <!DOCTYPE html>
-<html lang="he">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>[Fake] Netflix</title>
+    <title>Test of menu</title>
     <link rel="stylesheet" href="../css/styles.css">
 </head>
 <body>
-    <span class = menu>
-        <span class = "title">
+    <div class = "menu_container">
+
+    
+        <div class = "menu">
+
+
+            <div class = "menu_item">
+
+                <div class = "menu_title">
+                    כניסה לחשבון
+
+                </div>
+
+            </div>
+
+            <div class = "menu_item">
+
+                <input type="text" placeholder="אמייל או מספר נייד" class="inputs">
+            </div>
+            
+            <div class = "menu_item">
+                <input type="password" placeholder="סיסמה" class="inputs">
+            </div>
+
+
+
+            <div class = "menu_item_buttons">
+
+                <div class = "menu_item">
+                    <a href = "index_login.html" target = "_self" class = "buttons_login">
                         כניסה לחשבון
-        </span>
+                    </a>
+                </div>
+                    <div class = "menu_item_OR">
+                        או
+                    </div>
+                    <div class = "menu_item">
+                        <a href = "index_get_code.html" target = "_self" class="buttons_get_code">
+                            כניסה עם קוד
+                        </a> 
+                    </div>
 
-        <input type="text" placeholder="אמייל או מספר נייד" class="input">
-        <input type="password" placeholder="סיסמה" class="input">
-        
-        <a href = "index_login.html" target = "_self" class = "button">
-                        כניסה לחשבון
-        </a>
-        
-        <span>או</span>
+                    <div class = "menu_item_forget_pass">
+                        <a href = "index_forgot_password.html" target = "_self">
+                            שכחת את הסיסמה?
+                        </a>
 
-        <a href = "index_get_code.html" target = "_self" class="button">
-                <strong>כניסה עם קוד</strong>
-        </a> 
-        
+                    </div>
+                    
+            </div>
 
-        <a href = "index_forgot_password.html" target = "_self">
-                        שכחת את הסיסמה?
-        </a>
+            <div class = "menu_item_info">
+                <div class = "menu_item_checkbox">
 
-        <div>
-        <input type="checkbox" id="remember-me-checkbox">
-        <label for="remember-me-checkbox">
+                    <input type="checkbox" id="remember-me-checkbox">
+                    <label for="remember-me-checkbox">
                         זכור אותי
-        </label>
+                    </label>
+                </div>
+
+
+                <div class = "menu_item_invite_area">
+                        עוד לא ב-Netflix?
+                
+                        <a href = "index_create_account.html" target = "_self">
+                            <strong>זה הזמן להירשם</strong>
+                        </a>
+                </div>
+            
+                    <div class = "menu_item_reCAPTCHA">
+                        
+            
+                                    אתר זה מוגן על-ידי reCAPTCHA של Google.
+                                <Strong>
+                                    כדי לוודא 
+                                </Strong>
+                                <br>
+                                    שהמשתמש אינו רובוט.
+                            
+                    </div>
+                    <div class = "menu_item">
+
+                        <a href = "more-information.html" target = "_self" class = "more_info_text">
+                            לפרטים נוספים.
+                        </a>
+                    </div>
+            </div>
+                    
         </div>
 
-        <span>
-                        עוד לא ב-Netflix?
-        </span>
-
-        <span>
-            <a href = "index_create_account.html" target = "_self">
-                <strong>זה הזמן להירשם</strong>
-            </a>
-        </span>
-
-        <span>
-               
-
-                        אתר זה מוגן על-ידי reCAPTCHA של Google.
-                    <Strong>
-                        כדי לוודא 
-                    </Strong>
-                        שהמשתמש אינו רובוט.
-        </span>
-
-        <a href = "more-information.html" target = "_self">
-                        לפרטים נוספים.
-        </a>
 
     </div>
 </body>
