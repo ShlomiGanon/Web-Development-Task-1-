@@ -1,8 +1,34 @@
+body {
+    margin: 0;
+    height: 100vh; /* גובה מסך מלא */
+    display: flex;
+    justify-content: center; /* מרכוז אופקי */
+    align-items: center;     /* מרכוז אנכי */
+
+
+    background-image: url("../assets/background.jpg");
+    background-size: cover;       /* גורם לתמונה להימתח על כל המסך */
+    background-repeat: no-repeat; /* מונע מהתמונה להשתכפל אם המסך גדול */
+    background-attachment: fixed; /* גורם לרקע להישאר יציב בזמן שגוללים */
+    background-position: center;  /* ממקם את התמונה במרכז */
+    display: flex;
+}
+
+.menu_container
+{
+    width: 350px;
+    height: 600px;
+    display: flex;
+    align-items: center;
+    justify-items: center;
+    background-color: rgba(0, 0, 0, 0.85);
+}
+
 .menu
 {
-    width: 300px;
-    height: 500px;
-    background-color: rgb(33, 33, 42);
+    position: relative;
+    width: 100%;
+    height: 100%;
     color: white;
     direction: rtl;
     display: grid;
@@ -12,7 +38,7 @@
 .menu_item
 {
     position: relative;
-    width: 220px;
+    width: 300px;
     min-height: 50px;
     display: grid;
     align-items: center;
@@ -23,19 +49,75 @@
 
 .menu_item_buttons
 {
+    width: 300px;
+    min-height: 90px;
+    display: grid;
+    align-items: center;
+    text-align: center;
+    justify-items: start;
+}
+
+.menu_item_OR
+{
+    width: 250px;
+    display: flexbox;
+    align-items: center;
+    justify-items: center;
+}
+
+.menu_item_info
+{
     position: relative;
-    width: 220px;
-    min-height: 50px;
+    width: 300px;
+    min-height: 100px;
     display: grid;
     align-items: center;
     justify-items: center;
 }
 
 
+.menu_item_invite_area a
+{
+    text-decoration: none;
+}
+
+.menu_item_invite_area
+{
+    position: relative;
+    width: 220px;
+    height: auto;
+    display: flex;
+    align-items: start;
+    justify-items: start;
+}
+
+.menu_item_reCAPTCHA
+{
+    font-size: 10px;
+}
+
+.menu_item_center
+{
+    text-align: center;
+    align-items: center;
+    justify-items: center;
+}
+
+.menu_item_checkbox
+{
+    position: relative;
+    width: 220px;
+    height: auto;
+    display: flex;
+    align-items: start;
+    justify-items: start;
+}
+
+
 .buttons_login
 {
     display: grid;
-    width: 90%;
+    width: 100%;
     height: 75%;
     color: white;
     align-items: center;
@@ -49,7 +131,7 @@
 .buttons_get_code
 {
     display: grid;
-    width: 90%;
+    width: 100%;
     height: 75%;
     color: white;
     align-items: center;
@@ -63,8 +145,8 @@
 .inputs
 {
     font-size: 20px;
-    width: 90%;
-    height: 80%;
+    width: 100%;
+    height: 90%;
     background-color: rgba(68, 65, 65, 0.318);
     color: white;
 }
@@ -77,10 +159,9 @@
 
 .menu_title
 {
-    width: 100%;
+    width:90%;
     height: 100%;
     font-size: 36px;
-    background-color: aqua;
     font-weight: bold;
     text-align: right;
 }
@@ -92,6 +173,6 @@
     display: grid;
     align-items: center;
     justify-items: center;
-    width: 200px;
+    width: 250px;
     background-color: red;
 }
