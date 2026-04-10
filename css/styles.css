@@ -17,9 +17,14 @@ body {
 .menu_container
 {
     width: 300px;
-    height: 450px;
-    padding: 50px;
-    background-color: rgba(0, 0, 0, 0.85);
+    height: 420px;
+    background-color: rgba(0, 0, 0, 0.895);
+    /* Padding order: Up/Top, Right, Down/Bottom, Left */
+    padding: 20px 40px 60px 40px;
+    border-radius: 5px;
+    border: 5px solid;
+    border-image-source: linear-gradient( rgba(103, 103, 103, 0.089), rgba(0, 0, 0, 0.338));    
+    border-image-slice: 1;
 }
 
 .menu
@@ -32,6 +37,7 @@ body {
     align-items: center;
     justify-items: start;
 }
+
 .menu_item
 {
     position: relative;
@@ -44,6 +50,7 @@ body {
 }
 
 
+
 .menu_item_buttons
 {
     width: 300px;
@@ -54,9 +61,15 @@ body {
     justify-items: start;
 }
 
+.menu_item_buttons > *
+{
+    padding-bottom: 5px;
+}
+
 .menu_item_OR
 {
     width: 300px;
+    color: rgba(255, 255, 255, 0.619);
     display: flexbox;
     align-items: center;
     justify-items: center;
@@ -67,26 +80,32 @@ body {
 
 .menu_item_info
 {
-    width: 350px;
+    width: 280px;
     min-height: 100px;
-    display: flexbox;
-    align-items: center;
-    justify-items: start;
+    display:grid;
 }
 
-.menu_item_info > *
+.menu_item_invite_area
 {
-    margin-bottom: 2px;
+    color: rgba(255, 255, 255, 0.551);  
 }
-
 .menu_item_invite_area a
 {
     text-decoration: none;
+    color:white;
 }
 
-.menu_item_invite_area a::visited
+.menu_item_invite_area a:hover
+{
+    text-decoration: underline;
+    color: rgb(253, 149, 149);
+    transition: color 1s ease;
+}
+
+.menu_item_invite_area::visited
 {
     text-decoration: none;
+    color: white;
 }
 
 .menu_item_invite_area
@@ -99,8 +118,15 @@ body {
     justify-items: start;
 }
 
+#remember-me-checkbox
+{
+    margin-right: 0px;
+}
+
 .menu_item_reCAPTCHA
 {
+    color: rgba(255, 255, 255, 0.597);
+    margin-top: 0px;
     font-size: 10px;
 }
 
@@ -113,8 +139,17 @@ body {
 
 .menu_item_forget_pass a
 {   
-    color: white;
+    color: rgb(160, 160, 160);
+    transition: color 1s ease;
     text-decoration: none;   
+
+}
+
+.menu_item_forget_pass a:hover
+{   
+    color: white;
+    transition: color 1s ease;
+    text-decoration: underline;   
 
 }
 
@@ -143,13 +178,22 @@ body {
     display: grid;
     width: 100%;
     height: 75%;
-    color: white;
+    color: rgba(255, 255, 255, 0.67);
     align-items: center;
     justify-items: center;
-    background-color: rgb(255, 0, 0); 
+    background-color: rgb(171, 0, 0); 
+    transition: background-color 0.4s ease;
     font-size: 16px;
     font-weight: bold;
     text-decoration: none;
+    
+}
+
+.buttons_login:hover
+{
+    color: white;
+    background-color: rgb(255, 0, 0);
+    transition: background-color 1s ease;
 }
 
 .buttons_get_code
@@ -157,22 +201,44 @@ body {
     display: grid;
     width: 100%;
     height: 75%;
-    color: white;
+    color: rgba(255, 255, 255, 0.651);
     align-items: center;
     justify-items: center;
     background-color: rgba(86, 81, 81, 0.801); 
+    transition: background-color 1s ease;
     font-size: 16px;
     font-weight: bold;
     text-decoration: none;
 }
 
+.buttons_get_code:hover
+{
+    color: white;
+    background-color: rgb(102, 102, 102); 
+    transition: background-color 0.4s ease;
+}
+
 .inputs
 {
     font-size: 16px;
-    width: 100%;
+    width: 97%;
     height: 90%;
     background-color: rgba(68, 65, 65, 0.318);
+    transition: background-color 0.2s ease;
     color: white;
+}
+
+.inputs:hover
+{
+    color: rgb(255, 255, 255);
+    background-color: rgb(0, 0, 0);
+    transition: background-color 0.2s ease;
+}
+
+.inputs:hover::placeholder
+{
+    color: rgb(255, 255, 255);
+    transition: color 0.4s ease;
 }
 
 
@@ -187,15 +253,14 @@ body {
 {
     width:90%;
     height: 100%;
-    font-size: 36px;
-    font-weight: bold;
+    font-size: 32px;
     text-align: right;
 }
 
 
 .menu_buttons_table
 {
-    margin: 10px 10px;
+    
     display: grid;
     align-items: center;
     justify-items: center;
@@ -205,5 +270,11 @@ body {
 
 .more_info_text a
 {
+    color: rgba(0, 13, 255, 0.771);
+}
+
+.more_info_text
+{
     font-size: 14px;
+    margin-top: 5px;
 }
