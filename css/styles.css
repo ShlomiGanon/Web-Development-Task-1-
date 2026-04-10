@@ -17,7 +17,7 @@ body {
 .menu_container
 {
     width: 300px;
-    height: 500px;
+    height: 450px;
     padding: 50px;
     background-color: rgba(0, 0, 0, 0.85);
 }
@@ -36,7 +36,7 @@ body {
 {
     position: relative;
     width: 300px;
-    min-height: 50px;
+    min-height: 40px;
     display: grid;
     align-items: center;
     justify-items: start;
@@ -62,6 +62,9 @@ body {
     justify-items: center;
 }
 
+
+
+
 .menu_item_info
 {
     width: 350px;
@@ -71,6 +74,10 @@ body {
     justify-items: start;
 }
 
+.menu_item_info > *
+{
+    margin-bottom: 2px;
+}
 
 .menu_item_invite_area a
 {
@@ -178,4 +185,9 @@ body {
     justify-items: center;
     width: 250px;
     background-color: red;
+}
+
+.more_info_text a
+{
+    font-size: 14px;
 }
