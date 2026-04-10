@@ -40,10 +40,21 @@ body {
 
 .profile:hover{
     border: 2px solid white;
-    scale: 1.25;
+    transform: scale(1.25);
+    z-index: 10;
+    gap: 20px;
+    transition: gap 0.4s ease;
+
+}
+.profile:hover .profile_name{
     color: white;
+    gap: 40px;
 }
 
+.profiles a
+{
+    text-decoration: none;
+}
 .profiles
 {
     position: relative;
@@ -56,10 +67,10 @@ body {
 .profile_name
 {
     text-align: center;
-    color: rgba(255, 255, 255, 1);
+    color: gray;
 }
 
-.profile_image img
+.profiles img
 {
     border: 2px solid black;
     width: 200px;
