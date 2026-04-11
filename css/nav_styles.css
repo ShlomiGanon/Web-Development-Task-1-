@@ -1,0 +1,130 @@
+
+
+body 
+{
+    /* הנתיב לתמונה שלך */
+    background-image: url("../assets/profiles_background.png");
+
+    /* גורם לתמונה לכסות את כל שטח המסך גם אם היא קטנה מדי */
+    background-size: cover;
+
+    /* מונע מהתמונה לחזור על עצמה (כמו אריחים) */
+    background-repeat: no-repeat;
+
+    /* ממקם את התמונה במרכז המסך */
+    background-position: center;
+
+    /* גורם לרקע להישאר קבוע בזמן שגוללים את הדף (אופציונלי) */
+    background-attachment: fixed;
+  }
+
+.NAV_BAR_CONTAINER
+{
+    width: 100%;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center; 
+}
+
+.NAV_BAR
+{
+    width: 95%;
+    position: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /*BACKGROUND COLOR*/
+    background-color: rgba(0, 0, 0, 0.75);
+}
+
+.NAV_LOGO_AND_BUTTONS
+{
+    display: flex;
+    align-items: center;
+    gap: 0px 20px;
+}
+
+.NAV_LOGO
+{
+    padding: 10px 30px;
+}
+.NAV_LOGO img
+{
+    
+    width: 50px;
+    height: 20px;
+}
+.NAV_LOGO:hover
+{
+    background-color: rgba(255, 255, 255, 0.289);
+    transition: background-color 0.4s ease;
+    cursor: pointer;
+}
+
+
+
+.NAV_BUTTON
+{
+    color: rgba(255, 255, 255, 0.504);
+    font-size: 14px;
+    transition: color 0.2s linear;
+}
+
+.NAV_BUTTON:hover
+{
+    color: rgba(255, 255, 255, 1);
+    font-weight: bold;
+    transition: color 0.2s linear;
+    cursor: pointer;
+}
+
+.NAV_RIGHT_ICONS
+{
+    display: flex;         /* Lays items out in a row */
+    align-items: center;
+    gap: 10px;
+}
+
+.NAV_BAR a
+{
+    padding: 20px;
+}
+.NAV_ICON img
+{
+    width: 20px;
+    height: 20px;
+}
+
+.NAV_ICON:hover img
+{
+    background-color: rgba(255, 255, 255, 0.122);
+    cursor: pointer;
+}
+
+.NAV_USER_PHOTO img
+{
+    width: 30px;
+    height: 30px;
+}
+
+.NAV_USER_PHOTO_AND_ICONS
+{
+    display: flex;
+    align-items: center;
+    padding-right: 20px;
+}
+
+
+
+
+#CONTENT_CONTAINER
+{
+    width: 100%;
+    height: 100%;
+    position: static;
+    color:white;
+    background-color: rgb(77, 0, 0);
+}
+
+
