@@ -31,26 +31,29 @@ body {
     align-items: center;
     color: gray;
     padding: 20px 20px;
-    transition: all 0.4s ease;
+    transition: all 0.5s ease;
+    border: 5px solid rgba(0, 0, 0, 0.033);
 }
 
-.profile:hover
-{
-    padding: 40px;
-}
 
 .profile:hover img
 {
     scale: 1.15;
-    padding: 20px;
     
 }
 
-
+.profile:hover
+{
+    border: 1px solid rgba(255, 255, 255, 0.812);
+    border-radius: 5px;
+    transition: border 0.4s ease;
+    margin: 0px 20px;
+}
 .profile:hover .profile_name
 {
     color: white;
     font-size: 24px;
+    padding-top:20px;
 }
 
 .profiles a
