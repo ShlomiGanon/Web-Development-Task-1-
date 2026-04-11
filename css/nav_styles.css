@@ -16,10 +16,15 @@ body
 
     /* גורם לרקע להישאר קבוע בזמן שגוללים את הדף (אופציונלי) */
     background-attachment: fixed;
+    color:white;
   }
 
 .NAV_BAR_CONTAINER
 {
+    position: fixed;
+    top: 0; 
+    left: 0;
+    z-index: 1000;
     width: 100%;
     height: 100px;
     display: flex;
@@ -29,8 +34,8 @@ body
 
 .NAV_BAR
 {
+    position: relative;
     width: 95%;
-    position: fixed;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -116,15 +121,23 @@ body
 }
 
 
-
+#CONTENT_POSTION
+{
+    margin: 90px 60px;
+    width: 90vw;
+    display: flex;
+    align-items: start;
+    justify-items: flex-start;
+}
 
 #CONTENT_CONTAINER
 {
     width: 100%;
-    height: 100%;
-    position: static;
+    display: flex;
+    align-items: center;  
+    justify-content: center;
     color:white;
-    background-color: rgb(77, 0, 0);
+    background-color: rgb(81, 81, 81);
 }
 
 
