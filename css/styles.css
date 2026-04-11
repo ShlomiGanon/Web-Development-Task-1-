@@ -270,7 +270,14 @@ body {
 
 .more_info_text a
 {
-    color: rgba(0, 13, 255, 0.771);
+    color: rgba(0, 13, 255, 0.571);
+    transition: color 0.4s ease;
+}
+
+.more_info_text a:hover
+{
+    color: rgb(0, 13, 255);
+    transition: color 0.4s ease;
 }
 
 .more_info_text
