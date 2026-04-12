@@ -38,6 +38,7 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
   }
   .card:hover h2
   {
+    -webkit-text-stroke: 1px rgb(255, 255, 255);
     color: rgb(181, 19, 19);
     border-radius: 10px;
     text-decoration: underline;

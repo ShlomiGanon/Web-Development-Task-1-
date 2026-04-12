@@ -184,7 +184,7 @@ body
     text-align: center;
     font-size: 20px;
     min-height: 300px;
-    min-width: 100%;
+    width: 95%;
     background-color: rgba(1, 0, 0, 0.536);
     border-radius: 10px;
     border: 20px double rgba(242, 57, 57, 0);
