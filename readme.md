@@ -13,7 +13,7 @@ Follow these steps to clone the repository and launch the project:
 
    ```bash
    # Clone the repository
-   git clone [https://github.com/ShlomiGanon/Web-Development-Task-1-.git](https://github.com/ShlomiGanon/Web-Development-Task-1-.git)
+   git clone https://github.com/ShlomiGanon/Web-Development-Task-1-.git
 
    # Navigate to the project folder
    cd Web-Development-Task-1-/html
