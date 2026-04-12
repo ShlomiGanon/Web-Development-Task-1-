@@ -11,12 +11,16 @@ Follow these steps to clone the repository and launch the project:
 3. **Clone and Run**
    Copy and paste the following commands into your terminal:
 
-   ```bash
    # Clone the repository
+   ```bash
    git clone https://github.com/ShlomiGanon/Web-Development-Task-1-.git
-
+   ```
+   
    # Navigate to the project folder
+   ```bash
    cd Web-Development-Task-1-/html
-
+   ```
    # Launch the project
+   ```bash
    start index.html
+   ```
