@@ -17,6 +17,11 @@ body
     /* גורם לרקע להישאר קבוע בזמן שגוללים את הדף (אופציונלי) */
     background-attachment: fixed;
     color:white;
+
+    display: grid;
+    align-items: center;
+    justify-content: center; 
+    grid-template-columns: 1fr;
   }
 
 .NAV_BAR_CONTAINER
@@ -124,7 +129,7 @@ body
 #CONTENT_POSTION
 {
     margin: 90px 60px;
-    width: 90vw;
+   
     display: flex;
     align-items: start;
     justify-items: flex-start;
@@ -132,12 +137,65 @@ body
 
 #CONTENT_CONTAINER
 {
-    width: 100%;
-    display: flex;
+    gap: 100px;
+    display: grid;
     align-items: center;  
     justify-content: center;
-    color:white;
-    background-color: rgb(81, 81, 81);
+    color:rgb(255, 255, 255);
 }
 
 
+.last_watched
+{
+    width: 100%;
+    height: 400px;
+    display: flex;
+    align-items: center;  
+    justify-content: center;
+    background-color: rgba(115, 115, 115, 0.408);
+    border-radius: 80px;
+}
+
+.last_watched_text
+{
+    margin-right: 100px;
+    padding: 40px;
+    text-decoration: solid;
+    color:rgb(255, 255, 255);
+    background-color: rgba(0, 0, 0, 0.379);
+    font-size: 70px;
+}
+
+
+.info_block
+{
+    
+    min-height: 500px;
+    min-width: 100%;
+    height: 400px;
+    background-color: rgba(1, 0, 0, 0.289);
+    border-radius: 80px;
+    border: 0px double rgba(242, 57, 57, 0);
+    margin: 20px;
+    padding-top: 40px;
+    padding-left: 20px;
+    transition: border margin 1s linear;
+}
+
+.info_block:hover
+{
+    background-color: rgba(41, 1, 1, 0.247);
+    border: 20px double rgba(242, 57, 57, 0.471);
+    margin: 0px;
+    transition: border margin 0.5s linear;
+}
+
+#info_yellow
+{
+    background-color: rgba(25, 28, 0, 0.289);
+}
+
+#info_yellow:hover
+{
+    border: 20px double rgba(176, 207, 0, 0.471);
+}
