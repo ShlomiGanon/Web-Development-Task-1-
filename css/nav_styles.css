@@ -198,15 +198,15 @@ body
     max-width: 100%;
     background-color: rgba(1, 0, 0, 0.289);
     border-radius: 80px;
-    border: 20px dotted rgba(0, 0, 0, 0);
+    border: 20px dotted rgba(237, 165, 10, 0.28);
     padding: 20px;
-    color: rgba(208, 208, 208, 0.308);
+    color: rgba(126, 126, 126, 0.31);
     transition: border 0.2s linear;
 }
 
 .dark_block:hover
 {
-    border: 20px dotted rgba(255, 0, 0, 0.662);
+    border: 20px dotted rgb(255, 0, 0);
     background-color: rgba(0, 0, 0, 0.622);
     color: rgb(255, 255, 255);
     transition: border ,color, background-color 10s linear;
