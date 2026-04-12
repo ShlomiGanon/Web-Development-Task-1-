@@ -86,7 +86,7 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
   {
     height: 65%;
     width: 65%;
-    opacity: 0.5;
+    opacity: 0.25;
     z-index: 1;
     object-fit: fill;
     border-radius: 8px;
@@ -97,7 +97,7 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
   .card:hover img
   {
     height: 95%;
-    opacity: 1;
+    opacity: 0.8;
     width: 95%;
     transition: all 0.5s ease;
   }
@@ -107,4 +107,15 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
     background-image: linear-gradient(180deg, rgb(1, 172, 27), rgb(52, 255, 55)) !important;
     animation: rotBGimg 2s linear infinite !important;
     
+  }
+
+  .card:active::before {
+    background-image: linear-gradient(180deg, rgb(255, 255, 255), rgb(255, 255, 255)) !important;
+    animation: rotBGimg 0.5s linear infinite !important;
+    
+  }
+
+  .card:active img
+  {
+    opacity: 1;
   }
