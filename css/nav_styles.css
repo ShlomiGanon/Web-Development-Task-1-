@@ -18,7 +18,8 @@ body
     background-attachment: fixed;
     color:white;
 
-    display: grid;
+    display: flex;
+
     align-items: center;
     justify-content: center; 
     grid-template-columns: 1fr;
@@ -178,15 +179,14 @@ body
     background-color: rgba(1, 0, 0, 0.536);
     border-radius: 10px;
     border: 20px double rgba(242, 57, 57, 0);
-    padding-top: 0;
-    padding-left: 0px;
+    gap: 20px;
     transition: border 1s linear;
 }
 
 .info_block:hover
 {
     background-color: rgb(0, 0, 0);
-    border: 20px double rgba(64, 248, 132, 0.615);
+    border: 20px double rgba(170, 72, 2, 0.615);
     transition: border 0.5s linear;
     cursor:grab;
 }
@@ -199,7 +199,7 @@ body
     background-color: rgba(1, 0, 0, 0.289);
     border-radius: 80px;
     border: 20px dotted rgba(0, 0, 0, 0);
-    
+    padding: 20px;
     color: rgba(208, 208, 208, 0.308);
     transition: border 0.2s linear;
 }
@@ -210,8 +210,8 @@ body
     background-color: rgba(0, 0, 0, 0.622);
     color: rgb(255, 255, 255);
     transition: border ,color, background-color 10s linear;
-    padding: 60px;
-    font-size: 25px;
+    padding: 100px;
+    font-size: 30px;
     transition:  font-size , padding  0.5s linear;
     cursor:grab;
 }
