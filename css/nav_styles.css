@@ -179,7 +179,7 @@ body
     background-color: rgba(1, 0, 0, 0.536);
     border-radius: 10px;
     border: 20px double rgba(242, 57, 57, 0);
-    gap: 20px;
+    padding: 20px;
     transition: border 1s linear;
 }
 
