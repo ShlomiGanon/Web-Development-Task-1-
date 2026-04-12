@@ -22,12 +22,14 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
   {
     background: #ffffffa1;
     transition: background 0.5s ease;
+    cursor:pointer;
   }
 
   .card:hover h2
   {
     color: red;
     text-decoration: underline;
+    
   }
   
   .card h2 {
