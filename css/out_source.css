@@ -17,39 +17,48 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
     overflow: hidden;
     border-radius: 20px;
     margin: 5px;
+    z-index: 5;
   }
 
   .card:hover
   {
     background: #ffffffa1;
-    transition: background 0.5s ease;
+    transition: background 1s ease;
     cursor:pointer;
-  }
-
-  .card:hover h2
-  {
-    color: red;
-    background-color: rgba(0, 0, 0, 0.73);
-    border-radius: 10px;
-    text-decoration: underline;
-    
   }
   
   .card h2 {
     position: absolute;
     padding: 10px;
     z-index: 10;
-    color: rgba(255, 0, 0, 0.53);
-    font-size: 1.5em;
+    color: transparent;
+    font-size:2.5em;
+    border: 40px dotted transparent;
+    transition: all 0.2s linear;
   }
+  .card:hover h2
+  {
+    color: rgb(181, 19, 19);
+    border-radius: 10px;
+    text-decoration: underline;
+    font-size: 1.5em;
+    border: 1px solid rgba(255, 255, 255, 0.815);
+    transition: 
+        border 0.05s linear, 
+        color 0.2s linear, 
+        font-size 0.2s linear,
+        text-decoration 0.2s linear;
+    
+  }
+  
   
   .card::before {
     content: '';
     position: absolute;
     width: 100px;
-    background-image: linear-gradient(180deg, rgb(72, 38, 0), rgb(72, 0, 0));
+    background-image: linear-gradient(180deg, rgba(146, 44, 44, 0.667), rgb(72, 0, 0));
     height: 130%;
-    animation: rotBGimg 7s linear infinite;
+    animation: rotBGimg 16s linear infinite;
     transition: all 0.2s linear;
   }
   
@@ -71,15 +80,13 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
     inset: 5px;
     border-radius: 15px;
   }  
-   .card:hover:before {
-    background-image: linear-gradient(180deg, rgb(255, 0, 0), rgb(255, 115, 0));
-    animation: rotBGimg 4s linear infinite;
-  } 
+
 
   .card img
   {
     height: 65%;
     width: 65%;
+    opacity: 0.5;
     z-index: 1;
     object-fit: fill;
     border-radius: 8px;
@@ -90,8 +97,14 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
   .card:hover img
   {
     height: 95%;
+    opacity: 1;
     width: 95%;
     transition: all 0.5s ease;
   }
   
-  
+
+  .card:hover::before {
+    background-image: linear-gradient(180deg, rgb(1, 172, 27), rgb(52, 255, 55)) !important;
+    animation: rotBGimg 2s linear infinite !important;
+    
+  }
