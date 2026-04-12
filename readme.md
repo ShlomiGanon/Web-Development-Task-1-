@@ -1,6 +1,14 @@
+## Getting Started
 
-to open the html file follow the steps:
+Follow these steps to clone the repository and view the project:
 
-#1 open new folder in you pc and open it
-#2 on the window of the folder , press Ctrl + L to open the address bar and type "cmd" and press Enter
-#3 in the command prompt , type "git clone https://github.com/ShlomiGanon/Web-Development-Task-1-.git" and press Enter
+1. **Create a New Folder**
+   Create a new folder on your computer and navigate into it.
+
+2. **Open Command Prompt (CMD)**
+   Click on the folder's address bar (or press `Ctrl + L`), type `cmd`, and press **Enter**.
+
+3. **Clone the Repository**
+   In the command prompt window, type the following command and press **Enter**:
+   ```bash
+   git clone [https://github.com/ShlomiGanon/Web-Development-Task-1-.git](https://github.com/ShlomiGanon/Web-Development-Task-1-.git)
