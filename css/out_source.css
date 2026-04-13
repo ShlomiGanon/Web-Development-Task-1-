@@ -24,7 +24,6 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
 
   .card:hover
   {
-    background: #1aff0037;
     cursor:pointer;
     transition: 
     color 0.2s linear, 
@@ -46,9 +45,9 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
   {
     color: rgb(255, 255, 255);
     border-radius: 10px;
-    text-decoration: underline;
+    text-decoration: none;
     font-size: 1.5em;
-    background-color: #4f4f4fb1;
+    background-color: #ff000054;
     transition: 
         border 0.05s linear, 
         color 0.2s linear, 
@@ -62,7 +61,7 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
     content: '';
     position: absolute;
     width: 100px;
-    background-image: linear-gradient(180deg, rgba(146, 44, 44, 0.667), rgb(72, 0, 0));
+    background-image: linear-gradient(180deg, rgba(255, 0, 0, 0.385), rgba(187, 59, 59, 0.423));
     height: 130%;
     animation: rotBGimg 16s linear infinite;
     transition: all 0.2s linear;
@@ -110,25 +109,25 @@ https://uiverse.io/bhaveshxrawat/dangerous-quail-58
   
 
   .card:hover::before {
-    background-image: linear-gradient(180deg, rgb(1, 172, 27), rgb(52, 255, 55)) !important;
+    background-image: linear-gradient(180deg, rgb(182, 27, 27), rgb(186, 22, 22)) !important;
     animation: rotBGimg 1s linear infinite !important;
     
   }
 
   .card:active {
-      background: #40ff00;
+      background: #ea1313;
       transition: background 0.25s ease;
-      border: 1px solid rgb(255, 255, 255);
+      border: 1px solid rgb(93, 0, 0);
       margin: 4px;
-      transition: all 0.5s ease;
     
   }
 
   .card:active h2 {
-    color: red;
+    color: rgba(255, 0, 0, 0.258);
+    font-size: 0em;
     text-decoration: solid;
     background-color: transparent;
-    transition: all 0.5s ease;
+    transition: all 0.1s ease;
   }
 
   .card:active img

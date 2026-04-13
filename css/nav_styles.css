@@ -2,7 +2,8 @@
 
 body 
 {
-
+    font-family: 'Graphique W01 Regular', sans-serif;
+    font-weight: 400; /* Regular weight */
     background-image: url("../assets/profiles_background.png");
     background-size: cover;
     background-repeat: no-repeat;
@@ -145,19 +146,19 @@ body
     display: flex;
     align-items: center;  
     justify-content: center;
-    background-color: rgba(115, 115, 115, 0.408);
+    background-color: rgba(115, 115, 115, 0);
     border-radius: 80px;
 }
 
 .last_watched:hover
 {
-    background-color: rgba(0, 0, 0, 0.35);
-    border: 1px solid white;
+    background-color: rgba(0, 0, 0, 0.6);
+    border: 0px dotted white;
 }
 
 .last_watched:hover .card::before
 {
-    background-image: linear-gradient(180deg, rgb(255, 174, 0), rgb(152, 96, 0));
+    background-image: linear-gradient(180deg, rgba(198, 0, 0, 0.618), rgba(96, 1, 1, 0.563));
     animation: rotBGimg 6s linear infinite;
 }
 
@@ -173,8 +174,9 @@ body
     padding: 40px;
     text-decoration: solid;
     color:rgb(255, 255, 255);
-    background-color: rgba(0, 0, 0, 0.379);
+    background-color: rgba(0, 0, 0, 0);
     font-size: 70px;
+
 }
 
 
@@ -188,16 +190,17 @@ body
     width: 95%;
     background-color: rgba(1, 0, 0, 0.536);
     border-radius: 10px;
-    border: 20px double rgba(242, 57, 57, 0);
+    border: 5px solid rgba(0, 0, 0, 0.2);
     padding: 20px;
-    transition: border 1s linear;
+    transition: border 0.4s linear;
 }
 
 .info_block:hover
 {
     background-color: rgb(0, 0, 0);
-    border: 20px double rgba(170, 72, 2, 0.615);
-    transition: border 0.5s linear;
+    border: 5px solid rgba(255, 0, 0, 0.77);
+    transition: border 0.2s linear;
+    
     cursor:grab;
 }
 
@@ -208,15 +211,12 @@ body
     max-width: 100%;
     background-color: rgba(1, 0, 0, 0.289);
     border-radius: 80px;
-    border: 20px dotted rgba(237, 165, 10, 0.28);
-    padding: 20px;
     color: rgba(126, 126, 126, 0.31);
     transition: border 0.2s linear;
 }
 
 .dark_block:hover
 {
-    border: 20px dotted rgb(255, 0, 0);
     background-color: rgba(0, 0, 0, 0.622);
     color: rgb(255, 255, 255);
     transition: border ,color, background-color 10s linear;
@@ -225,3 +225,16 @@ body
     transition:  font-size , padding  0.5s linear;
     cursor:grab;
 }
+
+/* ----------- from internet: */
+
+
+
+@font-face {
+    font-family: 'Graphique W01 Regular';
+    src: url('fonts/GraphiqueW01-Regular.woff2') format('woff2'),
+         url('fonts/GraphiqueW01-Regular.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }

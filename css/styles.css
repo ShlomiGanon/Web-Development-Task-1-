@@ -12,6 +12,8 @@ body {
     background-attachment: fixed; /* גורם לרקע להישאר יציב בזמן שגוללים */
     background-position: center;  /* ממקם את התמונה במרכז */
     display: flex;
+    font-family: 'Graphique W01 Regular', sans-serif;
+    font-weight: 400; /* Regular weight */
 }
 
 .menu_container
@@ -87,6 +89,7 @@ body {
 
 .menu_item_invite_area
 {
+    font-size: 14px;
     color: rgba(255, 255, 255, 0.551);  
 }
 .menu_item_invite_area a
@@ -285,3 +288,12 @@ body {
     font-size: 14px;
     margin-top: 5px;
 }
+
+@font-face {
+    font-family: 'Graphique W01 Regular';
+    src: url('fonts/GraphiqueW01-Regular.woff2') format('woff2'),
+         url('fonts/GraphiqueW01-Regular.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
