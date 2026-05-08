@@ -17,6 +17,12 @@ body {
 }
 
 
+.menu-input::placeholder
+{
+    color: rgba(255, 255, 255, 0.75);
+    opacity: 1;  
+}
+
 
 .menu_item
 {
@@ -199,36 +205,9 @@ body {
     transition: background-color 0.4s ease;
 }
 
-.inputs
-{
-    font-size: 16px;
-    width: 97%;
-    height: 90%;
-    background-color: rgba(68, 65, 65, 0.318);
-    transition: background-color 0.2s ease;
-    color: white;
-}
-
-.inputs:hover
-{
-    color: rgb(255, 255, 255);
-    background-color: rgb(0, 0, 0);
-    transition: background-color 0.2s ease;
-}
-
-.inputs:hover::placeholder
-{
-    color: rgb(255, 255, 255);
-    transition: color 0.4s ease;
-}
 
 
-.inputs::placeholder
-{
-    padding: 10px;
-    font-size: 16px;
 
-}
 
 .menu_title
 {
