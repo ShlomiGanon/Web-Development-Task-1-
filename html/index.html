@@ -9,9 +9,10 @@
     
 </head>
 <body>
-    <div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center">
-        <div class="bg-black bg-opacity-75 text-light rounded-1 shadow p-4 d-grid gap-2" dir="rtl">
-      
+    <div class="row w-100 justify-content-center min-vh-100 align-items-center">
+        <div class="col-10 col-sm-7 col-md-5 col-lg-4 col-xl-3">
+          <div class="bg-black bg-opacity-75 text-light rounded-1 shadow p-4 d-grid gap-2" dir="rtl">
+            
 
             <div class="mb-2">
 
@@ -31,7 +32,6 @@
             </div>
 
 
-
             <div class = "d-grid gap-2 mt-2">
 
                 <button id="login-button" class="btn btn-danger fw-bold" type="button">כניסה לחשבון</button>
@@ -42,52 +42,43 @@
                     
                 <button id = "get-code-button" class = "btn btn-secondary fw-bold" type="button">כניסה עם קוד</button>
 
-                <div class = "text-center">
-                    <a href="no_support.html" target="_self">שכחת את הסיסמה?</a>
-
+                <div class="text-end">
+                    <button id="forgot-pass-button" type="button"
+                            class="btn btn-link link-primary p-0 text-decoration-none">
+                      שכחת את הסיסמה?
+                    </button>
                 </div>
                     
             </div>
 
             <div class = "menu_item_info">
-                <div class = "menu_item_checkbox">
-
-                    <input type="checkbox" id="remember-me-checkbox">
-                    <label for="remember-me-checkbox">
-                        זכור אותי
-                    </label>
+                <div class="d-flex w-100 justify-content-end align-items-center gap-2 flex-row-reverse">
+                    <label class="m-0" for="remember-me-checkbox">זכור אותי</label>
+                    <input class="form-check-input m-0" type="checkbox" id="remember-me-checkbox">
                 </div>
 
 
-                <div class = "menu_item_invite_area">
-                        עוד לא ב-Netflix?
-                
-                        <a href = "no_support.html" target = "_self">
-                            <strong>זה הזמן להירשם.</strong>
-                        </a>
+                <div class="small text-secondary">
+                    עוד לא ב-Netflix?
+                    <a href="register.html" target="_self" class="link-light fw-bold text-decoration-none">
+                      זה הזמן להירשם.
+                    </a>
                 </div>
             
-                    <div class = "menu_item_reCAPTCHA">
-                        
-            
-                                    אתר זה מוגן על-ידי reCAPTCHA של Google.
-                                <Strong>
-                                    כדי לוודא 
-                                </Strong>
-                                <br>
-                                    שהמשתמש אינו רובוט.
-                            
-                    <div class = "more_info_text">
-
-                        <a href = "more-information.html" target = "_self">
-                            לפרטים נוספים.
-                        </a>
+                <div class="text-secondary" style="font-size: 10px;">
+                    אתר זה מוגן על-ידי reCAPTCHA של Google.
+                    <strong class="text-light">כדי לוודא</strong>
+                    <br>
+                    שהמשתמש אינו רובוט.
+                    <div class="mt-1" style="font-size: 14px;">
+                      <a href="more-information.html" target="_self" class="link-primary text-decoration-none">
+                        לפרטים נוספים.
+                      </a>
                     </div>
-            </div>
+                </div>
                     
         </div>
-
-
+    </div>
     </div>
 </body>
 </html>
