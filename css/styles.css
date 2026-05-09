@@ -1,22 +1,24 @@
-body {
-    background-image: url("../assets/background.jpg");
-    background-size: cover;       /* גורם לתמונה להימתח על כל המסך */
-    background-repeat: no-repeat; /* מונע מהתמונה להשתכפל אם המסך גדול */
-    background-attachment: fixed; /* גורם לרקע להישאר יציב בזמן שגוללים */
-    background-position: center;  /* ממקם את התמונה במרכז */
+body 
+{
+    background: url("../assets/background.jpg") no-repeat center center fixed;
+    background-size: cover;
     font-family: 'Graphique W01 Regular', sans-serif;
-    font-weight: 400; /* Regular weight */
 }
 
 
-.menu-input::placeholder
+.menu-container 
+{
+    min-width: 400px;
+    animation: MenuAnimation 0.3s ease-out;
+}
+
+@keyframes MenuAnimation {
+    from { opacity: 0; scale: 0.5; }
+    to { opacity: 1; scale: 1; }
+}
+
+
+.menu-input::placeholder 
 {
     color: rgba(255, 255, 255, 0.75);
-    opacity: 1;  
-}
-
-#forgot-pass-button:hover 
-{
-    color: blue !important;
-    text-decoration: underline !important;
 }

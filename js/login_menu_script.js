@@ -6,7 +6,7 @@ const forgotPassButton = document.getElementById('forgot-pass-button');
 const moreInfoLink = document.getElementById('more-info-link');
 const registerLink = document.getElementById('register-link');
 
-const emailInput = document.getElementById('email-field');
+const emailOrPhoneInput = document.getElementById('email-or-phone-field');
 const passwordInput = document.getElementById('password-field');
 loginBtn.addEventListener('click', Login_Click);
 getCodeBtn.addEventListener('click', GetCode_Click);
@@ -22,7 +22,7 @@ function DisableButtons()
     forgotPassButton.disabled = true;
     moreInfoLink.style.pointerEvents = "none";
     registerLink.style.pointerEvents = "none";
-    emailInput.disabled = true;
+    emailOrPhoneInput.disabled = true;
     passwordInput.disabled = true;
     rememberMeCheckbox.disabled = true;
 }
@@ -35,7 +35,7 @@ function EnableButtons()
     forgotPassButton.disabled = false;
     moreInfoLink.style.pointerEvents = "auto";
     registerLink.style.pointerEvents = "auto";
-    emailInput.disabled = false;
+    emailOrPhoneInput.disabled = false;
     passwordInput.disabled = false;
     rememberMeCheckbox.disabled = false;
 }
@@ -45,7 +45,7 @@ function Login_Click()
     DisableButtons();
 
     const msg = "login-information ->\n" + 
-    "email: [" + emailInput.value + "]\n" + 
+    "email or phone: [" + emailOrPhoneInput.value + "]\n" + 
     "password: [" + passwordInput.value + "]\n" +
     "remember-me: [" + rememberMeCheckbox.checked + "]";
     console.log(msg);
@@ -59,7 +59,7 @@ function GetCode_Click()
     DisableButtons();
     
     const msg = "get-code-information ->\n" + 
-    "email: [" + emailInput.value + "]";
+    "email or phone: [" + emailOrPhoneInput.value + "]";
     console.log(msg);
 
     setTimeout(EnableButtons , 2000);
