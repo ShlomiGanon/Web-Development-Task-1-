@@ -12,7 +12,8 @@ body
     animation: MenuAnimation 0.125s ease-out;
 }
 
-.menu-exit {
+.menu-exit 
+{
     animation: MenuAnimation 0.125s ease-in forwards !important;
     animation-direction: reverse !important;
 }

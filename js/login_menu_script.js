@@ -21,7 +21,12 @@ function Login_Click()
     console.log(msg);
 
     //simulate a login process by sleeping for 2 seconds
-    setTimeout(UnlockUI, 2000);
+    let timer = setTimeout(() => 
+    {
+        UnlockUI();
+        GoToLink('../html/profiles.html');//simulate successful login
+    }, 2000);
+    
 }
 
 function GetCode_Click() 
