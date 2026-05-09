@@ -4,10 +4,19 @@ function ManageProfiles_OnClick()
     if (isEditing) 
     {
         saveProfiles();
+        ShowMessage("Profiles saved successfully");
     }
     isEditing = !isEditing;
     renderProfiles(isEditing ? 'input' : 'div');
     manage_profile_button.innerText = isEditing ? "Finish Editing" : "Manage Profiles";
+
+    add_profile_button.disabled = !isEditing;//prevent the button from being clicked through fade
+    add_profile_button.style.visibility = isEditing ? "visible" : "hidden";
+    add_profile_button.style.opacity = isEditing ? 1 : 0;
+    
+    remove_profile_button.disabled = !isEditing;//prevent the button from being clicked through fade
+    remove_profile_button.style.visibility = isEditing ? "visible" : "hidden";
+    remove_profile_button.style.opacity = isEditing ? 1 : 0;
 }
 //render profiles - render the profiles to the profiles area
 function renderProfiles(tag_name = 'div')
@@ -53,7 +62,7 @@ class Profile
                         <img src="../assets/${this.imageName}" alt="${this.name}" class="img-fluid border border-3 border-dark">
                     </div>
                 </div>
-                    <input id="profile_input_${this.id}" type="text" class="profile_input mt-3 text-secondary text-center" value="${this.name}">
+                    <input id="profile_input_${this.id}" autocomplete="off" type="text" class="profile_input mt-3 text-secondary text-center" value="${this.name}">
                 </div>
             `;
         } 
@@ -77,7 +86,8 @@ class Profile
 let isEditing = false;
 const profiles_area = document.getElementById('profiles');
 const manage_profile_button = document.getElementById('manage-profile-button');
-
+const add_profile_button = document.getElementById('add-profile-button');
+const remove_profile_button = document.getElementById('remove-profile-button');
 //profiles array
 const profiles = 
 [
@@ -91,5 +101,5 @@ const profiles =
 
 renderProfiles();
 manage_profile_button.addEventListener('click', ManageProfiles_OnClick);
-
-
+add_profile_button.addEventListener('click', AddProfile_OnClick);
+remove_profile_button.addEventListener('click', RemoveProfile_OnClick);

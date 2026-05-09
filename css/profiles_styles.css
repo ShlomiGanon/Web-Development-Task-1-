@@ -27,13 +27,21 @@
 }
 
 
-#manage-profile-button 
+.profiles_menu_buttons
 {
     min-width: 300px;
+    background-color: rgba(0, 0, 0, 0.414) !important;
     transition: all 0.3s ease;
 }
 
-#manage-profile-button:hover 
+#add-profile-button, #remove-profile-button
+{
+    visibility: hidden;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.profiles_menu_buttons:hover 
 {
     border-color: white !important;
     background-color: black !important;

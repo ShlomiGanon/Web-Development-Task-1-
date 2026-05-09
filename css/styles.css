@@ -28,3 +28,32 @@ body
 {
     color: rgba(255, 255, 255, 0.75);
 }
+
+
+#msg_box 
+{
+    background-color: rgba(0, 0, 0, 0.274);
+    width: 100%;
+    max-width: 500px;
+    height: 30px;
+    
+    overflow-y: hidden; 
+    
+    text-align: right;
+}
+
+
+.msg 
+{
+    color: rgb(255, 255, 255);
+    direction: rtl;
+    font-weight: bold;
+}
+
+
+.msg_error 
+{
+    color: rgb(255, 0, 0);
+    direction: rtl;
+    font-weight: bold;
+}

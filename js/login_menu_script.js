@@ -19,12 +19,13 @@ function Login_Click()
     "password: [" + passwordInput.value + "]\n" +
     "remember-me: [" + rememberMeCheckbox.checked + "]";
     console.log(msg);
-
+    ShowMessage("התחברות מוצלחת");
     //simulate a login process by sleeping for 2 seconds
     let timer = setTimeout(() => 
     {
         UnlockUI();
-        GoToLink('../html/profiles.html');//simulate successful login
+        ClearMessage();
+        //GoToLink('../html/profiles.html');//simulate successful login
     }, 2000);
     
 }
