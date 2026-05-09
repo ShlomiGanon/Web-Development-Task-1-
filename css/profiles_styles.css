@@ -10,6 +10,7 @@
     transition: all 0.3s ease;
 }
 
+
 .profile:hover img 
 {
     transform: scale(1.1);
@@ -25,14 +26,15 @@
     transition: all 0.3s ease;
 }
 
+
 #manage-profile-button 
 {
+    min-width: 300px;
     transition: all 0.3s ease;
 }
 
 #manage-profile-button:hover 
 {
-    background-color: transparent !important;
     border-color: white !important;
     background-color: black !important;
     color: white !important;
