@@ -1,6 +1,6 @@
 let lastClickedBtn = null;
 let originalBtnText = "";
-const spinnerHtml = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+const spinnerHtml = '<div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>';
 
 function ToggleUI(isDisabled) 
 {
@@ -13,7 +13,7 @@ function ToggleUI(isDisabled)
 
 function LockUI(user_click_on_button = null)
 {
-    if (user_click_on_button) 
+    if (user_click_on_button)
     {
         lastClickedBtn = user_click_on_button; 
         originalBtnText = user_click_on_button.innerHTML;
