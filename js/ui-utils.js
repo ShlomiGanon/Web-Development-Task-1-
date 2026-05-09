@@ -1,32 +1,50 @@
+let isUILocked = false;
 let lastClickedBtn = null;
 let originalBtnText = "";
 const spinnerHtml = '<div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>';
 
 function ToggleUI(isDisabled) 
 {
+    isUILocked = isDisabled;
     const inputs = document.querySelectorAll('button, input, textarea, select');
-    inputs.forEach(el => el.disabled = isDisabled);
+    inputs.forEach(el => 
+        {
+            el.disabled = isDisabled;
+        }
+    );
 
     const links = document.querySelectorAll('a');
-    links.forEach(link => link.style.pointerEvents = isDisabled ? "none" : "auto");
+    links.forEach(link => 
+        {
+            link.style.pointerEvents = isDisabled ? "none" : "auto";
+        }
+    );
 }
-
-function LockUI(user_click_on_button = null)
+/**
+ * @param {HTMLButtonElement | null} clicked_button
+ */
+function LockUI(clicked_button = null)
 {
-    if (user_click_on_button)
+    if (isUILocked) 
     {
-        lastClickedBtn = user_click_on_button; 
-        originalBtnText = user_click_on_button.innerHTML;
-        
-        user_click_on_button.innerHTML = spinnerHtml;
+        throw new Error("UI is already locked");
     }
-    
+    if (clicked_button)
+    {
+        lastClickedBtn = clicked_button; 
+        originalBtnText = clicked_button.innerHTML;   
+        clicked_button.innerHTML = spinnerHtml;
+    }
     ToggleUI(true);
 }
 
 
 function UnlockUI()
 {
+    if (!isUILocked) 
+    {
+        throw new Error("UI is not locked");
+    }
     //enable all buttons and input fields
     if (lastClickedBtn) 
     {
