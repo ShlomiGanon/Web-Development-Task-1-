@@ -1,3 +1,4 @@
+import * as UI from './ui-utils.js';
 const emailInput = document.getElementById('mail-field');
 const phoneInput = document.getElementById('phone-field');
 const passwordInput = document.getElementById('password-field');
@@ -8,7 +9,7 @@ registerBtn.addEventListener('click', Register_Click);
 
 function Register_Click() 
 {
-    LockUI(registerBtn);
+    UI.LockUI(registerBtn);
     
     const msg = "register-information ->\n" + 
     "email: [" + emailInput.value + "]\n" + 
@@ -17,5 +18,9 @@ function Register_Click()
     "confirm-password: [" + confirmPasswordInput.value + "]";
     console.log(msg);
 
-    setTimeout(UnlockUI, 2000);
+    setTimeout(() => 
+        {
+            UI.UnlockUI();
+        }
+    , 2000);
 }

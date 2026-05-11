@@ -1,10 +1,11 @@
+import * as UI from './ui-utils.js';
 
 function ManageProfiles_OnClick()
 {
     if (isEditing) 
     {
         saveProfiles();
-        ShowMessage("Profiles saved successfully");
+        UI.ShowMessage("Profiles saved successfully");
     }
     isEditing = !isEditing;
     renderProfiles(isEditing ? 'input' : 'div');
