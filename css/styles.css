@@ -30,28 +30,21 @@ body
 }
 
 
-#msg_box 
-{
-    background-color: rgba(0, 0, 0, 0.274);
-    width: 100%;
+#msg_box {
+    background-color: rgba(114, 114, 114, 0.274);
+    height: 30px; 
     max-width: 500px;
-    height: 30px;
+    width: 100%;
+    border-radius: 4px;
     
-    overflow-y: hidden; 
+    min-height: 30px; 
     
-    text-align: right;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 
 .msg 
-{
-    color: rgb(255, 255, 255);
-    direction: rtl;
-    font-weight: bold;
-}
-
-
-.msg_error 
 {
     color: rgb(255, 0, 0);
     direction: rtl;

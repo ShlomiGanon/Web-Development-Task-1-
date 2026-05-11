@@ -1,3 +1,4 @@
+import * as UI from './ui-utils.js';
 const loginBtn = document.getElementById('login-button');
 const getCodeBtn = document.getElementById('get-code-button');
 const rememberMeCheckbox = document.getElementById('remember-me-checkbox');
@@ -12,37 +13,58 @@ forgotPassButton.addEventListener('click', ForgotPass_Click);
 
 function Login_Click() 
 {
-    LockUI(loginBtn);
+    UI.LockUI(loginBtn);
 
     const msg = "login-information ->\n" + 
     "email or phone: [" + emailOrPhoneInput.value + "]\n" + 
     "password: [" + passwordInput.value + "]\n" +
     "remember-me: [" + rememberMeCheckbox.checked + "]";
     console.log(msg);
-    ShowMessage("התחברות מוצלחת");
+    if(emailOrPhoneInput.value == "" && passwordInput.value == "")
+    {
+        UI.ShowMessage("Email or phone and password are required");
+        UI.UnlockUI();
+        return;
+    }
+    else if(emailOrPhoneInput.value == "")
+    {
+        UI.ShowMessage("Email or phone is required");
+        UI.UnlockUI();
+        return;
+    }
+    else if(passwordInput.value == "")
+    {
+        UI.ShowMessage("Password is required");
+        UI.UnlockUI();
+        return;
+    }
+    else
+    {
+        UI.ShowMessage("Login successful");
+    }
     //simulate a login process by sleeping for 2 seconds
     let timer = setTimeout(() => 
     {
-        UnlockUI();
-        ClearMessage();
-        //GoToLink('../html/profiles.html');//simulate successful login
+        UI.UnlockUI();
+        UI.ClearMessage();
+        UI.GoToLink('../html/profiles.html');//simulate successful login
     }, 2000);
     
 }
 
 function GetCode_Click() 
 {
-    LockUI(getCodeBtn);
+    UI.LockUI(getCodeBtn);
     
     const msg = "get-code-information ->\n" + 
     "email or phone: [" + emailOrPhoneInput.value + "]";
     console.log(msg);
 
-    setTimeout(UnlockUI, 2000);
+    setTimeout(UI.UnlockUI, 2000);
 }
 
 function ForgotPass_Click() 
 {
     //not implemented yet
-    GoToLink('../html/no_support.html');
+    UI.GoToLink('../html/no_support.html');
 }

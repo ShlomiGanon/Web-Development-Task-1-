@@ -4,29 +4,40 @@ let originalBtnText = "";
 const spinnerHtml = '<div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>';
 const msgbox = document.getElementById('msg_box');
 
-function ShowMessage(message) 
+/**
+ * Displays a standard informative message in the UI.
+ * @param {string} message - The text to display.
+ */
+export function ShowMessage(message) 
 {
-    msg = document.createElement('div');
-    msg.classList.add('msg');
-    msg.innerText = message;
-    msgbox.innerHTML = msg.outerHTML;
-
+    if (msgbox) msgbox.innerHTML = `<div class="msg">${message}</div>`;
+    else console.log("Message box not found: ", msgbox);
 }
 
-function ShowErrorMessage(message) 
+/**
+ * Displays an error-styled message in the UI.
+ * @param {string} message - The error text to display.
+ */
+export function ShowErrorMessage(message) 
 {
-    msg = document.createElement('div');
-    msg.classList.add('msg_error');
-    msg.innerText = message;
-    msgbox.innerHTML = msg.outerHTML;
+    if (msgbox) msgbox.innerHTML = `<div class="msg_error">${message}</div>`;
+    else console.log("Message box not found: ", msgbox);
 }
 
-function ClearMessage()
+/**
+ * Removes all content from the designated message box.
+ */
+export function ClearMessage() 
 {
-    msgbox.innerHTML = '';
+    if(msgbox)msgbox.innerHTML = '';
 }
 
-function ToggleUI(isDisabled) 
+
+/**
+ * Disables or enables all interactive UI elements to prevent user interference.
+ * @param {boolean} isDisabled - True to lock the UI, false to unlock.
+ */
+export function ToggleUI(isDisabled) 
 {
     isUILocked = isDisabled;
     const inputs = document.querySelectorAll('button, input, textarea, select');
@@ -43,14 +54,18 @@ function ToggleUI(isDisabled)
         }
     );
 }
+
+
 /**
- * @param {HTMLButtonElement | null} clicked_button
+ * Locks the UI and applies a loading state to the triggering element.
+ * @param {HTMLButtonElement|null} [triggerBtn=null] - The element that invoked the process, used to display a spinner.
  */
-function LockUI(clicked_button = null)
+export function LockUI(clicked_button = null)
 {
     if (isUILocked) 
     {
-        throw new Error("UI is already locked");
+        console.log("UI is already locked");
+        return;
     }
     if (clicked_button)
     {
@@ -62,11 +77,15 @@ function LockUI(clicked_button = null)
 }
 
 
-function UnlockUI()
+/**
+ * Releases the UI lock and restores the original state of the button that initiated the action.
+ */
+export function UnlockUI()
 {
     if (!isUILocked) 
     {
-        throw new Error("UI is not locked");
+        console.log("UI is not locked");
+        return;
     }
     //enable all buttons and input fields
     if (lastClickedBtn) 
@@ -78,8 +97,12 @@ function UnlockUI()
     ToggleUI(false);
 }
 
-
-function GoToLink(targetUrl) 
+/**
+ * Executes a smooth page transition with an exit animation.
+ * Forces a reflow to reset animations and navigates once the transition delay expires.
+ * @param {string} targetUrl - The destination path or URL for navigation.
+ */
+export function GoToLink(targetUrl) 
 {
     const DELAY_TIME = 125;
     var menu = document.querySelector('.menu-container');
@@ -104,13 +127,23 @@ function GoToLink(targetUrl)
 }
 
 // Handle all standard <a> links automatically
-document.querySelectorAll('a').forEach(function(link) 
-{
-    link.addEventListener('click', function(event) 
-    {
-        if (link.href && !link.href.startsWith('javascript') && !link.href.includes('#') && link.target !== "_blank") {
-            event.preventDefault();
-            GoToLink(link.href);
-        }
-    });
+document.addEventListener('click', function(event) {
+    // Find the closest anchor tag, even if a nested element (like an icon) was clicked
+    const link = event.target.closest('a'); 
+    
+    // Validate if the link is a standard internal navigation link
+    if (link && link.href && 
+        !link.href.startsWith('javascript') && 
+        !link.href.includes('#') && 
+        link.target !== "_blank") {
+        
+        // Prevent the browser's default immediate navigation
+        event.preventDefault();
+
+        // If UI is currently locked (processing), stop further execution
+        if (isUILocked) return;
+        
+        // Trigger the custom navigation logic with exit animations
+        GoToLink(link.href);
+    }
 });
