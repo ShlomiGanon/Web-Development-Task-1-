@@ -20,7 +20,7 @@ export function ShowMessage(message)
  */
 export function ShowErrorMessage(message) 
 {
-    if (msgbox) msgbox.innerHTML = `<div class="msg_error">${message}</div>`;
+    if (msgbox) msgbox.innerHTML = `<div class="msg error">${message}</div>`;
     else console.log("Message box not found: ", msgbox);
 }
 

@@ -1,23 +1,63 @@
 import * as UI from './ui-utils.js';
 
+
+//show edit action buttons (add and remove profile buttons)
+function showEditActionButtons() 
+{
+    add_profile_button.disabled = false;
+    add_profile_button.style.visibility = "visible";
+    add_profile_button.style.opacity = 1;
+
+    remove_profile_button.disabled = false;
+    remove_profile_button.style.visibility = "visible";
+    remove_profile_button.style.opacity = 1;
+}
+
+//hide edit action buttons (add and remove profile buttons)
+function hideEditActionButtons() 
+{
+    add_profile_button.disabled = true;
+    add_profile_button.style.visibility = "hidden";
+    add_profile_button.style.opacity = 0;
+
+    remove_profile_button.disabled = true;
+    remove_profile_button.style.visibility = "hidden";
+    remove_profile_button.style.opacity = 0;
+}
+
+//attach input listeners to the profile input fields
+//when the user starts typing, change the button text to "Save Changes" and hide the add and remove profile buttons
+function attachInputListeners() 
+{
+    const inputs = document.querySelectorAll('.profile_input');
+    inputs.forEach(input => {
+        input.addEventListener('input', () => {
+            manage_profile_button.innerText = "Save Changes";
+            hideEditActionButtons();
+            HasChanged = true;
+        });
+    });
+}
+
 function ManageProfiles_OnClick()
 {
     if (isEditing) 
     {
-        saveProfiles();
-        UI.ShowMessage("Profiles saved successfully");
+        if (HasChanged) 
+        {
+            saveProfiles();
+            HasChanged = false;
+            UI.ShowMessage("Profiles saved successfully");
+        }
+        else
+        {
+            UI.ShowMessage("No changes to save");
+        }
     }
     isEditing = !isEditing;
     renderProfiles(isEditing ? 'input' : 'div');
-    manage_profile_button.innerText = isEditing ? "Finish Editing" : "Manage Profiles";
-
-    add_profile_button.disabled = !isEditing;//prevent the button from being clicked through fade
-    add_profile_button.style.visibility = isEditing ? "visible" : "hidden";
-    add_profile_button.style.opacity = isEditing ? 1 : 0;
-    
-    remove_profile_button.disabled = !isEditing;//prevent the button from being clicked through fade
-    remove_profile_button.style.visibility = isEditing ? "visible" : "hidden";
-    remove_profile_button.style.opacity = isEditing ? 1 : 0;
+    manage_profile_button.innerText = isEditing ? "go back" : "Manage Profiles";
+    isEditing ? showEditActionButtons() : hideEditActionButtons();
 }
 //render profiles - render the profiles to the profiles area
 function renderProfiles(tag_name = 'div')
@@ -29,6 +69,7 @@ function renderProfiles(tag_name = 'div')
         }
     );
     profiles_area.innerHTML = allProfilesHTML;
+    attachInputListeners();
 }
 
 //save profiles - save the profiles names to the profiles array after editing
@@ -54,8 +95,11 @@ class Profile
 
     render(tag_name = 'div') 
     {
+        // CASE 1: Edit Mode
+        // Structure requires the input to be outside the 'profile' container to prevent 
+        // style conflicts and ensure a smooth focus/editing experience.
         if (tag_name === 'input') 
-            {
+        {
             return `
                 <div>
                 <div class="profile" id="profile${this.id}" style="cursor: pointer;">
@@ -67,6 +111,9 @@ class Profile
                 </div>
             `;
         } 
+        // CASE 2: Display Mode
+        // Standard Netflix-style profile card where the name is nested within 
+        // the clickable profile area for a consistent hover effect.
         else 
         {
             return `
@@ -85,6 +132,7 @@ class Profile
 
 //variables
 let isEditing = false;
+let HasChanged = false;
 const profiles_area = document.getElementById('profiles');
 const manage_profile_button = document.getElementById('manage-profile-button');
 const add_profile_button = document.getElementById('add-profile-button');

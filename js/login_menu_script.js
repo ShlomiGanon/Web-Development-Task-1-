@@ -9,47 +9,62 @@ const passwordInput = document.getElementById('password-field');
 loginBtn.addEventListener('click', Login_Click);
 getCodeBtn.addEventListener('click', GetCode_Click);
 forgotPassButton.addEventListener('click', ForgotPass_Click);
+// Remove 'is-invalid' class on input for better ux
+[emailOrPhoneInput, passwordInput].forEach(input => 
+    {
+    input.addEventListener('input', () => 
+        {
+            input.classList.remove('is-invalid');
+            UI.ClearMessage();
+        });
+    }
+);
 
 
 function Login_Click() 
 {
     UI.LockUI(loginBtn);
 
-    const msg = "login-information ->\n" + 
-    "email or phone: [" + emailOrPhoneInput.value + "]\n" + 
-    "password: [" + passwordInput.value + "]\n" +
-    "remember-me: [" + rememberMeCheckbox.checked + "]";
-    console.log(msg);
-    if(emailOrPhoneInput.value == "" && passwordInput.value == "")
+    emailOrPhoneInput.classList.remove('is-invalid');
+    passwordInput.classList.remove('is-invalid');
+
+    const emailVal = emailOrPhoneInput.value.trim();
+    const passVal = passwordInput.value.trim();
+
+    if (emailVal === "" || passVal === "") 
     {
-        UI.ShowMessage("Email or phone and password are required");
         UI.UnlockUI();
+        
+        if (emailVal === "" && passVal === "") 
+        {
+            UI.ShowErrorMessage("חובה למלא את שדות האימייל (או הטלפון) והסיסמה.");
+            emailOrPhoneInput.classList.add('is-invalid');
+            passwordInput.classList.add('is-invalid');
+            emailOrPhoneInput.focus();
+        } 
+        else if (emailVal === "") 
+        {
+            UI.ShowErrorMessage("אימייל או טלפון הינו שדה חובה");
+            emailOrPhoneInput.classList.add('is-invalid');
+            emailOrPhoneInput.focus();
+        } 
+        else 
+        {
+            UI.ShowErrorMessage("סיסמה הינה שדה חובה");
+            passwordInput.classList.add('is-invalid');
+            passwordInput.focus();
+        }
         return;
     }
-    else if(emailOrPhoneInput.value == "")
-    {
-        UI.ShowMessage("Email or phone is required");
-        UI.UnlockUI();
-        return;
-    }
-    else if(passwordInput.value == "")
-    {
-        UI.ShowMessage("Password is required");
-        UI.UnlockUI();
-        return;
-    }
-    else
-    {
-        UI.ShowMessage("Login successful");
-    }
-    //simulate a login process by sleeping for 2 seconds
-    let timer = setTimeout(() => 
-    {
+
+    // 3. הצלחה
+    UI.ShowMessage("התחברות בוצעה בהצלחה");
+    
+    setTimeout(() => {
         UI.UnlockUI();
         UI.ClearMessage();
-        UI.GoToLink('../html/profiles.html');//simulate successful login
+        UI.GoToLink('../html/profiles.html');
     }, 2000);
-    
 }
 
 function GetCode_Click() 
