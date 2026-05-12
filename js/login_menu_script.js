@@ -1,14 +1,16 @@
 import * as UI from './ui-utils.js';
+//button variables
 const loginBtn = document.getElementById('login-button');
 const getCodeBtn = document.getElementById('get-code-button');
 const rememberMeCheckbox = document.getElementById('remember-me-checkbox');
 const forgotPassButton = document.getElementById('forgot-pass-button');
-
+//input variables
 const emailOrPhoneInput = document.getElementById('email-or-phone-field');
 const passwordInput = document.getElementById('password-field');
-loginBtn.addEventListener('click', Login_Click);
-getCodeBtn.addEventListener('click', GetCode_Click);
-forgotPassButton.addEventListener('click', ForgotPass_Click);
+//event listeners
+loginBtn.addEventListener('click', Login_Click);//login button event listener
+getCodeBtn.addEventListener('click', GetCode_Click);//get code button event listener
+forgotPassButton.addEventListener('click', ForgotPass_Click);//forgot password button event listener
 // Remove 'is-invalid' class on input for better ux
 [emailOrPhoneInput, passwordInput].forEach(input => 
     {
@@ -21,7 +23,7 @@ forgotPassButton.addEventListener('click', ForgotPass_Click);
 );
 
 
-function Login_Click() 
+function Login_Click() //login button function
 {
     UI.LockUI(loginBtn);
 
@@ -67,7 +69,7 @@ function Login_Click()
     }, 2000);
 }
 
-function GetCode_Click() 
+function GetCode_Click() //get code button function
 {
     UI.LockUI(getCodeBtn);
     
@@ -78,8 +80,7 @@ function GetCode_Click()
     setTimeout(UI.UnlockUI, 2000);
 }
 
-function ForgotPass_Click() 
+function ForgotPass_Click() //forgot password button function
 {
-    //not implemented yet
-    UI.GoToLink('../html/no_support.html');
+    UI.GoToLink('../html/no_support.html');//go to no support page (because we cant send a reset password email)
 }
