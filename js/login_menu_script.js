@@ -1,4 +1,5 @@
 import * as UI from './ui-utils.js';
+import * as Auth from './auth.js';
 //button variables
 const loginBtn = document.getElementById('login-button');
 const getCodeBtn = document.getElementById('get-code-button');
@@ -11,62 +12,50 @@ const passwordInput = document.getElementById('password-field');
 loginBtn.addEventListener('click', Login_Click);//login button event listener
 getCodeBtn.addEventListener('click', GetCode_Click);//get code button event listener
 forgotPassButton.addEventListener('click', ForgotPass_Click);//forgot password button event listener
-// Remove 'is-invalid' class on input for better ux
-[emailOrPhoneInput, passwordInput].forEach(input => 
-    {
-    input.addEventListener('input', () => 
-        {
-            input.classList.remove('is-invalid');
-            UI.ClearMessage();
-        });
-    }
-);
 
 
-function Login_Click() //login button function
+async function Login_Click() //login button function
 {
+    
+    const is_not_empty = (text) => text !== "";
+    const is_valid_email_or_phone = (text) => Auth.Is_Valid_Email(text) || Auth.Is_Valid_Phone(text);
+
+    const rules = 
+    [
+        new Auth.InputRule(emailOrPhoneInput, "אימייל או טלפון הוא שדה חובה", is_not_empty),
+        new Auth.InputRule(emailOrPhoneInput, "לא נמצא אימייל או נייד תקין", is_valid_email_or_phone),
+        new Auth.InputRule(passwordInput, "סיסמה היא שדה חובה", is_not_empty),
+        new Auth.InputRule(passwordInput, `אורך סיסמה לא תקין [${Auth.MIN_PASSWORD_LENGTH}-${Auth.MAX_PASSWORD_LENGTH}]`, Auth.Is_Valid_Password, [Auth.MIN_PASSWORD_LENGTH, Auth.MAX_PASSWORD_LENGTH])
+    ];
+
+    
+    if (!Auth.ValidateForm(rules)) return;//if the form is invalid we stop the function
+
+
     UI.LockUI(loginBtn);
-
-    emailOrPhoneInput.classList.remove('is-invalid');
-    passwordInput.classList.remove('is-invalid');
-
-    const emailVal = emailOrPhoneInput.value.trim();
-    const passVal = passwordInput.value.trim();
-
-    if (emailVal === "" || passVal === "") 
+    UI.ShowMessage("מתבצעת התחברות...");
+    let response = null;
+    if(Auth.Is_Valid_Email(emailOrPhoneInput.value))
     {
-        UI.UnlockUI();
-        
-        if (emailVal === "" && passVal === "") 
-        {
-            UI.ShowErrorMessage("חובה למלא את שדות האימייל (או הטלפון) והסיסמה.");
-            emailOrPhoneInput.classList.add('is-invalid');
-            passwordInput.classList.add('is-invalid');
-            emailOrPhoneInput.focus();
-        } 
-        else if (emailVal === "") 
-        {
-            UI.ShowErrorMessage("אימייל או טלפון הינו שדה חובה");
-            emailOrPhoneInput.classList.add('is-invalid');
-            emailOrPhoneInput.focus();
-        } 
-        else 
-        {
-            UI.ShowErrorMessage("סיסמה הינה שדה חובה");
-            passwordInput.classList.add('is-invalid');
-            passwordInput.focus();
-        }
-        return;
+        response = await Auth.Login_By_Email(emailOrPhoneInput.value, passwordInput.value);
+    }
+    else if(Auth.Is_Valid_Phone(emailOrPhoneInput.value))
+    {
+        response = await Auth.Login_By_Phone(emailOrPhoneInput.value, passwordInput.value);
     }
 
-    // 3. הצלחה
-    UI.ShowMessage("התחברות בוצעה בהצלחה");
-    
-    setTimeout(() => {
-        UI.UnlockUI();
-        UI.ClearMessage();
+    if(response.success)
+    {
+        UI.ShowMessage("התחברות בוצעה בהצלחה");
         UI.GoToLink('../html/profiles.html');
-    }, 2000);
+        // UI remains locked during navigation to prevent duplicate submissions.
+        // Page memory will be cleared automatically by the browser upon redirection.
+    }
+    else
+    {
+        UI.ShowMessage("התחברות נכשלה, נסה שנית");
+        UI.UnlockUI();//unlock the ui only if the login failed
+    }
 }
 
 function GetCode_Click() //get code button function

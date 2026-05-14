@@ -32,14 +32,12 @@ body
 
 #msg_box {
     background-color: rgba(114, 114, 114, 0.274);
-    height: 30px; 
+    min-height: 30px; 
     max-width: 500px;
     width: 100%;
     border-radius: 4px;
     
-    min-height: 30px; 
-    
-    overflow: hidden;
+
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -49,6 +47,7 @@ body
     color: rgb(255, 255, 255);
     direction: rtl;
     font-weight: bold;
+    white-space: pre-line;
 }
 
 .msg.error
