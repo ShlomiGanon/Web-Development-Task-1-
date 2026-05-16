@@ -65,7 +65,7 @@ function renderProfiles(tag_name = 'div')
     let allProfilesHTML = "";
     profiles.forEach(profile => 
         {
-            allProfilesHTML += profile.render(tag_name);
+            allProfilesHTML += renderProfileComponent(profile, tag_name);
         }
     );
     profiles_area.innerHTML = allProfilesHTML;
@@ -83,53 +83,48 @@ function saveProfiles()
 }
 
 
-//profile class
-class Profile 
+// UI Helper: Converts a pure Profile object into HTML string
+function renderProfileComponent(profile, tag_name = 'div') 
 {
-    constructor(id, name, imageName) 
+    if (tag_name === 'input') 
     {
-        this.id = id;
-        this.name = name;
-        this.imageName = imageName;
+        return `
+            <div>
+                <div class="profile" id="profile${profile.id}" style="cursor: pointer;">
+                    <div class="profile_image">
+                        <img src="../assets/${profile.imageName}" alt="${profile.name}" class="img-fluid border border-3 border-dark">
+                    </div>
+                </div>
+                <input id="profile_input_${profile.id}" autocomplete="off" type="text" class="profile_input mt-3 text-secondary text-center" value="${profile.name}">
+            </div>
+        `;
     }
-
-    render(tag_name = 'div') 
+    else
     {
-        // CASE 1: Edit Mode
-        // Structure requires the input to be outside the 'profile' container to prevent 
-        // style conflicts and ensure a smooth focus/editing experience.
-        if (tag_name === 'input') 
-        {
-            return `
-                <div>
-                <div class="profile" id="profile${this.id}" style="cursor: pointer;">
-                    <div class="profile_image">
-                        <img src="../assets/${this.imageName}" alt="${this.name}" class="img-fluid border border-3 border-dark">
-                    </div>
+        return `
+            <div class="profile" id="profile${profile.id}" style="cursor: pointer;">
+                <div class="profile_image">
+                    <img src="../assets/${profile.imageName}" alt="${profile.name}" class="img-fluid border border-3 border-dark">
                 </div>
-                    <input id="profile_input_${this.id}" autocomplete="off" type="text" class="profile_input mt-3 text-secondary text-center" value="${this.name}">
+                <div class="profile_name mt-3 text-secondary text-center">
+                    ${profile.name}
                 </div>
-            `;
-        } 
-        // CASE 2: Display Mode
-        // Standard Netflix-style profile card where the name is nested within 
-        // the clickable profile area for a consistent hover effect.
-        else 
-        {
-            return `
-                <div class="profile" id="profile${this.id}" style="cursor: pointer;">
-                    <div class="profile_image">
-                        <img src="../assets/${this.imageName}" alt="${this.name}" class="img-fluid border border-3 border-dark">
-                    </div>
-                    <div class="profile_name mt-3 text-secondary text-center">
-                        ${this.name}
-                    </div>
-                </div>
-            `;
-        }
+            </div>
+        `;
     }
 }
 
+function renderProfiles(tag_name = 'div') 
+{
+    let allProfilesHTML = "";
+    profiles.forEach(profile => 
+    {
+        // We pass the pure data object into our UI component generator
+        allProfilesHTML += renderProfileComponent(profile, tag_name);
+    });
+    profiles_area.innerHTML = allProfilesHTML;
+    attachInputListeners();
+}
 //variables
 let isEditing = false;
 let HasChanged = false;

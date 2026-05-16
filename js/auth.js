@@ -2,6 +2,50 @@ import * as UI from './ui-utils.js';
 export const MIN_PASSWORD_LENGTH = 8;
 export const MAX_PASSWORD_LENGTH = 16;
 
+//the active user
+let activeUser = null;
+
+//a class to store the user information
+class User_Information
+{
+    constructor(email , profiles_data = [])
+    {
+        this.email = email;
+        this.profiles_data = profiles_data;
+    }
+    
+    //getters
+
+    get_email()
+    {
+        return this.email;
+    }
+
+    get_profile(id)
+    {
+        return this.profiles_data.find(profile => profile.id === id);
+    }
+
+    get_all_profiles()
+    {
+        return this.profiles_data;
+    }
+
+    //add or remove profiles
+
+    add_profile(id, name, imageName)
+    {
+        this.profiles_data.push(new Profile(id, name, imageName));
+    }
+
+    remove_profile(id)
+    {
+        this.profiles_data = this.profiles_data.filter(profile => profile.id !== id);
+    }
+    
+}
+
+
 export async function Login_By_Email(email , password)
 {
     await new Promise(resolve => setTimeout(resolve, 2000)); //simulate a login process (for two seconds)
@@ -16,9 +60,14 @@ export async function Login_By_Phone(phone , password)
     return { success: true };
 }
 
-export function Register(email , phone , password)
+export function Register(full_name , email , phone , password)
 {
     return; //not implemented
+}
+
+export function is_valid_name(name)
+{
+    return /^[a-zA-Z]+$/.test(name);
 }
 
 export function Is_Valid_Email(email)

@@ -127,15 +127,20 @@ export function GoToLink(targetUrl)
 }
 
 // Handle all standard <a> links automatically
-document.addEventListener('click', function(event) {
+document.addEventListener('click', function(event) 
+{
     // Find the closest anchor tag, even if a nested element (like an icon) was clicked
     const link = event.target.closest('a'); 
     
     // Validate if the link is a standard internal navigation link
-    if (link && link.href && 
-        !link.href.startsWith('javascript') && 
-        !link.href.includes('#') && 
-        link.target !== "_blank") {
+    if (
+    link && link.href &&                        // 1. Ensure the link element and its href attribute exist
+    !link.href.startsWith('javascript') &&      // 2. Exclude links that execute JavaScript code
+    !link.href.includes('#') &&                 // 3. Exclude links that point to in-page anchors or section skips
+    link.target !== "_blank"                    // 4. Exclude links configured to open in a new tab or window
+    )
+    {
+
         
         // Prevent the browser's default immediate navigation
         event.preventDefault();
