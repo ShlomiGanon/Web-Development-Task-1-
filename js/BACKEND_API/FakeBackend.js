@@ -1,29 +1,56 @@
-import { Interface_BackendAPI, UserInfo, Profile } from './backend-interface.js';
+import { Interface_BackendAPI, UserInfo, Profile, MediaItem } from './backend-interface.js';
 
 
 class BackendUser extends UserInfo 
 {
-    constructor(email, phone, full_name, rawProfiles = [], password) 
+    constructor(email, phone, full_name, rawProfiles , password) 
     {
         super(email, phone, full_name, rawProfiles);
         this.password = password;
     }
     
+    /**
+     * Converts the BackendUser instance to a UserInfo instance.
+     * @returns {UserInfo} The UserInfo instance created from the BackendUser instance.
+     */
     toUserInfo()
     {
         return new UserInfo(this.email, this.phone, this.full_name, this.profiles);
     }
 
+    /**
+     * Static method to create a BackendUser instance from a raw JSON object.
+     * @param {Object} rawObject - The raw JSON object to create a BackendUser instance from.
+     * @returns {BackendUser} The BackendUser instance created from the raw JSON object.
+     */
     static fromJSON(rawObject) 
     {
         if (!rawObject) return null;
+        if (rawObject instanceof BackendUser) return rawObject;
+
+        const parsedProfiles = Array.isArray(rawObject.profiles)
+        ? rawObject.profiles.map(p => p instanceof Profile ? p : Profile.fromJSON(p))
+        : [];
+
         return new BackendUser(
             rawObject.email, 
             rawObject.phone, 
             rawObject.full_name, 
-            rawObject.profiles, 
+            parsedProfiles, 
             rawObject.password 
         );
+    }
+
+    /**
+     * Converts the BackendUser instance to a JSON object.
+     * @returns {Object} The JSON object representing the BackendUser instance.
+     */
+    toJSON() 
+    {
+        return {
+            ...super.toJSON(), // take all the fields from the UserInfo class
+            password: this.password // add the password (it exists only in the BackendUser class)
+        };
     }
 
 }
@@ -33,67 +60,110 @@ export class FakeBackend extends Interface_BackendAPI
     constructor() 
     {
         super();
-        // Cookie name that acts as our local database storage
-        this.DB_COOKIE_NAME = "fake_backend_db";
-        // Cookie name that holds the identifier of the currently authenticated user
+        this.DB_STORAGE_NAME = "fake_users_db";
+        this.MEDIA_DB_STORAGE_NAME = "fake_media_db";
         this.SESSION_COOKIE_NAME = "current_logged_in_user";
         
         // Initialize the cookie database with mock data if it does not exist
         this._initDatabase();
     }
 
+
     /**
-     * Internal helper to retrieve all registered users from the database cookie.
-     * @private
-     * @returns {Array<Object>} List of users.
-     */
-    /**
-     * Internal helper to retrieve all registered users from the database cookie.
+     * Internal helper to retrieve all registered users from the database storage.
      * @private
      * @returns {Array<UserInfo>} List of UserInfo instances.
      */
-    _getUsersFromCookie() 
+    _getUsersFromStorage() 
     {
-        const cookieData = this._getCookie(this.DB_COOKIE_NAME);
-        if (!cookieData) return [];
+        const storageData = localStorage.getItem(this.DB_STORAGE_NAME);
+        if (!storageData) return [];
 
         try 
         {
-            const rawUsers = JSON.parse(cookieData); 
+            const rawUsers = JSON.parse(storageData); 
             return rawUsers.map(u => BackendUser.fromJSON(u));
         }
         catch (e)
         {
-            console.error("Failed to parse database cookie:", e);
+            console.error("Failed to parse database from localStorage:", e);
             return [];
         }
     }
 
     /**
-     * Internal helper to save the entire users array back into the database cookie.
+     * Internal helper to retrieve all media from the database storage.
      * @private
-     * @param {Array<Object>} users - The updated users list.
+     * @returns {Array<MediaItem>} List of MediaItem instances.
      */
-    _saveUsersToCookie(users) 
+
+    _getMediaFromStorage()
     {
-        const secureJsonString = encodeURIComponent(JSON.stringify(users));
-        document.cookie = `${this.DB_COOKIE_NAME}=${secureJsonString}; path=/; max-age=31536000`; // Valid for 1 year
+        const storageData = localStorage.getItem(this.MEDIA_DB_STORAGE_NAME);
+        if (!storageData) return [];
+        try
+        {
+            const rawMedia = JSON.parse(storageData);
+            return rawMedia.map(m => MediaItem.fromJSON(m));
+        }
+        catch (e)
+        {
+            console.error("Failed to parse media from localStorage:", e);
+            return [];
+        }
     }
 
     /**
-     * Populates the database cookie with initial mock data for testing purposes.
+     * Internal helper to save the entire users array back into the database storage.
+     * @private
+     * @param {Array<Object>} users_list - The updated users list.
+     */
+    _saveUsersToStorage(users_list) 
+    {
+        localStorage.setItem(this.DB_STORAGE_NAME, JSON.stringify(users_list));
+    }
+
+    /**
+     * Internal helper to save the entire media array back into the database storage.
+     * @private
+     * @param {Array<Object>} media_items - The updated media list.
+     */
+    _saveMediaToStorage(media_items)
+    {
+        const plainMedia = media_items.map(m => ({ ...m })); 
+        localStorage.setItem(this.MEDIA_DB_STORAGE_NAME, JSON.stringify(plainMedia));//save the media items to the database storage 
+    }
+
+    /**
+     * Populates the database storage with initial mock data for testing purposes.
      * @private
      */
     _initDatabase() 
     {
-        if (!this._getCookie(this.DB_COOKIE_NAME))
+        if (!localStorage.getItem(this.DB_STORAGE_NAME))
         {
             const fake_profiles = [new Profile(1, "Dad", "avatar1.png"), new Profile(2, "Mom", "avatar2.png")];
             const initialUsers = 
             [
                 new BackendUser("test@gmail.com", "0501234567", "Test User", fake_profiles, "123456789")
             ];
-            this._saveUsersToCookie(initialUsers);
+            this._saveUsersToStorage(initialUsers);
+        }
+        if (!localStorage.getItem(this.MEDIA_DB_STORAGE_NAME))
+        {
+            const initialMedia = 
+            [
+                new MediaItem(1, "Black Rabbit", "Black_Rabbit.png", 0), 
+                new MediaItem(2, "Courtroom Queens", "Courtroom_Queens.png", 0),
+                new MediaItem(3, "East Side", "East_Side.png", 0),
+                new MediaItem(4, "Griselda", "Griselda.png", 0),
+                new MediaItem(5, "Nobody Wants This", "Nobody_Wants_This.png", 0),
+                new MediaItem(6, "Off-Road", "OFFROAD.png", 0),
+                new MediaItem(7, "Running Point", "Running_Point.png", 0),
+                new MediaItem(8, "The Spy", "The_Spy.png", 0),
+                new MediaItem(9, "Zero Day", "Zero_Day.png", 0),
+            ];
+            this._saveMediaToStorage(initialMedia);
         }
     }
 
@@ -102,8 +172,8 @@ export class FakeBackend extends Interface_BackendAPI
      */
     async attemptLoginByEmail(email, password) 
     {
-        const users = this._getUsersFromCookie();
-        // Search the cookie registry for a matching email and password combination
+        const users = this._getUsersFromStorage();
+        // Search the storage for a matching email and password combination
         const user = users.find(u => u.email === email && u.password === password);
 
         if (!user)
@@ -121,8 +191,8 @@ export class FakeBackend extends Interface_BackendAPI
      */
     async attemptLoginByPhone(phone, password)
     {
-        const users = this._getUsersFromCookie();
-        // Search the cookie registry for a matching phone and password combination
+        const users = this._getUsersFromStorage();
+        // Search the storage for a matching phone and password combination
         const user = users.find(u => u.phone === phone && u.password === password);
 
         if (!user)
@@ -140,7 +210,7 @@ export class FakeBackend extends Interface_BackendAPI
      */
     async register(email, phone, password, full_name) 
     {
-        const users = this._getUsersFromCookie();
+        const users = this._getUsersFromStorage();
 
         // Check if a user with the same unique identifiers already exists
         if (users.some(u => u.email === email || u.phone === phone))
@@ -154,7 +224,7 @@ export class FakeBackend extends Interface_BackendAPI
 
         users.push(newUser);
 
-        this._saveUsersToCookie(users);
+        this._saveUsersToStorage(users);
         return { success: true };
     }
 
@@ -169,7 +239,7 @@ export class FakeBackend extends Interface_BackendAPI
             return { success: false, message: "Access Denied. No active session." };
         }
 
-        const users = this._getUsersFromCookie();
+        const users = this._getUsersFromStorage();
         // Locate the matching record using the active session key (isolated lookup)
         const dbUser = users.find(u => u.email === userKey || u.phone === userKey);
 
@@ -189,13 +259,13 @@ export class FakeBackend extends Interface_BackendAPI
         const userKey = this._getCookie(this.SESSION_COOKIE_NAME);
         if (!userKey) return { success: false, message: "Not logged in." };
 
-        const users = this._getUsersFromCookie();
+        const users = this._getUsersFromStorage();
         const userIndex = users.findIndex(u => u.email === userKey || u.phone === userKey);
 
         if (userIndex !== -1) 
         {
             users[userIndex].profiles = profiles.map(p => p instanceof Profile ? p : Profile.fromJSON(p));
-            this._saveUsersToCookie(users);
+            this._saveUsersToStorage(users);
             return { success: true };
         }
 
@@ -210,7 +280,7 @@ export class FakeBackend extends Interface_BackendAPI
         const userKey = this._getCookie(this.SESSION_COOKIE_NAME);
         if (!userKey) return null;
 
-        const users = this._getUsersFromCookie();
+        const users = this._getUsersFromStorage();
         const dbUser = users.find(u => u.email === userKey || u.phone === userKey);
 
         if (!dbUser) return null;
@@ -225,6 +295,24 @@ export class FakeBackend extends Interface_BackendAPI
     {
         // Clears only the active session tracking cookie, leaving the database cookie intact
         document.cookie = `${this.SESSION_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    }
+
+    async getMediaByID(mediaID)
+    {
+        const media = this._getMediaFromStorage();
+        const mediaItem = media.find(m => m.id === Number(mediaID));
+        if (!mediaItem) return { success: false, message: "Media not found." };
+        return { success: true, data: mediaItem };
+    }
+
+    async addLikeToMedia(mediaID)
+    {
+        const media = this._getMediaFromStorage();
+        const mediaItem = media.find(m => m.id === Number(mediaID));
+        if (!mediaItem) return { success: false, message: "Media not found." };
+        mediaItem.likes++;
+        this._saveMediaToStorage(media);
+        return { success: true };
     }
 
     /**

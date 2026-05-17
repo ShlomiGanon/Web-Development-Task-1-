@@ -1,14 +1,19 @@
+const MAX_LAST_WATCHED_MEDIA_LIMIT = 5;
+
 export class Profile 
 {
-    constructor(id, name, imageName = "undefined") 
+    constructor(id, name, imageName = null, LastWatched_Media_IDs = [], wasLiked_Media_IDs = []) 
     {
         this.id = id;
         this.name = name;
-        this.imageName = imageName;
-        if (imageName === "undefined")
-        {
-            this.imageName = "profile1.png";//on the future we will generate a random image name
-        }
+        
+        this.imageName = imageName ? imageName : "profile1.png";
+        
+        const rawWatchIDs = Array.isArray(LastWatched_Media_IDs) ? LastWatched_Media_IDs : [];
+        this.LastWatched_Media_IDs = rawWatchIDs.slice(0, MAX_LAST_WATCHED_MEDIA_LIMIT);
+        
+        const rawLikeIDs = wasLiked_Media_IDs ? Array.from(wasLiked_Media_IDs) : [];
+        this.wasLiked_Media_IDs = new Set(rawLikeIDs);//convert the array to a Set to avoid duplicates
     }
 
     /**
@@ -19,14 +24,25 @@ export class Profile
     static fromJSON(rawObject) 
     {
         if (!rawObject) return null;
-        if("imageName" in rawObject && rawObject.imageName)
-        {
-            return new Profile(rawObject.id, rawObject.name, rawObject.imageName);
-        }
-        else
-        {
-            return new Profile(rawObject.id, rawObject.name);
-        }
+        if (rawObject instanceof Profile) return rawObject;
+        return new Profile(
+            rawObject.id,
+            rawObject.name,
+            rawObject.imageName,
+            rawObject.LastWatched_Media_IDs,
+            rawObject.wasLiked_Media_IDs
+        );
+    }
+
+    toJSON() 
+    {
+        return {
+            id: this.id,
+            name: this.name,
+            imageName: this.imageName,
+            LastWatched_Media_IDs: this.LastWatched_Media_IDs,
+            wasLiked_Media_IDs: Array.from(this.wasLiked_Media_IDs)///convert the Set to an array
+        };
     }
 }
 
@@ -63,11 +79,43 @@ export class UserInfo
     static fromJSON(rawObject)
     {
         if (!rawObject) return null;
+        if (rawObject instanceof UserInfo) return rawObject;
         return new UserInfo(rawObject.email, rawObject.phone, rawObject.full_name, rawObject.profiles);
+    }
+
+
+    /**
+     * Converts the UserInfo instance to a JSON object.
+     * @returns {Object} The JSON object representing the UserInfo instance.
+     */
+    toJSON() 
+    {
+        return {
+            email: this.email,
+            phone: this.phone,
+            full_name: this.full_name,
+            profiles: this.profiles.map(p => p.toJSON()) // call the toJSON method that was already written in the Profile class
+        };
     }
 }
 
+export class MediaItem
+{
+    constructor(id, name , cover_imageName = null, likes = 0) 
+    {
+        this.id = id;
+        this.name = name;
+        this.cover_imageName = cover_imageName ? cover_imageName : "media1.png";
+        this.likes = likes;
+    }
 
+    static fromJSON(rawObject)
+    {
+        if (!rawObject) return null;
+
+        return new MediaItem(rawObject.id, rawObject.name, rawObject.cover_imageName, rawObject.likes);
+    }
+}
 
 /**
  * Abstract Class acting as an interface for the Backend API.
@@ -150,8 +198,8 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Inspects the local client environment (e.g., cookies) for an active, valid session state
-     * and maps it back into a UserInfo instance to persist state across page reloads.
+     * Inspects the local client environment (cookies, session token) for an active, 
+     * valid session state and maps it back into a UserInfo instance to persist state across page reloads.
      * 
      * @returns {UserInfo|null} The current active UserInfo data model, or null if unauthenticated.
      */
@@ -166,8 +214,32 @@ export class Interface_BackendAPI
      * 
      * @returns {void}
      */
-    logout() 
+    async logout() 
     {
         throw new Error("Method 'logout()' must be implemented.");
+    }
+
+
+    /**
+     * Retrieves a media item by its unique identifier.
+     * 
+     * @param {string} id - The unique identifier of the media item.
+     * @returns {Promise<{success: boolean, data?: MediaItem, message?: string}>} Success status with a MediaItem instance payload.
+     */
+    async getMediaByID(id)
+    {
+        throw new Error("Method 'getMediaByID()' must be implemented.");
+    }
+
+    /**
+     * Adds a like to a media item.
+     * 
+     * @param {string} id - The unique identifier of the media item.
+     * @returns {Promise<{success: boolean, message?: string}>} Operation acknowledgment status.
+     */
+
+    async addLikeToMedia(id)
+    {
+        throw new Error("Method 'addLikeToMedia()' must be implemented.");
     }
 }
