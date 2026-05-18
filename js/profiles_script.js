@@ -1,4 +1,23 @@
 import * as UI from './ui-utils.js';
+import { Profile } from './BACKEND_API/backend-interface.js';
+
+//variables
+let isEditing = false;
+let HasChanged = false;
+const profiles_area = document.getElementById('profiles');
+const manage_profile_button = document.getElementById('manage-profile-button');
+const add_profile_button = document.getElementById('add-profile-button');
+const remove_profile_button = document.getElementById('remove-profile-button');
+
+//profiles array
+const profiles = 
+[
+    new Profile(1, 'Profile 1', 'profile1.png'),
+    new Profile(2, 'Profile 2', 'profile2.png'),
+    new Profile(3, 'Profile 3', 'profile3.png'),
+    //new Profile(4, 'Profile 4', 'profile4.png'),
+    //new Profile(5, 'Profile 5', 'profile5.png')
+];
 
 
 //show edit action buttons (add and remove profile buttons)
@@ -59,18 +78,6 @@ function ManageProfiles_OnClick()
     manage_profile_button.innerText = isEditing ? "go back" : "Manage Profiles";
     isEditing ? showEditActionButtons() : hideEditActionButtons();
 }
-//render profiles - render the profiles to the profiles area
-function renderProfiles(tag_name = 'div')
-{
-    let allProfilesHTML = "";
-    profiles.forEach(profile => 
-        {
-            allProfilesHTML += renderProfileComponent(profile, tag_name);
-        }
-    );
-    profiles_area.innerHTML = allProfilesHTML;
-    attachInputListeners();
-}
 
 //save profiles - save the profiles names to the profiles array after editing
 function saveProfiles()
@@ -125,23 +132,8 @@ function renderProfiles(tag_name = 'div')
     profiles_area.innerHTML = allProfilesHTML;
     attachInputListeners();
 }
-//variables
-let isEditing = false;
-let HasChanged = false;
-const profiles_area = document.getElementById('profiles');
-const manage_profile_button = document.getElementById('manage-profile-button');
-const add_profile_button = document.getElementById('add-profile-button');
-const remove_profile_button = document.getElementById('remove-profile-button');
-//profiles array
-const profiles = 
-[
-    new Profile(1, 'Profile 1', 'profile1.png'),
-    new Profile(2, 'Profile 2', 'profile2.png'),
-    new Profile(3, 'Profile 3', 'profile3.png'),
-    //new Profile(4, 'Profile 4', 'profile4.png'),
-    //new Profile(5, 'Profile 5', 'profile5.png')
-];
 
+//---------------------------- MAIN ----------------------------------------
 
 renderProfiles();
 manage_profile_button.addEventListener('click', ManageProfiles_OnClick);
