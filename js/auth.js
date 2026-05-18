@@ -1,68 +1,23 @@
 import * as UI from './ui-utils.js';
-export const MIN_PASSWORD_LENGTH = 8;
-export const MAX_PASSWORD_LENGTH = 16;
+import * as Config from './config.js';
 
 //the active user
 let activeUser = null;
 
-//a class to store the user information
-class User_Information
-{
-    constructor(email , profiles_data = [])
-    {
-        this.email = email;
-        this.profiles_data = profiles_data;
-    }
-    
-    //getters
-
-    get_email()
-    {
-        return this.email;
-    }
-
-    get_profile(id)
-    {
-        return this.profiles_data.find(profile => profile.id === id);
-    }
-
-    get_all_profiles()
-    {
-        return this.profiles_data;
-    }
-
-    //add or remove profiles
-
-    add_profile(id, name, imageName)
-    {
-        this.profiles_data.push(new Profile(id, name, imageName));
-    }
-
-    remove_profile(id)
-    {
-        this.profiles_data = this.profiles_data.filter(profile => profile.id !== id);
-    }
-    
-}
-
 
 export async function Login_By_Email(email , password)
 {
-    await new Promise(resolve => setTimeout(resolve, 2000)); //simulate a login process (for two seconds)
-
-    return { success: true };
+    return await Config.Backend.attemptLoginByEmail(email, password);
 }
 
 export async function Login_By_Phone(phone , password)
 {
-    await new Promise(resolve => setTimeout(resolve, 2000)); //simulate a login process (for two seconds)
-
-    return { success: true };
+    return await Config.Backend.attemptLoginByPhone(phone, password);
 }
 
-export function Register(full_name , email , phone , password)
+export async function Register(full_name , email , phone , password)
 {
-    return; //not implemented
+    return await Config.Backend.register(full_name, email, phone, password);
 }
 
 export function is_valid_name(name)
@@ -82,7 +37,7 @@ export function Is_Valid_Phone(phone)
     return phoneRegex.test(phone);
 }
 
-export function Is_Valid_Password(password,minLength,maxLength)
+export function Is_Valid_Password(password,minLength = Config.MIN_PASSWORD_LENGTH,maxLength = Config.MAX_PASSWORD_LENGTH)
 {
     if(password.length < minLength || password.length > maxLength)return false;
     const passwordRegex = /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]*$/;

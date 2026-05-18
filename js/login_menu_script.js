@@ -1,5 +1,6 @@
 import * as UI from './ui-utils.js';
 import * as Auth from './auth.js';
+import * as Config from './config.js';
 //button variables
 const loginBtn = document.getElementById('login-button');
 const getCodeBtn = document.getElementById('get-code-button');
@@ -25,7 +26,7 @@ async function Login_Click() //login button function
         new Auth.InputRule(emailOrPhoneInput, "אימייל או טלפון הוא שדה חובה", is_not_empty),
         new Auth.InputRule(emailOrPhoneInput, "לא נמצא אימייל או נייד תקין", is_valid_email_or_phone),
         new Auth.InputRule(passwordInput, "סיסמה היא שדה חובה", is_not_empty),
-        new Auth.InputRule(passwordInput, `אורך סיסמה לא תקין [${Auth.MIN_PASSWORD_LENGTH}-${Auth.MAX_PASSWORD_LENGTH}]`, Auth.Is_Valid_Password, [Auth.MIN_PASSWORD_LENGTH, Auth.MAX_PASSWORD_LENGTH])
+        new Auth.InputRule(passwordInput, `אורך סיסמה לא תקין [${Config.MIN_PASSWORD_LENGTH}-${Config.MAX_PASSWORD_LENGTH}]`, Auth.Is_Valid_Password)
     ];
 
     
@@ -33,7 +34,7 @@ async function Login_Click() //login button function
 
 
     UI.LockUI(loginBtn);
-    UI.ShowMessage("מתבצעת התחברות...");
+    UI.ShowMessage("ממתין לתגובה מהשרת...");
     let response = null;
     if(Auth.Is_Valid_Email(emailOrPhoneInput.value))
     {
@@ -47,29 +48,23 @@ async function Login_Click() //login button function
     if(response.success)
     {
         UI.ShowMessage("התחברות בוצעה בהצלחה");
-        UI.GoToLink('../html/profiles.html');
+        setTimeout(UI.GoToLink, 2000, '../html/profiles.html');//wait for 2 seconds and then go to the profiles page
         // UI remains locked during navigation to prevent duplicate submissions.
         // Page memory will be cleared automatically by the browser upon redirection.
     }
     else
     {
-        UI.ShowMessage("התחברות נכשלה, נסה שנית");
+        UI.ShowErrorMessage(response.message);
         UI.UnlockUI();//unlock the ui only if the login failed
     }
 }
 
 function GetCode_Click() //get code button function
 {
-    UI.LockUI(getCodeBtn);
-    
-    const msg = "get-code-information ->\n" + 
-    "email or phone: [" + emailOrPhoneInput.value + "]";
-    console.log(msg);
-
-    setTimeout(UI.UnlockUI, 2000);
+    UI.ShowErrorMessage("אין אפשרות לכניסה עם קוד, נסה שנית");
 }
 
 function ForgotPass_Click() //forgot password button function
 {
-    UI.GoToLink('../html/no_support.html');//go to no support page (because we cant send a reset password email)
+    UI.ShowErrorMessage("אין אפשרות לאיפוס סיסמה, נסה שנית");
 }
