@@ -232,14 +232,15 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Adds a like to a media item.
+     * Toggles a like to a media item. (remove or add a like)
      * 
-     * @param {string} id - The unique identifier of the media item.
+     * @param {string} ProfileID - The unique identifier of the profile.
+     * @param {string} mediaID - The unique identifier of the media item.
      * @returns {Promise<{success: boolean, message?: string}>} Operation acknowledgment status.
      */
 
-    async addLikeToMedia(id)
+    async toggleMediaLike(profileID , mediaID)
     {
-        throw new Error("Method 'addLikeToMedia()' must be implemented.");
+        throw new Error("Method 'toggleMediaLike()' must be implemented.");
     }
 }

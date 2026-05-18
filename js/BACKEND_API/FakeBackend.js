@@ -305,13 +305,46 @@ export class FakeBackend extends Interface_BackendAPI
         return { success: true, data: mediaItem };
     }
 
-    async addLikeToMedia(mediaID)
+    async toggleMediaLike(profileID, mediaID) // make a like to a media item
     {
+        // 1. check the session - verify that the user is logged in and get the key (email/phone)
+        const userKey = this._getCookie(this.SESSION_COOKIE_NAME);
+        if (!userKey) return { success: false, message: "Not logged in." };
+
+        // 2. get all the users and media from the storage
+        const users = this._getUsersFromStorage();
         const media = this._getMediaFromStorage();
+
+        // 3. find the specific user from the general array (to save the changes)
+        const user = users.find(u => u.email === userKey || u.phone === userKey);
+        if (!user) return { success: false, message: "User not found." };
+
+        // 4. find the specific profile from the user
+        const profile = user.profiles.find(p => p.id === Number(profileID));
+        if (!profile) return { success: false, message: "Profile not found." };
+
+        // 5. find the specific media item
         const mediaItem = media.find(m => m.id === Number(mediaID));
         if (!mediaItem) return { success: false, message: "Media not found." };
-        mediaItem.likes++;
+
+        const numericMediaID = Number(mediaID);
+
+        // 6. perform the toggle operation on the profile's Set
+        if (profile.wasLiked_Media_IDs.has(numericMediaID)) // remove the like if it already exists
+        {
+            profile.wasLiked_Media_IDs.delete(numericMediaID);
+            mediaItem.likes = Math.max(0, mediaItem.likes - 1);
+        }
+        else // add the like if it doesn't exist
+        {
+            profile.wasLiked_Media_IDs.add(numericMediaID);
+            mediaItem.likes++;
+        }
+
+        // 7. now both 'media' and 'users' are updated to the correct objects!
         this._saveMediaToStorage(media);
+        this._saveUsersToStorage(users); // now the users are defined and will save the entire array
+
         return { success: true };
     }
 
