@@ -12,8 +12,15 @@ export class Profile
         const rawWatchIDs = Array.isArray(LastWatched_Media_IDs) ? LastWatched_Media_IDs : [];
         this.LastWatched_Media_IDs = rawWatchIDs.slice(0, Config.MAX_LAST_WATCHED_MEDIA_LIMIT);
         
-        const rawLikeIDs = wasLiked_Media_IDs ? Array.from(wasLiked_Media_IDs) : [];
-        this.wasLiked_Media_IDs = new Set(rawLikeIDs);//convert the array to a Set to avoid duplicates
+        if (wasLiked_Media_IDs instanceof Set) 
+        {
+            this.wasLiked_Media_IDs = wasLiked_Media_IDs;
+        } 
+        else
+        {
+            const rawLikeIDs = Array.isArray(wasLiked_Media_IDs) ? wasLiked_Media_IDs : [];
+            this.wasLiked_Media_IDs = new Set(rawLikeIDs);
+        }
     }
 
     /**
