@@ -2,6 +2,15 @@ import * as Config from '../config.js';
 
 export class Profile 
 {
+    /**
+     * Initializes a Profile instance with the given parameters.
+     * 
+     * @param {number} id - The unique identifier of the profile.
+     * @param {string} name - The name of the profile.
+     * @param {string} [imageName="profile1.png"] - The name of the image file for the profile.
+     * @param {Array<number>} [LastWatched_Media_IDs=[]] - The array of media item IDs last watched by the profile.
+     * @param {Set<number>|Array<number>} [wasLiked_Media_IDs=[]] - The collection of media item IDs liked by the profile. Will be stored internally as a Set.
+     */
     constructor(id, name, imageName = null, LastWatched_Media_IDs = [], wasLiked_Media_IDs = []) 
     {
         this.id = id;
