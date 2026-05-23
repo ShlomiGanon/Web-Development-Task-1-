@@ -46,7 +46,7 @@ async function renderLastWatched()
                 <div class="movie_name text-center text-truncate px-1">${item.name}</div>
                 <button class="btn btn-sm ${isLiked ? 'btn-danger' : 'btn-outline-danger'} w-100 mt-2" 
                         onclick="handleToggleLike(${item.id})">
-                    ${isLiked ? 'Unlike 💔' : 'Like ❤️'}
+                    ${isLiked ? `${item.likes} 💔(unlike)` : `${item.likes} ❤️(like)`}
                 </button>
             </div>
         `;
