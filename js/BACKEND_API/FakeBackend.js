@@ -1,5 +1,5 @@
 import { Interface_BackendAPI, UserInfo, Profile, MediaItem } from './backend-interface.js';
-
+import * as Constants from '../constances.js';
 
 class BackendUser extends UserInfo 
 {
@@ -128,15 +128,15 @@ export class FakeBackend extends Interface_BackendAPI
         if (!localStorage.getItem(this.MEDIA_DB_STORAGE_NAME))
         {
             const initialMedia = [
-                new MediaItem(1, "Black Rabbit", "Black_Rabbit.png", 0), 
-                new MediaItem(2, "Courtroom Queens", "Courtroom_Queens.png", 0),
-                new MediaItem(3, "East Side", "East_Side.png", 0),
-                new MediaItem(4, "Griselda", "Griselda.png", 0),
-                new MediaItem(5, "Nobody Wants This", "Nobody_Wants_This.png", 0),
-                new MediaItem(6, "Off-Road", "OFFROAD.png", 0),
-                new MediaItem(7, "Running Point", "Running_Point.png", 0),
-                new MediaItem(8, "The Spy", "The_Spy.png", 0),
-                new MediaItem(9, "Zero Day", "Zero_Day.png", 0),
+                new MediaItem(1, "Black Rabbit", "Black_Rabbit.jpg", 0), 
+                new MediaItem(2, "Courtroom Queens", "Courtroom_Queens.jpg", 0),
+                new MediaItem(3, "East Side", "East_Side.jpg", 0),
+                new MediaItem(4, "Griselda", "Griselda.jpg", 0),
+                new MediaItem(5, "Nobody Wants This", "Nobody_Wants_This.jpg", 0),
+                new MediaItem(6, "Off-Road", "OFFROAD.jpg", 0),
+                new MediaItem(7, "Running Point", "Running_Point.jpg", 0),
+                new MediaItem(8, "The Spy", "The_Spy.jpg", 0),
+                new MediaItem(9, "Zero Day", "Zero_Day.jpg", 0),
             ];
             this._saveMediaToStorage(initialMedia);
         }
@@ -152,6 +152,7 @@ export class FakeBackend extends Interface_BackendAPI
     async attemptLoginByEmail(email, password) 
     {
         const users = this._getUsersFromStorage();
+        email = email.toLowerCase();
         const user = users.find(u => u.email === email && u.password === password);
 
         if (!user)
@@ -194,7 +195,7 @@ export class FakeBackend extends Interface_BackendAPI
         }
 
         const firstName = full_name && full_name.includes(" ") ? full_name.split(" ")[0] : (full_name || "User");
-        const newUser = new BackendUser(email, phone, full_name, [new Profile(1, firstName)], password);
+        const newUser = new BackendUser(email.toLowerCase(), phone, full_name, [new Profile(1, firstName)], password);
 
         users.push(newUser);
         this._saveUsersToStorage(users);
@@ -334,5 +335,50 @@ export class FakeBackend extends Interface_BackendAPI
         this._saveUsersToStorage(users); 
 
         return { success: true };
+    }
+
+    /**
+     * Retrieves all media items.
+     */
+    async getAllMediaItems()
+    {
+        try
+        {
+            const media = this._getMediaFromStorage();
+            return { success: true, data: media };
+        }
+        catch (e) 
+        {
+            console.error("Failed to get all media items:", e);
+            return { success: false, message: "Failed to get all media items." };
+        }
+    }
+
+    /**
+     * Selects a media item.
+     */
+    async selectMediaItem(sessionToken, profileID, mediaID) 
+    {
+        const media = this._getMediaFromStorage();
+        const mediaItem = media.find(m => m.id === Number(mediaID));
+        if (!mediaItem) return { success: false, message: "Media not found." };
+    
+        const users = this._getUsersFromStorage();
+        const user = users.find(u => u.email === sessionToken || u.phone === sessionToken);
+        
+        const profile = user ? user.profiles.find(p => p.id === Number(profileID)) : null;    
+        if (profile) 
+        {
+            profile.LastWatched_Media_IDs = profile.LastWatched_Media_IDs.filter(id => id !== mediaItem.id);
+            
+            profile.LastWatched_Media_IDs.unshift(mediaItem.id);
+            
+            profile.LastWatched_Media_IDs = profile.LastWatched_Media_IDs.slice(0, Constants.MAX_LAST_WATCHED_MEDIA_LIMIT);
+            
+            this._saveUsersToStorage(users);
+            return { success: true };
+        }
+    
+        return { success: false, message: "Profile not found." };
     }
 }

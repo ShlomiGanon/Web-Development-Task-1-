@@ -1,22 +1,7 @@
 import * as UI from './ui-utils.js';
-import * as Config from './config.js';
+import * as Constants from './constances.js';
 
 
-
-export async function Login_By_Email(email , password)
-{
-    return await Config.Backend.attemptLoginByEmail(email, password);
-}
-
-export async function Login_By_Phone(phone , password)
-{
-    return await Config.Backend.attemptLoginByPhone(phone, password);
-}
-
-export async function Register(full_name , email , phone , password)
-{
-    return await Config.Backend.register(full_name, email, phone, password);
-}
 
 export function is_valid_name(name)
 {
@@ -35,7 +20,7 @@ export function Is_Valid_Phone(phone)
     return phoneRegex.test(phone);
 }
 
-export function Is_Valid_Password(password,minLength = Config.MIN_PASSWORD_LENGTH,maxLength = Config.MAX_PASSWORD_LENGTH)
+export function Is_Valid_Password(password,minLength = Constants.MIN_PASSWORD_LENGTH,maxLength = Constants.MAX_PASSWORD_LENGTH)
 {
     if(password.length < minLength || password.length > maxLength)return false;
     const passwordRegex = /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]*$/;

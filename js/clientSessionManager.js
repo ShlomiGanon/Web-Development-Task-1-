@@ -8,6 +8,11 @@ const STORAGE_PROFILE_KEY = "active_profile_id";
 
 export class ClientSessionManager 
 {
+    static isLoggedIn()
+    {
+        return getCookie(COOKIE_SESSION_KEY) !== null;
+    }
+
     static getSessionToken() 
     {
         return getCookie(COOKIE_SESSION_KEY);
@@ -17,22 +22,22 @@ export class ClientSessionManager
     //       Authentication Operations
     // ==========================================
 
-    static async loginByEmail(email, password) 
+    static async loginByEmail(email, password, rememberMe) 
     {
         const response = await Backend.attemptLoginByEmail(email, password);
         if (response.success) 
         {
-            setCookie(COOKIE_SESSION_KEY, response.sessionToken);
+            setCookie(COOKIE_SESSION_KEY, response.sessionToken, rememberMe ? 30 : null);
         }
         return response;
     }
 
-    static async loginByPhone(phone, password) 
+    static async loginByPhone(phone, password, rememberMe) 
     {
         const response = await Backend.attemptLoginByPhone(phone, password);
         if (response.success) 
         {
-            setCookie(COOKIE_SESSION_KEY, response.sessionToken);
+            setCookie(COOKIE_SESSION_KEY, response.sessionToken, rememberMe ? 30 : null);
         }
         return response;
     }
@@ -54,11 +59,12 @@ export class ClientSessionManager
             catch (e)
             {
                 console.error("Failed to cleanly logout from backend:", e);
+                return { success: false, message: e.message };
             }
         }
-        
         deleteCookie(COOKIE_SESSION_KEY);
         sessionStorage.removeItem(STORAGE_PROFILE_KEY);
+        return { success: true };
     }
 
     static async restoreActiveSession() 
@@ -153,6 +159,19 @@ export class ClientSessionManager
 
         return await Backend.toggleMediaLike(token, activeProfileID, mediaID);
     }
+
+    static async getAllMediaItems()
+    {
+        return await Backend.getAllMediaItems();
+    }
+
+    static async selectMediaItem(mediaID)
+    {
+        const token = ClientSessionManager.getSessionToken();
+        const profileID = sessionStorage.getItem(STORAGE_PROFILE_KEY);
+        
+        return await Backend.selectMediaItem(token, profileID, mediaID);
+    }
 }
 
 // -------------- Isolated Browser Cookie Helpers --------------
@@ -163,12 +182,21 @@ function getCookie(name)
     return cookie ? decodeURIComponent(cookie.split('=')[1]) : null;
 }
 
-function setCookie(name, value) 
+function setCookie(name, value, days = null) 
 {
-    document.cookie = `${name}=${encodeURIComponent(value)}; path=/`;
+    let expires = "";
+    if (days) 
+    {
+        const date = new Date();
+        // Calculate milliseconds for X days (days * 24 hours * 60 mins * 60 secs * 1000 ms)
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = `; expires=${date.toUTCString()}`;
+    }
+    document.cookie = `${name}=${encodeURIComponent(value)}${expires}; path=/`;
 }
 
 function deleteCookie(name) 
 {
     document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
 }
+

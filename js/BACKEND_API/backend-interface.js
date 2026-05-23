@@ -1,6 +1,6 @@
 // File: js/backend-interface.js
 
-import * as Config from '../config.js';
+import * as Constants from '../constances.js';
 
 export class Profile 
 {
@@ -21,7 +21,7 @@ export class Profile
         this.imageName = imageName ? imageName : "profile1.png";
         
         const rawWatchIDs = Array.isArray(LastWatched_Media_IDs) ? LastWatched_Media_IDs : [];
-        this.LastWatched_Media_IDs = rawWatchIDs.slice(0, Config.MAX_LAST_WATCHED_MEDIA_LIMIT);
+        this.LastWatched_Media_IDs = rawWatchIDs.slice(0, Constants.MAX_LAST_WATCHED_MEDIA_LIMIT);
         
         if (wasLiked_Media_IDs instanceof Set) 
         {
@@ -248,5 +248,28 @@ export class Interface_BackendAPI
     async toggleMediaLike(sessionToken, profileID, mediaID)
     {
         throw new Error("Method 'toggleMediaLike()' must be implemented.");
+    }
+
+    /**
+     * Retrieves all media items.
+     * 
+     * @returns {Promise<{success: boolean, data?: Array<MediaItem>, message?: string}>} Success status with an array of MediaItem instances.
+     */
+    async getAllMediaItems()
+    {
+        throw new Error("Method 'getAllMediaItems()' must be implemented.");
+    }
+
+    /**
+     * Selects a media item and adds it to the user's LastWatched list.
+     * 
+     * @param {string} sessionToken - Token identifying the authenticated client session.
+     * @param {string} profileID - The unique identifier of the profile.
+     * @param {string} mediaID - The unique identifier of the media item.
+     * @returns {Promise<{success: boolean, message?: string}>} Success status.
+     */
+    async selectMediaItem(sessionToken, profileID, mediaID)
+    {
+        throw new Error("Method 'selectMediaItem()' must be implemented.");
     }
 }

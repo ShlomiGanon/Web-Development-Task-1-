@@ -1,4 +1,4 @@
-let isUILocked = false;
+export let isUILocked = false;
 let lastClickedBtn = null;
 let originalBtnText = "";
 const spinnerHtml = '<div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>';
