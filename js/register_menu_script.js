@@ -58,7 +58,7 @@ async function Register_Click()
             
             setTimeout(() => 
             {
-                UI.GoToLink('/html/login_menu.html');
+                UI.GoToLink('./html/login_menu.html');
             }, 2000);
         }
         else
