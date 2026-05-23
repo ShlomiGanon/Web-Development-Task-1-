@@ -1,299 +1,79 @@
-body {
-    margin: 0;
-    height: 100vh; /* גובה מסך מלא */
-    display: flex;
-    justify-content: center; /* מרכוז אופקי */
-    align-items: center;     /* מרכוז אנכי */
-
-
-    background-image: url("../assets/background.jpg");
-    background-size: cover;       /* גורם לתמונה להימתח על כל המסך */
-    background-repeat: no-repeat; /* מונע מהתמונה להשתכפל אם המסך גדול */
-    background-attachment: fixed; /* גורם לרקע להישאר יציב בזמן שגוללים */
-    background-position: center;  /* ממקם את התמונה במרכז */
-    display: flex;
+body 
+{
+    background: url("../assets/background.jpg") no-repeat center center fixed;
+    background-size: cover;
     font-family: 'Graphique W01 Regular', sans-serif;
-    font-weight: 400; /* Regular weight */
 }
 
-.menu_container
+
+.menu-container 
 {
-    width: 300px;
-    height: 420px;
-    background-color: rgba(0, 0, 0, 0.895);
-    /* Padding order: Up/Top, Right, Down/Bottom, Left */
-    padding: 20px 40px 60px 40px;
-    border-radius: 5px;
-    border: 5px solid;
-    border-image-source: linear-gradient( rgba(103, 103, 103, 0.089), rgba(0, 0, 0, 0.338));    
-    border-image-slice: 1;
+    min-width: 400px;
+    animation: MenuAnimation 0.125s ease-out;
 }
 
-.menu
+.menu-exit 
 {
+    animation: MenuAnimation 0.125s ease-in forwards !important;
+    animation-direction: reverse !important;
+}
+
+@keyframes MenuAnimation {
+    from { opacity: 0; transform: scale(0.75);}
+    to { opacity: 1; transform: scale(1); }
+}
+
+
+.menu-input::placeholder 
+{
+    color: rgba(255, 255, 255, 0.75);
+}
+
+
+#msg_box {
+    background-color: rgba(114, 114, 114, 0.274);
+    min-height: 30px; 
+    max-width: 500px;
     width: 100%;
-    height: 100%;
-    color: white;
+    border-radius: 4px;
+    
+
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+
+.msg 
+{
+    color: rgb(255, 255, 255);
     direction: rtl;
-    display: grid;
-    align-items: center;
-    justify-items: start;
-}
-
-.menu_item
-{
-    position: relative;
-    width: 300px;
-    min-height: 40px;
-    display: grid;
-    align-items: center;
-    justify-items: start;
-    
-}
-
-
-
-.menu_item_buttons
-{
-    width: 300px;
-    min-height: 90px;
-    display: grid;
-    align-items: center;
-    text-align: center;
-    justify-items: start;
-}
-
-.menu_item_buttons > *
-{
-    padding-bottom: 5px;
-}
-
-.menu_item_OR
-{
-    width: 300px;
-    color: rgba(255, 255, 255, 0.619);
-    display: flexbox;
-    align-items: center;
-    justify-items: center;
-}
-
-
-
-
-.menu_item_info
-{
-    width: 280px;
-    min-height: 100px;
-    display:grid;
-}
-
-.menu_item_invite_area
-{
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.551);  
-}
-.menu_item_invite_area a
-{
-    text-decoration: none;
-    color:white;
-}
-
-.menu_item_invite_area a:hover
-{
-    text-decoration: underline;
-    color: rgb(253, 149, 149);
-    transition: color 1s ease;
-}
-
-.menu_item_invite_area::visited
-{
-    text-decoration: none;
-    color: white;
-}
-
-.menu_item_invite_area
-{
-    position: relative;
-    width: 220px;
-    height: auto;
-    display: flex;
-    align-items: start;
-    justify-items: start;
-}
-
-#remember-me-checkbox
-{
-    margin-right: 0px;
-}
-
-.menu_item_reCAPTCHA
-{
-    color: rgba(255, 255, 255, 0.597);
-    margin-top: 0px;
-    font-size: 10px;
-}
-
-.menu_item_center
-{
-    text-align: center;
-    align-items: center;
-    justify-items: center;
-}
-
-.menu_item_forget_pass a
-{   
-    color: rgb(160, 160, 160);
-    transition: color 1s ease;
-    text-decoration: none;   
-
-}
-
-.menu_item_forget_pass a:hover
-{   
-    color: white;
-    transition: color 1s ease;
-    text-decoration: underline;   
-
-}
-
-.menu_item_forget_pass
-{
-    display: flex;          
-    justify-content: center;
-    align-items: center;    
-    text-align: center;       
-    width: 100%;
-}
-
-.menu_item_checkbox
-{
-    position: relative;
-    width: 220px;
-    height: auto;
-    display: flex;
-    align-items: start;
-    justify-items: start;
-}
-
-
-.buttons_login
-{
-    display: grid;
-    width: 100%;
-    height: 75%;
-    color: rgba(255, 255, 255, 0.67);
-    align-items: center;
-    justify-items: center;
-    background-color: rgb(171, 0, 0); 
-    transition: background-color 0.4s ease;
-    font-size: 16px;
     font-weight: bold;
-    text-decoration: none;
-    
+    white-space: pre-line;
 }
 
-.buttons_login:hover
+.msg.error
 {
-    color: white;
-    background-color: rgb(255, 0, 0);
-    transition: background-color 1s ease;
+    color: rgb(255, 0, 0);
 }
 
-.buttons_get_code
+
+.custom-list 
 {
-    display: grid;
-    width: 100%;
-    height: 75%;
-    color: rgba(255, 255, 255, 0.651);
-    align-items: center;
-    justify-items: center;
-    background-color: rgba(86, 81, 81, 0.801); 
-    transition: background-color 1s ease;
-    font-size: 16px;
+    list-style: none;
+    padding-right: 0 !important;
+}
+
+.custom-list li 
+{
+    position: relative;
+    padding-right: 30px;
+}
+
+.custom-list li::before 
+{
+    content: "✔";
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: #198754;
     font-weight: bold;
-    text-decoration: none;
 }
-
-.buttons_get_code:hover
-{
-    color: white;
-    background-color: rgb(102, 102, 102); 
-    transition: background-color 0.4s ease;
-}
-
-.inputs
-{
-    font-size: 16px;
-    width: 97%;
-    height: 90%;
-    background-color: rgba(68, 65, 65, 0.318);
-    transition: background-color 0.2s ease;
-    color: white;
-}
-
-.inputs:hover
-{
-    color: rgb(255, 255, 255);
-    background-color: rgb(0, 0, 0);
-    transition: background-color 0.2s ease;
-}
-
-.inputs:hover::placeholder
-{
-    color: rgb(255, 255, 255);
-    transition: color 0.4s ease;
-}
-
-
-.inputs::placeholder
-{
-    padding: 10px;
-    font-size: 16px;
-
-}
-
-.menu_title
-{
-    width:90%;
-    height: 100%;
-    font-size: 32px;
-    text-align: right;
-}
-
-
-.menu_buttons_table
-{
-    
-    display: grid;
-    align-items: center;
-    justify-items: center;
-    width: 250px;
-    background-color: red;
-}
-
-.more_info_text a
-{
-    color: rgba(0, 13, 255, 0.571);
-    transition: color 0.4s ease;
-}
-
-.more_info_text a:hover
-{
-    color: rgb(0, 13, 255);
-    transition: color 0.4s ease;
-}
-
-.more_info_text
-{
-    font-size: 14px;
-    margin-top: 5px;
-}
-
-@font-face {
-    font-family: 'Graphique W01 Regular';
-    src: url('fonts/GraphiqueW01-Regular.woff2') format('woff2'),
-         url('fonts/GraphiqueW01-Regular.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
-  }

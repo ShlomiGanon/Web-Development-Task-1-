@@ -4,99 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profiles</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/profiles_styles.css">
+    <link rel="stylesheet" href="../css/styles.css">
 </head>
-<body>
-    <div class = "menu_container">
+<body class="min-vh-100 d-flex align-items-center justify-content-center">
 
     
-        <div class = "menu">
-            <div class = "menu_title">
+    <div class="menu-container bg-black bg-opacity-50 p-5 shadow-lg text-center position-relative">
+
+        
+        <button 
+            id = "logout-button"
+            type="button"
+            class="btn btn-outline-danger position-absolute top-0 end-0 m-2">
+            Log-Out
+        </button>
+
+        <div class="menu">
+
+
+            <h1 class="menu_title display-3 fw-bold text-white mb-5">
                 Who's watching?
-            </div>
-
-
-
-            <div class = "profiles">
-
-                <div class = "profile">
-                    <a href = "profiles/profile1.html">
-
-                        <div class = "profile_image">
-                            <img src="../assets/profile1.png" alt="paul image.">
-                        </div> 
-                        <div class = "profile_name">
-                            Paul
-                        </div>     
-                    </a>
-                </div>
-                
-                <div class = "profile">
-                    <a href = "profiles/profile2.html">
-
-                        <div class = "profile_image">
-                            <img src="../assets/profile2.png" alt="paul image.">
-                        </div> 
-                        <div class = "profile_name">
-                            Alon
-                        </div>     
-
-                    </a>
-                </div>
-
-                <div class = "profile">
-                    <a href = "profiles/profile3.html">
-
-                        <div class = "profile_image">
-                            <img src="../assets/profile3.png" alt="paul image.">
-                        </div> 
-                        <div class = "profile_name">
-                            Ronni
-                        </div>   
-
-                    </a>
-                </div>
-
-                <div class = "profile">
-                    <a href = "profiles/profile4.html">
-
-                        <div class = "profile_image">
-                            <img src="../assets/profile4.png" alt="paul image.">
-                        </div> 
-                        <div class = "profile_name">
-                            Anna
-                        </div>     
-
-                    </a>
-                </div>
-                
-
-                <div class = "profile">
-                    <a href = "profiles/profile5.html">
-
-                        <div class = "profile_image">
-                            <img src="../assets/profile5.png" alt="paul image.">
-                        </div> 
-                        <div class = "profile_name">
-                            Noa
-                        </div>     
-
-                    </a>
-                </div>
-            </div>
-
-
-
-            <div class = "menage_profiles_button">
-                <a href = "index_Menage_Profiles.html" target = "_self" class="buttons">
-                    Menage Profiles
-                </a> 
-                
-            </div>
-
-
+            </h1>
             
-        </div>    
+
+            <div id = "profiles" class="d-flex flex-wrap justify-content-center gap-4">
+
+            </div>
+
+            <div id="msg_box" class="mx-auto d-flex align-items-center justify-content-center">
+            </div>
+
+            <div class="mt-5">
+                <button type="button" id="remove-profile-button" class="profiles_menu_buttons btn btn-outline-secondary rounded-0 px-5 text-uppercase fw-bold mb-3 mb-md-0">
+                    remove profile
+                </button>
+                <button type="button" id="manage-profile-button" class="profiles_menu_buttons btn btn-outline-secondary rounded-0 px-5 text-uppercase fw-bold mb-3 mb-md-0">
+                    Manage Profiles
+                </button>
+                <button type="button" id="add-profile-button" class="profiles_menu_buttons btn btn-outline-secondary rounded-0 px-5 text-uppercase fw-bold mb-3 mb-md-0">
+                    Add new profile
+                </button>
+            </div>
+
+        </div>
     </div>
+
+    <script type="module" src="../js/profiles_script.js"></script>
 </body>
 </html>
