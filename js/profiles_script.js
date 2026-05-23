@@ -262,7 +262,7 @@ async function Profile_OnClick(profile)
         
         if (response && response.success) 
         {
-            UI.GoToLink('./profile.html');
+            UI.GoToLink("../html/profile.html");
         }
         else 
         {
@@ -281,7 +281,7 @@ async function Logout_OnClick()
         UI.ShowMessage("התנתקות בוצעה בהצלחה , מתבצעת העברה...");
         setTimeout(() => 
         {
-            UI.GoToLink('./login_menu.html');
+            UI.GoToLink('../html/login_menu.html');
         }, 2000);
     }
     else
@@ -306,7 +306,7 @@ function Unlock_UI_AND_Profiles()
 //---------------------------- MAIN ----------------------------------------
 if (!ClientSessionManager.isLoggedIn())
 {
-    UI.GoToLink('./login_menu.html');
+    UI.GoToLink('../html/login_menu.html');
 }
 logout_button.addEventListener('click', Logout_OnClick);
 manage_profile_button.addEventListener('click', ManageProfiles_OnClick);
