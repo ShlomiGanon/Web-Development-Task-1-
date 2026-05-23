@@ -41,18 +41,19 @@ function Register_Click() //register button function
     
     if (!Auth.ValidateForm(rules)) return;//if the form is invalid we stop the function
     UI.LockUI(registerBtn);
-    
-    const msg = "register-information ->\n" + 
-    "email: [" + emailInput.value + "]\n" + 
-    "phone: [" + phoneInput.value + "]\n" + 
-    "password: [" + passwordInput.value + "]\n" + 
-    "confirm-password: [" + confirmPasswordInput.value + "]";
-    console.log(msg);
-    UI.ShowMessage("מבצע רישום...");
 
-    setTimeout(() => 
-        {
-            UI.UnlockUI();
-        }
-    , 2000);
+    UI.ShowMessage("מבצע רישום...");
+    if(response.success)
+    {
+        UI.ShowMessage("הרשמה בוצעה בהצלחה , אתה מועבר לדף התחברות");
+        setTimeout(UI.GoToLink, 2000, '../html/login_menu.html');//wait for 2 seconds and then go to the login page
+        // UI remains locked during navigation to prevent duplicate submissions.
+        // Page memory will be cleared automatically by the browser upon redirection.
+    }
+    else
+    {
+        UI.ShowErrorMessage(response.message);
+        UI.UnlockUI();//unlock the ui only if the login failed
+    }
+    
 }

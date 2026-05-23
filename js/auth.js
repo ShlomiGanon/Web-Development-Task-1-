@@ -1,8 +1,6 @@
 import * as UI from './ui-utils.js';
 import * as Config from './config.js';
 
-//the active user
-let activeUser = null;
 
 
 export async function Login_By_Email(email , password)

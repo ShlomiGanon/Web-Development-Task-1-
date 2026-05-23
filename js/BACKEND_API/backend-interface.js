@@ -1,3 +1,5 @@
+// File: js/backend-interface.js
+
 import * as Config from '../config.js';
 
 export class Profile 
@@ -57,12 +59,10 @@ export class Profile
             name: this.name,
             imageName: this.imageName,
             LastWatched_Media_IDs: this.LastWatched_Media_IDs,
-            wasLiked_Media_IDs: Array.from(this.wasLiked_Media_IDs)///convert the Set to an array
+            wasLiked_Media_IDs: Array.from(this.wasLiked_Media_IDs)
         };
     }
 }
-
-
 
 //a class to store the user information
 export class UserInfo 
@@ -82,8 +82,7 @@ export class UserInfo
         this.full_name = full_name;
         this.profiles = rawProfiles.map
         (
-            p => 
-            p instanceof Profile ? p : Profile.fromJSON(p)
+            p => p instanceof Profile ? p : Profile.fromJSON(p)
         );
     }
 
@@ -99,7 +98,6 @@ export class UserInfo
         return new UserInfo(rawObject.email, rawObject.phone, rawObject.full_name, rawObject.profiles);
     }
 
-
     /**
      * Converts the UserInfo instance to a JSON object.
      * @returns {Object} The JSON object representing the UserInfo instance.
@@ -110,16 +108,16 @@ export class UserInfo
             email: this.email,
             phone: this.phone,
             full_name: this.full_name,
-            profiles: this.profiles.map(p => p.toJSON()) // call the toJSON method that was already written in the Profile class
+            profiles: this.profiles.map(p => p.toJSON())
         };
     }
 }
 
 export class MediaItem
 {
-    constructor(id, name , cover_imageName = null, likes = 0) 
+    constructor(id, name, cover_imageName = null, likes = 0) 
     {
-        this.id = id;
+        this.id = Number(id);
         this.name = name;
         this.cover_imageName = cover_imageName ? cover_imageName : "media1.png";
         this.likes = likes;
@@ -155,7 +153,7 @@ export class Interface_BackendAPI
      * 
      * @param {string} email - The user's registered email address.
      * @param {string} password - The plain-text password provided by the user.
-     * @returns {Promise<{success: boolean, message?: string}>} Token generation status without user data.
+     * @returns {Promise<{success: boolean, sessionToken?: string, message?: string}>} Token generation status without user data.
      */
     async attemptLoginByEmail(email, password) 
     {
@@ -169,7 +167,7 @@ export class Interface_BackendAPI
      * 
      * @param {string} phone - The user's registered phone number.
      * @param {string} password - The plain-text password provided by the user.
-     * @returns {Promise<{success: boolean, message?: string}>} Token generation status without user data.
+     * @returns {Promise<{success: boolean, sessionToken?: string, message?: string}>} Token generation status without user data.
      */
     async attemptLoginByPhone(phone, password) 
     {
@@ -183,9 +181,10 @@ export class Interface_BackendAPI
      * @param {string} email - The user's unique email address.
      * @param {string} phone - The user's unique phone number.
      * @param {string} password - The chosen password.
+     * @param {string} full_name - The user's full name.
      * @returns {Promise<{success: boolean, message?: string}>} Registration success or failure status.
      */
-    async register(email, phone, password) 
+    async register(email, phone, password, full_name) 
     {
         throw new Error("Method 'register()' must be implemented.");
     }
@@ -195,46 +194,37 @@ export class Interface_BackendAPI
      * Identifies the specific client via their active session token, retrieves their 
      * authorized user from the server registry, and populates a dedicated UserInfo instance.
      * 
+     * @param {string} sessionToken - Token identifying the authenticated client session.
      * @returns {Promise<{success: boolean, data?: UserInfo, message?: string}>} Success status with a UserInfo instance payload.
      */
-    async fetchUserInfo() 
+    async fetchActiveUserInfo(sessionToken) 
     {
-        throw new Error("Method 'fetchUserInfo()' must be implemented.");
+        throw new Error("Method 'fetchActiveUserInfo()' must be implemented.");
     }
 
     /**
      * Synchronizes and updates the active user's profiles array on the server.
      * 
+     * @param {string} sessionToken - Token identifying the authenticated client session.
      * @param {Array} profiles - The complete updated profiles array from the UI.
      * @returns {Promise<{success: boolean, message?: string}>} Operation acknowledgment status.
      */
-    async updateProfiles(profiles) 
+    async saveProfiles(sessionToken, profiles) 
     {
-        throw new Error("Method 'updateProfiles()' must be implemented.");
-    }
-
-    /**
-     * Inspects the local client environment (cookies, session token) for an active, 
-     * valid session state and maps it back into a UserInfo instance to persist state across page reloads.
-     * 
-     * @returns {UserInfo|null} The current active UserInfo data model, or null if unauthenticated.
-     */
-    async getCurrentSession()
-    {
-        throw new Error("Method 'getCurrentSession()' must be implemented.");
+        throw new Error("Method 'saveProfiles()' must be implemented.");
     }
 
     /**
      * Terminates the active session, revokes the server-side connection token, 
      * and purges all client-side session data and cookies.
      * 
-     * @returns {void}
+     * @param {string} sessionToken - Token identifying the authenticated client session to terminate.
+     * @returns {Promise<{success: boolean, message?: string}>} Server acknowledgment status of the logout.
      */
-    async logout() 
+    async logout(sessionToken) 
     {
         throw new Error("Method 'logout()' must be implemented.");
     }
-
 
     /**
      * Retrieves a media item by its unique identifier.
@@ -250,12 +240,12 @@ export class Interface_BackendAPI
     /**
      * Toggles a like to a media item. (remove or add a like)
      * 
-     * @param {string} ProfileID - The unique identifier of the profile.
+     * @param {string} sessionToken - Token identifying the authenticated client session.
+     * @param {string} profileID - The unique identifier of the profile.
      * @param {string} mediaID - The unique identifier of the media item.
      * @returns {Promise<{success: boolean, message?: string}>} Operation acknowledgment status.
      */
-
-    async toggleMediaLike(profileID , mediaID)
+    async toggleMediaLike(sessionToken, profileID, mediaID)
     {
         throw new Error("Method 'toggleMediaLike()' must be implemented.");
     }

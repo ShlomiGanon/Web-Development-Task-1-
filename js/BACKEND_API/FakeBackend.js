@@ -3,7 +3,7 @@ import { Interface_BackendAPI, UserInfo, Profile, MediaItem } from './backend-in
 
 class BackendUser extends UserInfo 
 {
-    constructor(email, phone, full_name, rawProfiles , password) 
+    constructor(email, phone, full_name, rawProfiles, password) 
     {
         super(email, phone, full_name, rawProfiles);
         this.password = password;
@@ -15,7 +15,8 @@ class BackendUser extends UserInfo
      */
     toUserInfo()
     {
-        return new UserInfo(this.email, this.phone, this.full_name, this.profiles);
+        const clonedProfiles = this.profiles.map(p => Profile.fromJSON(p.toJSON()));
+        return new UserInfo(this.email, this.phone, this.full_name, clonedProfiles);
     }
 
     /**
@@ -29,8 +30,8 @@ class BackendUser extends UserInfo
         if (rawObject instanceof BackendUser) return rawObject;
 
         const parsedProfiles = Array.isArray(rawObject.profiles)
-        ? rawObject.profiles.map(p => p instanceof Profile ? p : Profile.fromJSON(p))
-        : [];
+            ? rawObject.profiles.map(p => p instanceof Profile ? p : Profile.fromJSON(p))
+            : [];
 
         return new BackendUser(
             rawObject.email, 
@@ -52,7 +53,6 @@ class BackendUser extends UserInfo
             password: this.password // add the password (it exists only in the BackendUser class)
         };
     }
-
 }
 
 export class FakeBackend extends Interface_BackendAPI 
@@ -62,97 +62,72 @@ export class FakeBackend extends Interface_BackendAPI
         super();
         this.DB_STORAGE_NAME = "fake_users_db";
         this.MEDIA_DB_STORAGE_NAME = "fake_media_db";
-        this.SESSION_COOKIE_NAME = "current_logged_in_user";
         
-        // Initialize the cookie database with mock data if it does not exist
+        // Initialize the local database with mock data if it does not exist
         this._initDatabase();
     }
 
 
-    /**
-     * Internal helper to retrieve all registered users from the database storage.
-     * @private
-     * @returns {Array<UserInfo>} List of UserInfo instances.
-     */
+    //-------------- HELPER FUNCTIONS --------------
+
+
     _getUsersFromStorage() 
     {
         const storageData = localStorage.getItem(this.DB_STORAGE_NAME);
         if (!storageData) return [];
-
         try 
         {
             const rawUsers = JSON.parse(storageData); 
             return rawUsers.map(u => BackendUser.fromJSON(u));
-        }
-        catch (e)
+        } 
+        catch (e) 
         {
             console.error("Failed to parse database from localStorage:", e);
             return [];
         }
     }
 
-    /**
-     * Internal helper to retrieve all media from the database storage.
-     * @private
-     * @returns {Array<MediaItem>} List of MediaItem instances.
-     */
-
     _getMediaFromStorage()
     {
         const storageData = localStorage.getItem(this.MEDIA_DB_STORAGE_NAME);
         if (!storageData) return [];
-        try
+        try 
         {
             const rawMedia = JSON.parse(storageData);
             return rawMedia.map(m => MediaItem.fromJSON(m));
-        }
-        catch (e)
+        } 
+        catch (e) 
         {
             console.error("Failed to parse media from localStorage:", e);
             return [];
         }
     }
 
-    /**
-     * Internal helper to save the entire users array back into the database storage.
-     * @private
-     * @param {Array<Object>} users_list - The updated users list.
-     */
-    _saveUsersToStorage(users_list) 
+    _saveUsersToStorage(usersList) 
     {
-        localStorage.setItem(this.DB_STORAGE_NAME, JSON.stringify(users_list));
+        const plainUsers = usersList.map(u => typeof u.toJSON === 'function' ? u.toJSON() : u);
+        localStorage.setItem(this.DB_STORAGE_NAME, JSON.stringify(plainUsers));
     }
 
-    /**
-     * Internal helper to save the entire media array back into the database storage.
-     * @private
-     * @param {Array<Object>} media_items - The updated media list.
-     */
-    _saveMediaToStorage(media_items)
+    _saveMediaToStorage(mediaItems)
     {
-        const plainMedia = media_items.map(m => ({ ...m })); 
-        localStorage.setItem(this.MEDIA_DB_STORAGE_NAME, JSON.stringify(plainMedia));//save the media items to the database storage 
+        const plainMedia = mediaItems.map(m => typeof m.toJSON === 'function' ? m.toJSON() : { ...m });
+        localStorage.setItem(this.MEDIA_DB_STORAGE_NAME, JSON.stringify(plainMedia));
     }
 
-    /**
-     * Populates the database storage with initial mock data for testing purposes.
-     * @private
-     */
     _initDatabase() 
     {
         if (!localStorage.getItem(this.DB_STORAGE_NAME))
         {
-            const fake_profiles = [new Profile(1, "Dad", "avatar1.png"), new Profile(2, "Mom", "avatar2.png")];
-            const initialUsers = 
-            [
-                new BackendUser("test@gmail.com", "0501234567", "Test User", fake_profiles, "123456789")
+            const fakeProfiles = [new Profile(1, "Dad", "avatar1.png"), new Profile(2, "Mom", "avatar2.png")];
+            const initialUsers = [
+                new BackendUser("test@gmail.com", "0501234567", "Test User", fakeProfiles, "123456789")
             ];
             this._saveUsersToStorage(initialUsers);
         }
         if (!localStorage.getItem(this.MEDIA_DB_STORAGE_NAME))
         {
-            const initialMedia = 
-            [
+            const initialMedia = [
                 new MediaItem(1, "Black Rabbit", "Black_Rabbit.png", 0), 
                 new MediaItem(2, "Courtroom Queens", "Courtroom_Queens.png", 0),
                 new MediaItem(3, "East Side", "East_Side.png", 0),
@@ -167,13 +142,16 @@ export class FakeBackend extends Interface_BackendAPI
         }
     }
 
+
+    //-----------------------------------------------------------
+
     /**
      * Step 1A: Email Authentication Attempt
+     * Returns a session token (email) upon successful verification.
      */
     async attemptLoginByEmail(email, password) 
     {
         const users = this._getUsersFromStorage();
-        // Search the storage for a matching email and password combination
         const user = users.find(u => u.email === email && u.password === password);
 
         if (!user)
@@ -181,18 +159,17 @@ export class FakeBackend extends Interface_BackendAPI
             return { success: false, message: "Invalid email or password." };
         }
 
-        // Store the user's email as the active identifier in the session cookie
-        document.cookie = `${this.SESSION_COOKIE_NAME}=${encodeURIComponent(email)}; path=/`;
-        return { success: true };
+        // Return the token to the client instead of setting cookies directly
+        return { success: true, sessionToken: email };
     }
 
     /**
      * Step 1B: Phone Authentication Attempt
+     * Returns a session token (phone) upon successful verification.
      */
     async attemptLoginByPhone(phone, password)
     {
         const users = this._getUsersFromStorage();
-        // Search the storage for a matching phone and password combination
         const user = users.find(u => u.phone === phone && u.password === password);
 
         if (!user)
@@ -200,9 +177,8 @@ export class FakeBackend extends Interface_BackendAPI
             return { success: false, message: "Invalid phone number or password." };
         }
 
-        // Store the user's phone as the active identifier in the session cookie
-        document.cookie = `${this.SESSION_COOKIE_NAME}=${encodeURIComponent(phone)}; path=/`;
-        return { success: true };
+        // Return the token to the client instead of setting cookies directly
+        return { success: true, sessionToken: phone };
     }
 
     /**
@@ -212,59 +188,64 @@ export class FakeBackend extends Interface_BackendAPI
     {
         const users = this._getUsersFromStorage();
 
-        // Check if a user with the same unique identifiers already exists
         if (users.some(u => u.email === email || u.phone === phone))
         {
             return { success: false, message: "User already exists." };
         }
 
         const firstName = full_name && full_name.includes(" ") ? full_name.split(" ")[0] : (full_name || "User");
-
         const newUser = new BackendUser(email, phone, full_name, [new Profile(1, firstName)], password);
 
         users.push(newUser);
-
         this._saveUsersToStorage(users);
+        
         return { success: true };
     }
 
     /**
      * Step 2: Secured User Info Fetching
+     * Uses the explicitly passed sessionToken to identify the user.
      */
-    async fetchUserInfo() 
+    async fetchActiveUserInfo(sessionToken) 
     {
-        const userKey = this._getCookie(this.SESSION_COOKIE_NAME);
-        if (!userKey)
+        if (!sessionToken)
         {
-            return { success: false, message: "Access Denied. No active session." };
+            return { success: false, message: "Access Denied. No session token provided." };
         }
 
         const users = this._getUsersFromStorage();
-        // Locate the matching record using the active session key (isolated lookup)
-        const dbUser = users.find(u => u.email === userKey || u.phone === userKey);
+        const dbUser = users.find(u => u.email === sessionToken || u.phone === sessionToken);
 
         if (!dbUser)
         {
-            return { success: false, message: "User not found." };
+            return { success: false, message: "User not found or session invalid." };
         }
 
-        return { success: true, data: dbUser.toUserInfo() };//convert the BackendUser to a UserInfo instance (without the password)
+        return { success: true, data: dbUser.toUserInfo() };
     }
 
     /**
      * Profile Synchronization
+     * Uses the explicitly passed sessionToken to identify the user.
      */
-    async updateProfiles(profiles) 
+    async saveProfiles(sessionToken, profiles) 
     {
-        const userKey = this._getCookie(this.SESSION_COOKIE_NAME);
-        if (!userKey) return { success: false, message: "Not logged in." };
+        if (!sessionToken) 
+        {
+            return { success: false, message: "Access Denied. No session token provided." };
+        }
 
         const users = this._getUsersFromStorage();
-        const userIndex = users.findIndex(u => u.email === userKey || u.phone === userKey);
+        const userIndex = users.findIndex(u => u.email === sessionToken || u.phone === sessionToken);
 
         if (userIndex !== -1) 
         {
-            users[userIndex].profiles = profiles.map(p => p instanceof Profile ? p : Profile.fromJSON(p));
+            users[userIndex].profiles = profiles.map(p => 
+            {
+                const rawData = (typeof p.toJSON === 'function') ? p.toJSON() : p;
+                return Profile.fromJSON(rawData);
+            });
+            
             this._saveUsersToStorage(users);
             return { success: true };
         }
@@ -273,91 +254,85 @@ export class FakeBackend extends Interface_BackendAPI
     }
 
     /**
-     * Client Environment Session Inspector
+     * Session Termination
+     * Handles the logout verification on the server side using the token.
      */
-    async getCurrentSession() 
+    async logout(sessionToken) 
     {
-        const userKey = this._getCookie(this.SESSION_COOKIE_NAME);
-        if (!userKey) return null;
-
-        const users = this._getUsersFromStorage();
-        const dbUser = users.find(u => u.email === userKey || u.phone === userKey);
-
-        if (!dbUser) return null;
-
-        return dbUser.toUserInfo();//convert the BackendUser to a UserInfo instance (without the password)
+        if (!sessionToken)
+        {
+            return { success: false, message: "No active session token to revoke." };
+        }
+        
+        // In a real DB we would invalidate the token here. 
+        // For FakeBackend, we just return a successful response to the client.
+        return { success: true, message: "Session successfully revoked on server." };
     }
 
     /**
-     * Session Termination
+     * Fetch Media Item by ID
      */
-    logout() 
-    {
-        // Clears only the active session tracking cookie, leaving the database cookie intact
-        document.cookie = `${this.SESSION_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    }
-
     async getMediaByID(mediaID)
     {
         const media = this._getMediaFromStorage();
         const mediaItem = media.find(m => m.id === Number(mediaID));
-        if (!mediaItem) return { success: false, message: "Media not found." };
+        
+        if (!mediaItem) 
+        {
+            return { success: false, message: "Media not found." };
+        }
+        
         return { success: true, data: mediaItem };
     }
 
-    async toggleMediaLike(profileID, mediaID) // make a like to a media item
+    /**
+     * Toggle Media Like
+     * Uses the explicitly passed sessionToken to identify the user.
+     */
+    async toggleMediaLike(sessionToken, profileID, mediaID) 
     {
-        // 1. check the session - verify that the user is logged in and get the key (email/phone)
-        const userKey = this._getCookie(this.SESSION_COOKIE_NAME);
-        if (!userKey) return { success: false, message: "Not logged in." };
+        if (!sessionToken) 
+        {
+            return { success: false, message: "Access Denied. Not logged in." };
+        }
 
-        // 2. get all the users and media from the storage
         const users = this._getUsersFromStorage();
         const media = this._getMediaFromStorage();
 
-        // 3. find the specific user from the general array (to save the changes)
-        const user = users.find(u => u.email === userKey || u.phone === userKey);
-        if (!user) return { success: false, message: "User not found." };
+        const user = users.find(u => u.email === sessionToken || u.phone === sessionToken);
+        if (!user) 
+        {
+            return { success: false, message: "User not found." };
+        }
 
-        // 4. find the specific profile from the user
         const profile = user.profiles.find(p => p.id === Number(profileID));
-        if (!profile) return { success: false, message: "Profile not found." };
+        if (!profile) 
+        {
+            return { success: false, message: "Profile not found." };
+        }
 
-        // 5. find the specific media item
         const mediaItem = media.find(m => m.id === Number(mediaID));
-        if (!mediaItem) return { success: false, message: "Media not found." };
+        if (!mediaItem) 
+        {
+            return { success: false, message: "Media not found." };
+        }
 
         const numericMediaID = Number(mediaID);
 
-        // 6. perform the toggle operation on the profile's Set
-        if (profile.wasLiked_Media_IDs.has(numericMediaID)) // remove the like if it already exists
+        if (profile.wasLiked_Media_IDs.has(numericMediaID)) 
         {
             profile.wasLiked_Media_IDs.delete(numericMediaID);
             mediaItem.likes = Math.max(0, mediaItem.likes - 1);
         }
-        else // add the like if it doesn't exist
+        else 
         {
             profile.wasLiked_Media_IDs.add(numericMediaID);
             mediaItem.likes++;
         }
 
-        // 7. now both 'media' and 'users' are updated to the correct objects!
         this._saveMediaToStorage(media);
-        this._saveUsersToStorage(users); // now the users are defined and will save the entire array
+        this._saveUsersToStorage(users); 
 
         return { success: true };
-    }
-
-    /**
-     * Internal utility method to read a specific cookie value by its key.
-     * @private
-     * @param {string} name - The cookie key name.
-     * @returns {string|null} The unescaped cookie value string, or null if not found.
-     */
-    _getCookie(name) 
-    {
-        const cookies = document.cookie.split('; ');
-        const cookie = cookies.find(row => row.startsWith(`${name}=`));
-        return cookie ? decodeURIComponent(cookie.split('=')[1]) : null;
     }
 }
