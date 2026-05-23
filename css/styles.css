@@ -54,3 +54,26 @@ body
 {
     color: rgb(255, 0, 0);
 }
+
+
+.custom-list 
+{
+    list-style: none;
+    padding-right: 0 !important;
+}
+
+.custom-list li 
+{
+    position: relative;
+    padding-right: 30px;
+}
+
+.custom-list li::before 
+{
+    content: "✔";
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: #198754;
+    font-weight: bold;
+}
