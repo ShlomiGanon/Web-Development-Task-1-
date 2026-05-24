@@ -256,18 +256,23 @@ async function Profile_OnClick(profile)
     }
     else if (!isEditing) 
     {
+        Lock_UI_AND_Profiles(manage_profile_button);
         UI.ShowMessage(`Entering ${profile.name}...`);
         
         const response = await ClientSessionManager.selectProfile(profile.id);
         
         if (response && response.success) 
         {
-            UI.GoToLink("../html/profile.html");
+            setTimeout(() => 
+            {
+                UI.GoToLink("../html/profile.html");
+            }, 2000);
         }
         else 
         {
             UI.ShowErrorMessage("שגיאה בבחירת הפרופיל, נסה שנית.");
         }
+        Unlock_UI_AND_Profiles();
     }
 }
 
