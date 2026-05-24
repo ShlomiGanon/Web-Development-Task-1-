@@ -9,6 +9,7 @@ const all_movies_text = document.getElementById('all_movies_text');
 const search_button = document.getElementById('search_button');
 const search_input = document.getElementById('search_input');
 const profile_image = document.getElementById('profile_image');
+let User_Search_Value = '';
 
 async function renderLastWatched() 
 {
@@ -35,7 +36,6 @@ async function renderLastWatched()
         .map(id => allMedia.find(m => m.id === Number(id)))
         .filter(m => m !== undefined);
 
-    // שימוש ב-map עם לוגיקת לייק כדי לשמור על עיצוב אחיד
     last_watched_container.innerHTML = lastWatchedItems.map(item => 
     {
         const isLiked = profile.wasLiked_Media_IDs.has(item.id);
@@ -106,18 +106,18 @@ async function renderAllMovies(searchValue = '')
     // Handle empty results case
     if (filteredData.length === 0)
     {
-        all_movies_container.innerHTML = "No movies found";
+        all_movies_container.innerHTML = `<div class="col-12 text-center mt-4"><h1>No movies found</h1></div>`;
     }
 }
 
 async function search_on_click() 
 {
     const search_value = search_input.value.trim();
-    
+    User_Search_Value = search_value;
     if (search_value !== '') 
     {
         all_movies_text.textContent = "Search results for: " + search_value;
-        await renderAllMovies(search_value);
+        await renderAllMovies(User_Search_Value);
     }
     else 
     {
@@ -141,9 +141,8 @@ async function click_on_media_item(mediaID)
 
 async function refreshDisplay() 
 {
-    const currentSearch = search_input.value.trim();
     await renderLastWatched();
-    await renderAllMovies(currentSearch);
+    await renderAllMovies(User_Search_Value);
 }
 
 refreshDisplay();
