@@ -185,7 +185,7 @@ function renderProfileComponent(profile, tag_name = 'div')
                 <div class="profile_image">
                     <img src="../assets/profiles_images/${profile.imageName}" alt="${profile.name}" class="img-fluid border border-3 border-dark">
                 </div>
-                <div class="profile_name mt-3 text-secondary text-center">
+                <div class="profile_name mt-3 text-secondary text-center" id="profile_name_${profile.id}">
                     ${profile.name}
                 </div>
             </div>
@@ -256,7 +256,8 @@ async function Profile_OnClick(profile)
     }
     else if (!isEditing) 
     {
-        Lock_UI_AND_Profiles(manage_profile_button);
+        const profileNameElement = document.getElementById(`profile_name_${profile.id}`);
+        Lock_UI_AND_Profiles(profileNameElement ? profileNameElement : null);
         UI.ShowMessage(`Entering ${profile.name}...`);
         
         const response = await ClientSessionManager.selectProfile(profile.id);
@@ -271,8 +272,9 @@ async function Profile_OnClick(profile)
         else 
         {
             UI.ShowErrorMessage("שגיאה בבחירת הפרופיל, נסה שנית.");
+            Unlock_UI_AND_Profiles();
         }
-        Unlock_UI_AND_Profiles();
+        
     }
 }
 
@@ -298,8 +300,17 @@ async function Logout_OnClick()
 
 function Lock_UI_AND_Profiles(button)
 {
+    const isInside = profiles_area.contains(button);
     UI.LockUI(button);
     renderProfiles(isEditing ? 'input' : 'div');
+    if (isInside) 
+    {
+        // The render process clears the UI, so we unlock the global state 
+        // and re-apply the spinner to the specific element in the new DOM.
+        UI.UnlockUI();  
+        const lockedElement = document.getElementById(button.id);
+        UI.LockUI(lockedElement ? lockedElement : null);
+    }
 }
 
 function Unlock_UI_AND_Profiles()
