@@ -11,6 +11,7 @@ const search_input = document.getElementById('search_input');
 const profile_image = document.getElementById('profile_image');
 let User_Search_Value = '';
 
+
 async function renderLastWatched() 
 {
     const profile = await ClientSessionManager.getActiveProfile();
@@ -19,6 +20,8 @@ async function renderLastWatched()
         last_watched_text.textContent = "No profile selected";
         return;
     }
+
+    document.title = `Profile - ${profile.name}`;
 
     if (profile_image) 
     {
