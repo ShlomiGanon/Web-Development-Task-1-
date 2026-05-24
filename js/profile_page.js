@@ -21,7 +21,7 @@ async function renderLastWatched()
 
     if (profile_image) 
     {
-        profile_image.src = `../../assets/profiles_images/${profile.imageName}`;
+        profile_image.src = `../assets/profiles_images/${profile.imageName}`;
         profile_image.alt = profile.name;
     }
 
@@ -42,7 +42,7 @@ async function renderLastWatched()
         
         return `
             <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
-                <img src="../../assets/covers/${item.cover_imageName}" class="img-fluid rounded movie_image" alt="${item.name}" onclick="click_on_media_item(${item.id})">
+                <img src="../assets/covers/${item.cover_imageName}" class="img-fluid rounded movie_image" alt="${item.name}" onclick="click_on_media_item(${item.id})">
                 <div class="movie_name text-center text-truncate px-1">${item.name}</div>
                 <button class="btn btn-sm ${isLiked ? 'btn-danger' : 'btn-outline-danger'} w-100 mt-2" 
                         onclick="handleToggleLike(${item.id})">
@@ -77,7 +77,7 @@ async function renderAllMovies(filter = '')
 
         all_movies_container.innerHTML += `
             <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
-                <img src="../../assets/covers/${item.cover_imageName}" class="img-fluid rounded movie_image" alt="${item.name}" onclick="click_on_media_item(${item.id})">
+                <img src="../assets/covers/${item.cover_imageName}" class="img-fluid rounded movie_image" alt="${item.name}" onclick="click_on_media_item(${item.id})">
                 <div class="movie_name text-center text-truncate px-1">${item.name}</div>
                 <button class="btn btn-sm ${isLiked ? 'btn-danger' : 'btn-outline-danger'} w-100 mt-2" 
                         onclick="handleToggleLike(${item.id})">
