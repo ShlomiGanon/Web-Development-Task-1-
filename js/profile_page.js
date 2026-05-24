@@ -99,15 +99,14 @@ async function search_on_click()
     
     if (search_value !== '') 
     {
-        all_movies_text.textContent = "Search: " + search_value;
+        all_movies_text.textContent = "Search results for: " + search_value;
         await renderAllMovies(search_value);
     }
     else 
     {
-        all_movies_text.textContent = "All movies";
+        all_movies_text.textContent = "All movies: ";
         await renderAllMovies();
     }
-    search_input.value = '';
 }
 
 async function click_on_media_item(mediaID)
