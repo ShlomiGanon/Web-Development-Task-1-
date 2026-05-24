@@ -26,14 +26,15 @@ body
 
 .all_movies 
 {
-    transition: border 0.2s linear;
     background-color: rgba(0, 0, 0, 0.6);
+    transition: all 0.3s ease;
 }
 
 .all_movies:hover 
 {
     border: 5px solid rgba(255, 0, 0, 0.77);
     background-color: rgb(0, 0, 0);
+    transition: all 0.3s ease;
     cursor: pointer;
 }
 
