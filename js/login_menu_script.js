@@ -57,7 +57,7 @@ async function Login_Click()
             
             setTimeout(() => 
             {
-                UI.GoToLink('/html/profiles.html'); 
+                UI.GoToLink('../html/profiles.html'); 
             }, 2000);
         }
         else
