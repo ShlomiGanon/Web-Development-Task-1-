@@ -1,0 +1,79 @@
+/* eslint-disable no-unused-vars */
+const { User, UserProfile, Media } = require('../entities.js');
+
+/**
+ * @typedef {Object} StorageResponse
+ * @property {boolean} success - Operation status
+ * @property {string} [message] - Message describing the operation result
+ * @property {any} [data] - Returned data (User, Array of Media, etc.)
+ */
+
+/**
+ * Abstract Base Class defining the Data Access Layer.
+ */
+class StorageContract
+{
+    constructor()
+    {
+        if (this.constructor === StorageContract)
+        {
+            throw new Error("Cannot instantiate Abstract Class 'StorageContract' directly.");
+        }
+    }
+
+    // ==========================================
+    // User & Auth Management
+    // ==========================================
+
+    /** @returns {Promise<StorageResponse>} */
+    async getAllUsers() { throw new Error("Method not implemented."); }
+
+    /** @param {string} email @returns {Promise<StorageResponse>} */
+    async getUserByEmail(email) { throw new Error("Method not implemented."); }
+
+    /** @param {string} phone @returns {Promise<StorageResponse>} */
+    async getUserByPhone(phone) { throw new Error("Method not implemented."); }
+
+    /** @param {User} user @returns {Promise<StorageResponse>} */
+    async registerUser(user) { throw new Error("Method not implemented."); }
+
+    /** @param {User} user @returns {Promise<StorageResponse>} */
+    async updateUser(user) { throw new Error("Method not implemented."); }
+    // ==========================================
+    // Profile Management
+    // ==========================================
+
+    /** @param {string} userId @returns {Promise<StorageResponse>} */
+    async getUserProfiles(userId) { throw new Error("Method not implemented."); }
+
+    /** @param {string} userId @param {UserProfile[]} profiles @returns {Promise<StorageResponse>} */
+    async saveUserProfiles(userId, profiles) { throw new Error("Method not implemented."); }
+
+    // ==========================================
+    // Media & Interaction
+    // ==========================================
+
+    /** @returns {Promise<StorageResponse>} */
+    async getAllMedia() { throw new Error("Method not implemented."); }
+
+    /** @param {number} mediaId @returns {Promise<StorageResponse>} */
+    async getMediaById(mediaId) { throw new Error("Method not implemented."); }
+
+    /** 
+     * @param {string} userId 
+     * @param {number} profileId 
+     * @param {number} mediaId 
+     * @returns {Promise<StorageResponse>} 
+     */
+    async toggleMediaLike(userId, profileId, mediaId) { throw new Error("Method not implemented."); }
+
+    /** 
+     * @param {string} userId 
+     * @param {number} profileId 
+     * @param {number} mediaId 
+     * @returns {Promise<StorageResponse>} 
+     */
+    async addMediaToWatchHistory(userId, profileId, mediaId) { throw new Error("Method not implemented."); }
+}
+
+module.exports = StorageContract;
