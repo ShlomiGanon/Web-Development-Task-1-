@@ -2,8 +2,9 @@ const constants = require('./constances.js');
 
 class User 
 {
-    constructor(email, phone, full_name, profiles, password) 
+    constructor(id, email, phone, full_name, profiles, password) 
     {
+        this.id = id;
         this.email = email;
         this.phone = phone;
         this.full_name = full_name;
@@ -11,6 +12,14 @@ class User
         this.password = password;
     }
     
+    /**
+     * Clones the User instance by creating a new User instance with the same properties.
+     * @returns {User} The cloned User instance.
+     */
+    clone()
+    {
+        return new User(this.id, this.email, this.phone, this.full_name, this.profiles.map(p => p.clone()), this.password);
+    }
     /**
      * Static method to create a User instance from a raw JSON object.
      * @param {Object} rawObject - The raw JSON object to create a User instance from.
@@ -21,6 +30,7 @@ class User
         if (!rawObject) return null;
         if (rawObject instanceof User) return rawObject;
         return new User(
+            rawObject.id,
             rawObject.email, 
             rawObject.phone, 
             rawObject.full_name, 
@@ -36,6 +46,7 @@ class User
     toJSON() 
     {
         return {
+            id: this.id,
             email: this.email,
             phone: this.phone,
             full_name: this.full_name,
@@ -87,6 +98,15 @@ class UserProfile
             const rawLikeIDs = Array.isArray(wasLiked_Media_IDs) ? wasLiked_Media_IDs : [];
             this.wasLiked_Media_IDs = new Set(rawLikeIDs);
         }
+    }
+
+    /**
+     * Clones the UserProfile instance by creating a new UserProfile instance with the same properties.
+     * @returns {UserProfile} The cloned UserProfile instance.
+     */
+    clone()
+    {
+        return new UserProfile(this.id, this.name, this.imageName, this.LastWatched_Media_IDs.slice(), new Set(this.wasLiked_Media_IDs));
     }
 
     /**

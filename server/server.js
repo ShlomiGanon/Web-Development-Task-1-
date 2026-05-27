@@ -52,7 +52,8 @@ app.post('/register', (req, res) =>
 
     if (missing.length > 0) 
     {
-        return res.status(400).json({ 
+        return res.status(400).json(
+        { 
             success: false, 
             message: 'Missing required fields: ' + missing.join(', ') 
         });
