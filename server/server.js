@@ -58,6 +58,16 @@ app.post('/register', (req, res) =>
             message: 'Missing required fields: ' + missing.join(', ') 
         });
     }
+    const first_name = req.body.full_name.split(' ')[0];
+    const last_name = req.body.full_name.split(' ')[1];
+    if (!first_name || !last_name)
+    {
+        return res.status(400).json(
+        { 
+            success: false, 
+            message: 'Full name must contain both first and last name' 
+        });
+    }
 
     //TODO: Implement this route
     res.status(501).json({ success: false, message: 'Not implemented' });

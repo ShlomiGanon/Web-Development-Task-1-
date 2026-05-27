@@ -43,10 +43,10 @@ class StorageContract
     // Profile Management
     // ==========================================
 
-    /** @param {string} userId @returns {Promise<StorageResponse>} */
+    /** @param {number} userId @returns {Promise<StorageResponse>} */
     async getUserProfiles(userId) { throw new Error("Method not implemented."); }
 
-    /** @param {string} userId @param {UserProfile[]} profiles @returns {Promise<StorageResponse>} */
+    /** @param {number} userId @param {UserProfile[]} profiles @returns {Promise<StorageResponse>} */
     async saveUserProfiles(userId, profiles) { throw new Error("Method not implemented."); }
 
     // ==========================================
@@ -60,7 +60,7 @@ class StorageContract
     async getMediaById(mediaId) { throw new Error("Method not implemented."); }
 
     /** 
-     * @param {string} userId 
+     * @param {number} userId 
      * @param {number} profileId 
      * @param {number} mediaId 
      * @returns {Promise<StorageResponse>} 
@@ -68,7 +68,7 @@ class StorageContract
     async toggleMediaLike(userId, profileId, mediaId) { throw new Error("Method not implemented."); }
 
     /** 
-     * @param {string} userId 
+     * @param {number} userId 
      * @param {number} profileId 
      * @param {number} mediaId 
      * @returns {Promise<StorageResponse>} 
