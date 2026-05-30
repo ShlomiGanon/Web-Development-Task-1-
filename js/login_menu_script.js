@@ -2,11 +2,6 @@ import * as UI from './ui-utils.js';
 import * as Auth from './auth.js';
 import * as Constants from './constances.js';
 import { ClientSessionManager } from './clientSessionManager.js';
-if (ClientSessionManager.isLoggedIn())
-{
-    UI.GoToLink('/index.html');
-    throw new Error("User is already logged in");
-}
 
 
 const loginBtn = document.getElementById('login-button');

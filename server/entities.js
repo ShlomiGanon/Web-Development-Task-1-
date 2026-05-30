@@ -164,6 +164,10 @@ class Media
         this.cover_imageName = cover_imageName ? cover_imageName : "media1.png";
         this.likes = likes;
     }
+    clone()
+    {
+        return new Media(this.id, this.name, this.cover_imageName, this.likes);
+    }
 
     static fromJSON(rawObject) 
     {

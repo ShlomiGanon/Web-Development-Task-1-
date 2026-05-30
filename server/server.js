@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 const express = require('express');
 const { User, UserProfile, Media } = require('./entities.js');
-const { MemoryStorage } = require('./storage/memory-storage.js');
+const MemoryStorage = require('./storage/memory-storage.js');
 const { SessionManager } = require('./season-manager.js');
 const app = express();
 const path = require('path');

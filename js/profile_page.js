@@ -43,9 +43,10 @@ async function renderLastWatched()
     {
         const isLiked = profile.wasLiked_Media_IDs.has(item.id);
         
+        const cover_imageName = item.cover_imageName || 'UNDEFINED.png';
         return `
             <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
-                <img src="../assets/covers/${item.cover_imageName}" class="img-fluid rounded movie_image" alt="${item.name}" onclick="click_on_media_item(${item.id})">
+                <img src="../assets/covers/${cover_imageName}" class="img-fluid rounded movie_image" alt="${item.name}" onclick="click_on_media_item(${item.id})">
                 <div class="movie_name text-center text-truncate px-1">${item.name}</div>
                 <button class="btn btn-sm ${isLiked ? 'btn-danger' : 'btn-outline-danger'} w-100 mt-2" 
                         onclick="handleToggleLike(${item.id})">
@@ -87,10 +88,10 @@ async function renderAllMovies(searchValue = '')
     {
         // Check if the current user has already liked this specific media
         const isLiked = profile ? profile.wasLiked_Media_IDs.has(item.id) : false;
-
+        const cover_imageName = item.cover_imageName ?? 'UNDEFINED.png';
         htmlContent += `
             <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
-                <img src="../assets/covers/${item.cover_imageName}" 
+                <img src="../assets/covers/${cover_imageName}" 
                      class="img-fluid rounded movie_image" 
                      alt="${item.name}" 
                      onclick="click_on_media_item(${item.id})">
