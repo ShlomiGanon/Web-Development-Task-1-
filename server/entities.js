@@ -1,5 +1,14 @@
 const constants = require('./constances.js');
 
+/**
+ * A class to store the user information.
+ * @param {string} id - The unique identifier of the user.
+ * @param {string} email - The email of the user.
+ * @param {string} phone - The phone number of the user.
+ * @param {string} full_name - The full name of the user.
+ * @param {Array<UserProfile>} profiles - The profiles of the user.
+ * @param {string} password - The password of the user.
+ */
 class User 
 {
     constructor(id, email, phone, full_name, profiles, password) 
@@ -73,7 +82,7 @@ class UserProfile
     /**
      * Initializes a UserProfile instance with the given parameters.
      * 
-     * @param {number} id - The unique identifier of the user profile.
+     * @param {string} id - The unique identifier of the user profile.
      * @param {string} name - The name of the user profile.
      * @param {string} [imageName="profile1.png"] - The name of the image file for the user profile.
      * @param {Array<number>} [LastWatched_Media_IDs=[]] - The array of media item IDs last watched by the user profile.
@@ -139,12 +148,18 @@ class UserProfile
     }
 }
 
-
+/**
+ * A class to store the media information.
+ * @param {string} id - The unique identifier of the media.
+ * @param {string} name - The name of the media.
+ * @param {string} [cover_imageName="media1.png"] - The name of the image file for the media.
+ * @param {number} [likes=0] - The number of likes the media has.
+ */
 class Media 
 {
     constructor(id, name, cover_imageName = null, likes = 0)
     {
-        this.id = Number(id);
+        this.id = id;
         this.name = name;
         this.cover_imageName = cover_imageName ? cover_imageName : "media1.png";
         this.likes = likes;
