@@ -6,7 +6,7 @@ const app = express();
 const path = require('path');
 
 const storage = new MemoryStorage();
-
+init_storage(storage);
 app.use(express.json());
 //--- Static routes ---
 app.use('/assets', express.static(path.join(__dirname, '../assets')));
@@ -83,3 +83,27 @@ app.listen(port, () =>
     console.log(`Server is running on http://${host}:${port}`);
 });
 
+
+//-------------- INITIALIZATION --------------
+async function init_storage(storage)
+{
+    if (!storage)throw new Error("Storage is not initialized");
+    const initialMedia = 
+    [
+        new Media(undefined, "Black Rabbit", "Black_Rabbit.jpg"),
+        new Media(undefined, "Courtroom Queens", "Courtroom_Queens.jpg"),
+        new Media(undefined, "East Side", "East_Side.jpg"),
+        new Media(undefined, "Griselda", "Griselda.jpg"),
+        new Media(undefined, "Nobody Wants This", "Nobody_Wants_This.jpg"),
+        new Media(undefined, "Off-Road", "OFFROAD.jpg"),
+        new Media(undefined, "Running Point", "Running_Point.jpg"),
+        new Media(undefined, "The Spy", "The_Spy.jpg"),
+        new Media(undefined, "Zero Day", "Zero_Day.jpg"),
+    ];
+
+    for(const m of initialMedia)
+    {
+        const response = await storage.addMedia(m);
+        if (!response.success) throw new Error("Failed to add media to storage: " + response.message);
+    }
+}

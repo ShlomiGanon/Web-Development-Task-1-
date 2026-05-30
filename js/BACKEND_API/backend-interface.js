@@ -1,5 +1,3 @@
-// File: js/backend-interface.js
-
 import * as Constants from '../constances.js';
 
 export class Profile 
@@ -17,7 +15,7 @@ export class Profile
     {
         this.id = id;
         this.name = name;
-        if (!imageName)ImageName = "UNDEFINED_PROFILE.png";
+        if (!imageName)imageName = "UNDEFINED_PROFILE.png";
         this.imageName = imageName;
         
         const rawWatchIDs = Array.isArray(LastWatched_Media_IDs) ? LastWatched_Media_IDs : [];
@@ -72,14 +70,14 @@ export class UserInfo
     * 
     * @param {string} email - The user's unique email address.
     * @param {string} phone - The user's unique phone number.
-    * @param {string} full_name - The user's full name.
+    * @param {string} fullName - The user's full name.
     * @param {Array<Profile|Object>} rawProfiles - Collection of profiles, as Profile instances or raw JSON objects.
     */
-    constructor(email, phone, full_name, rawProfiles = []) 
+    constructor(email, phone, fullName, rawProfiles = []) 
     {
         this.email = email;
         this.phone = phone;
-        this.full_name = full_name;
+        this.fullName = fullName;
         this.profiles = rawProfiles.map
         (
             p => p instanceof Profile ? p : Profile.fromJSON(p)
@@ -95,7 +93,7 @@ export class UserInfo
     {
         if (!rawObject) return null;
         if (rawObject instanceof UserInfo) return rawObject;
-        return new UserInfo(rawObject.email, rawObject.phone, rawObject.full_name, rawObject.profiles);
+        return new UserInfo(rawObject.email, rawObject.phone, rawObject.fullName, rawObject.profiles);
     }
 
     /**
@@ -107,7 +105,7 @@ export class UserInfo
         return {
             email: this.email,
             phone: this.phone,
-            full_name: this.full_name,
+            fullName: this.fullName,
             profiles: this.profiles.map(p => p.toJSON())
         };
     }
@@ -115,11 +113,11 @@ export class UserInfo
 
 export class MediaItem
 {
-    constructor(id, name, cover_imageName = null, likes = 0) 
+    constructor(id, name, coverImageName = null, likes = 0) 
     {
         this.id = Number(id);
         this.name = name;
-        this.cover_imageName = cover_imageName ? cover_imageName : "media1.png";
+        this.coverImageName = coverImageName ? coverImageName : "media1.png";
         this.likes = likes;
     }
 
@@ -127,7 +125,7 @@ export class MediaItem
     {
         if (!rawObject) return null;
 
-        return new MediaItem(rawObject.id, rawObject.name, rawObject.cover_imageName, rawObject.likes);
+        return new MediaItem(rawObject.id, rawObject.name, rawObject.coverImageName, rawObject.likes);
     }
 }
 
@@ -229,10 +227,10 @@ export class Interface_BackendAPI
     /**
      * Retrieves a media item by its unique identifier.
      * 
-     * @param {string} id - The unique identifier of the media item.
+     * @param {string} mediaID - The unique identifier of the media item.
      * @returns {Promise<{success: boolean, data?: MediaItem, message?: string}>} Success status with a MediaItem instance payload.
      */
-    async getMediaByID(id)
+    async getMediaByID(mediaID)
     {
         throw new Error("Method 'getMediaByID()' must be implemented.");
     }

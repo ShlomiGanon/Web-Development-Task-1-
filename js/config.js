@@ -1,5 +1,5 @@
 
 
-import { FakeBackend } from './BACKEND_API/FakeBackend.js';
+import { HttpClient } from './BACKEND_API/HttpClient.js';
 // instance of the backend
-export const Backend = new FakeBackend();
+export const Backend = new HttpClient();

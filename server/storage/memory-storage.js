@@ -126,6 +126,38 @@ class MemoryStorage extends StorageContract
         return { success: true, data: profile.toJSON()};
     }
 
+
+    /**
+     * @param {string} userId 
+     * @param {Array<UserProfile>} profiles - the list of profiles to update in the storage
+     * @returns {Promise<StorageResponse>} 
+     * */
+    async updateProfiles(userId, profiles)
+    {
+        const userIdNumber = Number(userId);
+        if (Number.isNaN(userIdNumber)) return { success: false, message: "User id must be a number" };
+        const user = this.users[userIdNumber];
+        if (!user) return { success: false, message: "User not found" };
+        //validate the profiles ids
+        for (const profile of profiles)
+        {
+            const exists = user.profiles.some(p => p.id === profile.id);
+            if (!exists) {
+                return { success: false, message: `Profile id ${profile.id} is not found` };
+            }
+        }
+        
+        //update the profiles
+        for (const updatedProfile of profiles)
+        {
+            const response = await this.updateProfile(userId, updatedProfile);
+            if (!response.success) 
+            {
+                return response;
+            }
+        }
+        return { success: true, data: profiles.map(p => p.toJSON()) };
+    }
     /**
      * @param {string} userId 
      * @param {UserProfile} profile - the profile to update in the storage
@@ -145,8 +177,8 @@ class MemoryStorage extends StorageContract
         const index = user.profiles.findIndex(p => p.id === pId);
         if (index === -1) return { success: false, message: "Profile not found" };
         
-        user.profiles[index] = profile.clone();
-        
+        user.profiles[index].name = profile.name !== undefined ? profile.name : user.profiles[index].name;
+        user.profiles[index].imageName = profile.imageName !== undefined ? profile.imageName : user.profiles[index].imageName;        
         return { success: true, data: user.profiles[index].toJSON() };
     }
 

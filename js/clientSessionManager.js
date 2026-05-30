@@ -98,7 +98,8 @@ export class ClientSessionManager
             return userResponse;
         }
 
-        const profile = userResponse.data.profiles.find(p => p.id === Number(profileID));
+        const profiles = userResponse.data?.profiles || [];
+        const profile = profiles.find(p => p.id === Number(profileID));
         if (!profile) 
         {
             return { success: false, message: "Profile not found." };

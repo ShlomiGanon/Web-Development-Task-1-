@@ -63,6 +63,13 @@ class StorageContract
 
     /** 
      * @param {string} userId 
+     * @param {Array<UserProfile>} profiles - the list of profiles to update in the storage
+     * @returns {Promise<StorageResponse>} 
+     * */
+    async updateProfiles(userId, profiles) { throw new Error("Method not implemented."); }
+
+    /** 
+     * @param {string} userId 
      * @param {string} profileId 
      * @returns {Promise<StorageResponse>} 
      * */
