@@ -1,5 +1,3 @@
-// File: js/clientSessionManager.js
-
 import { Backend } from './config.js';
 import { Profile } from './BACKEND_API/backend-interface.js';
 import * as UI from './ui-utils.js';

@@ -2,9 +2,10 @@
 const express = require('express');
 const { User, UserProfile, Media } = require('./entities.js');
 const { MemoryStorage } = require('./storage/memory-storage.js');
+const { SessionManager } = require('./season-manager.js');
 const app = express();
 const path = require('path');
-
+const sessionManager = new SessionManager();
 const storage = new MemoryStorage();
 init_storage(storage);
 app.use(express.json());
@@ -23,17 +24,6 @@ const host = process.env.HOST || 'localhost';
 
 
 //-------------- ROUTES --------------
-/**
- * @route GET /users
- * @description Get all users
- * @returns {Object} 200 - List of users
- */
-app.get('/users', (req, res) => 
-{
-    //TODO: Implement this route
-    res.status(501).json({ success: false, message: 'Not implemented' });
-});
-
 
 /**
  * @route POST /register
@@ -69,7 +59,7 @@ app.post('/register', (req, res) =>
             message: 'Full name must contain both first and last name' 
         });
     }
-
+    const user = new User(undefined, req.body.email, req.body.phone, first_name + ' ' + last_name, req.body.password);
     //TODO: Implement this route
     res.status(501).json({ success: false, message: 'Not implemented' });
 });
