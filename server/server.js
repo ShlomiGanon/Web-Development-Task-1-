@@ -1,8 +1,12 @@
 /* eslint-disable no-unused-vars */
 const express = require('express');
 const { User, UserProfile, Media } = require('./entities.js');
+const { MemoryStorage } = require('./storage/memory-storage.js');
 const app = express();
 const path = require('path');
+
+const storage = new MemoryStorage();
+
 app.use(express.json());
 //--- Static routes ---
 app.use('/assets', express.static(path.join(__dirname, '../assets')));
@@ -69,6 +73,8 @@ app.post('/register', (req, res) =>
     //TODO: Implement this route
     res.status(501).json({ success: false, message: 'Not implemented' });
 });
+
+
 
 
 //-------------- SERVER --------------
