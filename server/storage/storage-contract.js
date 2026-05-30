@@ -43,10 +43,10 @@ class StorageContract
     // Profile Management
     // ==========================================
 
-    /** @param {number} userId @returns {Promise<StorageResponse>} */
+    /** @param {string} userId @returns {Promise<StorageResponse>} */
     async getUserProfiles(userId) { throw new Error("Method not implemented."); }
 
-    /** @param {number} userId @param {UserProfile[]} profiles @returns {Promise<StorageResponse>} */
+    /** @param {string} userId @param {UserProfile[]} profiles @returns {Promise<StorageResponse>} */
     async saveUserProfiles(userId, profiles) { throw new Error("Method not implemented."); }
 
     // ==========================================
@@ -56,21 +56,21 @@ class StorageContract
     /** @returns {Promise<StorageResponse>} */
     async getAllMedia() { throw new Error("Method not implemented."); }
 
-    /** @param {number} mediaId @returns {Promise<StorageResponse>} */
+    /** @param {string} mediaId @returns {Promise<StorageResponse>} */
     async getMediaById(mediaId) { throw new Error("Method not implemented."); }
 
     /** 
-     * @param {number} userId 
-     * @param {number} profileId 
-     * @param {number} mediaId 
+     * @param {string} userId 
+     * @param {string} profileId 
+     * @param {string} mediaId 
      * @returns {Promise<StorageResponse>} 
      */
     async toggleMediaLike(userId, profileId, mediaId) { throw new Error("Method not implemented."); }
 
     /** 
-     * @param {number} userId 
-     * @param {number} profileId 
-     * @param {number} mediaId 
+     * @param {string} userId 
+     * @param {string} profileId 
+     * @param {string} mediaId 
      * @returns {Promise<StorageResponse>} 
      */
     async addMediaToWatchHistory(userId, profileId, mediaId) { throw new Error("Method not implemented."); }

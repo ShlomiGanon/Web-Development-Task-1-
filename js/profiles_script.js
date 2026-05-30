@@ -103,7 +103,7 @@ async function AddProfile_OnClick()
 {
     if (UI.isUILocked) return;
     const newId = profiles.length > 0 ? Math.max(...profiles.map(p => p.id)) + 1 : 1;
-    const newProfile = new Profile(newId, "New Profile", "profile1.png");
+    const newProfile = new Profile(newId, "New Profile_" + newId);
     
     profiles.push(newProfile);
     

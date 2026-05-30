@@ -2,26 +2,23 @@
 const express = require('express');
 const { User, UserProfile, Media } = require('./entities.js');
 const app = express();
+const path = require('path');
 app.use(express.json());
-app.use(express.static('../'));
-
+//--- Static routes ---
+app.use('/assets', express.static(path.join(__dirname, '../assets')));
+app.use('/css', express.static(path.join(__dirname, '../css')));
+app.use('/js', express.static(path.join(__dirname, '../js')));
+app.use('/html', express.static(path.join(__dirname, '../html')));
+//--- HTML routes ---
+app.get('/', (req, res) =>
+{
+    res.sendFile(path.join(__dirname, '../index.html'));
+});
 const port = process.env.PORT || 3000;
 const host = process.env.HOST || 'localhost';
 
 
 //-------------- ROUTES --------------
-/**
- * @route GET /
- * @description Welcome message
- * @returns {Object} 200 - Welcome message
- */
-app.get('/', (req, res) => 
-    {
-        res.send('Hello');
-    }
-);
-
-
 /**
  * @route GET /users
  * @description Get all users

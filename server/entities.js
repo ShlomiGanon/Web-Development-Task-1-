@@ -79,7 +79,7 @@ class UserProfile
      * @param {Array<number>} [LastWatched_Media_IDs=[]] - The array of media item IDs last watched by the user profile.
      * @param {Set<number>|Array<number>} [wasLiked_Media_IDs=[]] - The collection of media item IDs liked by the user profile. Will be stored internally as a Set.
      */
-    constructor(id, name, imageName = null, LastWatched_Media_IDs = [], wasLiked_Media_IDs = []) 
+    constructor(id, name, imageName = "UNDEFINED_PROFILE.png", LastWatched_Media_IDs = [], wasLiked_Media_IDs = []) 
     {
         this.id = id;
         this.name = name;

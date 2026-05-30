@@ -2,6 +2,7 @@ import * as UI from './ui-utils.js';
 import * as Auth from './auth.js';
 import * as Constants from './constances.js';
 import { ClientSessionManager } from './clientSessionManager.js';
+await ClientSessionManager.ensureLoginState(false);
 
 const firstNameInput = document.getElementById('first-name-field');
 const lastNameInput = document.getElementById('last-name-field');

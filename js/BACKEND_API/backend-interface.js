@@ -13,12 +13,12 @@ export class Profile
      * @param {Array<number>} [LastWatched_Media_IDs=[]] - The array of media item IDs last watched by the profile.
      * @param {Set<number>|Array<number>} [wasLiked_Media_IDs=[]] - The collection of media item IDs liked by the profile. Will be stored internally as a Set.
      */
-    constructor(id, name, imageName = null, LastWatched_Media_IDs = [], wasLiked_Media_IDs = []) 
+    constructor(id, name, imageName = "UNDEFINED_PROFILE.png", LastWatched_Media_IDs = [], wasLiked_Media_IDs = []) 
     {
         this.id = id;
         this.name = name;
-        
-        this.imageName = imageName ? imageName : "profile1.png";
+        if (!imageName)ImageName = "UNDEFINED_PROFILE.png";
+        this.imageName = imageName;
         
         const rawWatchIDs = Array.isArray(LastWatched_Media_IDs) ? LastWatched_Media_IDs : [];
         this.LastWatched_Media_IDs = rawWatchIDs.slice(0, Constants.MAX_LAST_WATCHED_MEDIA_LIMIT);

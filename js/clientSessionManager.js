@@ -2,12 +2,13 @@
 
 import { Backend } from './config.js';
 import { Profile } from './BACKEND_API/backend-interface.js';
-
+import * as UI from './ui-utils.js';
 const COOKIE_SESSION_KEY = "current_logged_in_user";
 const STORAGE_PROFILE_KEY = "active_profile_id";
 
 export class ClientSessionManager 
 {
+
     static isLoggedIn()
     {
         return getCookie(COOKIE_SESSION_KEY) !== null;
