@@ -47,7 +47,7 @@ export function ToggleUI(isDisabled)
         }
     );
 
-    const links = document.querySelectorAll('a');
+    const links = document.querySelectorAll('a, .movie_image, .profile_image');
     links.forEach(link => 
         {
             link.style.pointerEvents = isDisabled ? "none" : "auto";

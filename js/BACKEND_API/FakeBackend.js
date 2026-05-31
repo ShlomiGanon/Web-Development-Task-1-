@@ -66,6 +66,13 @@ export class FakeBackend extends Interface_BackendAPI
         // Initialize the local database with mock data if it does not exist
         this._initDatabase();
     }
+    /*
+    to clear the database run this commands in the console:
+
+    localStorage.removeItem("fake_users_db"); // to clear the users database
+    localStorage.removeItem("fake_media_db"); // to clear the media database
+
+    */
 
 
     //-------------- HELPER FUNCTIONS --------------

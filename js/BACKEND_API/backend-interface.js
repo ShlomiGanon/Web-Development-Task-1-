@@ -117,7 +117,7 @@ export class MediaItem
     {
         this.id = Number(id);
         this.name = name;
-        this.coverImageName = coverImageName ? coverImageName : "media1.png";
+        this.coverImageName = coverImageName ? coverImageName : "UNDEFINED.png";
         this.likes = likes;
     }
 

@@ -2,25 +2,21 @@ import * as UI from './ui-utils.js';
 import { Profile } from './BACKEND_API/backend-interface.js';
 import { ClientSessionManager } from './clientSessionManager.js';
 import * as Constants from './constances.js';
-
+import { AVAILABLE_PROFILES_IMAGES } from './config.js';
 //variables
 
 let isEditing = false;
 let isDeleting = false;
 let HasChanged = false;
+
+
 const profiles_area = document.getElementById('profiles');
 const manage_profile_button = document.getElementById('manage-profile-button');
 const add_profile_button = document.getElementById('add-profile-button');
 const remove_profile_button = document.getElementById('remove-profile-button');
 const logout_button = document.getElementById('logout-button');
 
-export const AVAILABLE_PROFILES_IMAGES = [
-    'profile1.png',
-    'profile2.png',
-    'profile3.png',
-    'profile4.png',
-    'profile5.png'
-];
+
 
 //profiles array
 let profiles = [];
@@ -32,9 +28,7 @@ async function changeProfileImage(profile)
     const nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % AVAILABLE_PROFILES_IMAGES.length;
     
     profile.imageName = AVAILABLE_PROFILES_IMAGES[nextIndex];
-    HasChanged = true;
-    manage_profile_button.innerText = "Save Changes";
-    hideEditActionButtons();
+    markAsChanged("image");
     renderProfiles('input'); 
 }
 
@@ -67,11 +61,10 @@ function hideEditActionButtons()
 function attachInputListeners() 
 {
     const inputs = document.querySelectorAll('.profile_input');
-    inputs.forEach(input => {
+    inputs.forEach(input => 
+        {
         input.addEventListener('input', () => {
-            manage_profile_button.innerText = "Save Changes";
-            hideEditActionButtons();
-            HasChanged = true;
+            markAsChanged("text");
         });
     });
 }
@@ -90,7 +83,6 @@ function ManageProfiles_OnClick()
     if (isEditing && HasChanged) 
     {
         saveProfiles();
-        HasChanged = false;
     }
     
     isEditing = !isEditing;
@@ -158,6 +150,7 @@ async function saveProfiles()
     else
     {
         UI.ShowMessage("הפרופילים נשמרו בהצלחה");
+        markAsUnchanged();
     }
 }
 
@@ -165,7 +158,7 @@ async function saveProfiles()
 // UI Helper: Converts a pure Profile object into HTML string
 function renderProfileComponent(profile, tag_name = 'div') 
 {
-    if (tag_name === 'input') 
+    if (tag_name === 'input' && (HasChanged == 'text' || !HasChanged)) 
     {
         return `
             <div>
@@ -252,7 +245,12 @@ async function Profile_OnClick(profile)
     }
     else if (isEditing) 
     {
-        changeProfileImage(profile);
+        if(HasChanged === 'image' || !HasChanged)changeProfileImage(profile);
+        else
+        {
+            UI.ShowMessage("אתה נמצא במצב עריכה, נא ללחוץ על כפתור שמירה כדי לשמור על השינויים");
+            return;
+        }
     }
     else if (!isEditing) 
     {
@@ -319,6 +317,21 @@ function Unlock_UI_AND_Profiles()
     renderProfiles(isEditing ? 'input' : 'div');
 }
 
+//mark the changes as "none"
+function markAsUnchanged()
+{
+    HasChanged = null;
+    manage_profile_button.innerText = "Manage Profiles";
+    showEditActionButtons();
+}
+
+//mark the changes as "image" or "text"
+function markAsChanged(the_changes)
+{
+    HasChanged = the_changes;
+    manage_profile_button.innerText = "Save Changes";
+    hideEditActionButtons();
+}
 //---------------------------- MAIN ----------------------------------------
 if (!ClientSessionManager.isLoggedIn())
 {
