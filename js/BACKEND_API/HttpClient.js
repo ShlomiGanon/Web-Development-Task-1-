@@ -49,7 +49,9 @@ export class HttpClient extends Interface_BackendAPI
     async saveProfiles(sessionToken, profiles) 
     {
         const profilesJson = profiles.map(p => p.toJSON ? p.toJSON() : p);
-        return await this._http_post_request('/save-profiles', { sessionToken, profiles: profilesJson });
+        const result = await this._http_post_request('/save-profiles', { sessionToken, profiles: profilesJson });
+        const liveProfiles = result.data ? result.data.map(p => Profile.fromJSON(p)) : null;
+        return { ...result, data: liveProfiles };
     }
 
     // Terminates the active session, revokes the server-side connection token, 
@@ -85,7 +87,12 @@ export class HttpClient extends Interface_BackendAPI
     // Selects a media item and adds it to the user's LastWatched list.
     async selectMediaItem(sessionToken, profileID, mediaID)
     {
-        return await this._http_post_request('/select-media-item', { sessionToken: sessionToken, profileID: profileID, mediaID: mediaID });
+        const result = await this._http_post_request('/select-media-item', { sessionToken: sessionToken, profileID: profileID, mediaID: mediaID });
+        if(!result.success)
+        {
+            return result;
+        }
+        return { ...result, data: Profile.fromJSON(result.data) };
     }
 
     /**

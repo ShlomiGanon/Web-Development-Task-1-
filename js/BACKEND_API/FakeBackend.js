@@ -240,7 +240,7 @@ export class FakeBackend extends Interface_BackendAPI
     {
         if (!sessionToken) 
         {
-            return { success: false, message: "Access Denied. No session token provided." };
+            return { success: false, message: "Access Denied. No session token provided." , data: null};
         }
 
         const users = this._getUsersFromStorage();
@@ -255,10 +255,10 @@ export class FakeBackend extends Interface_BackendAPI
             });
             
             this._saveUsersToStorage(users);
-            return { success: true };
+            return { success: true, data: profiles.map(p => Profile.fromJSON(p.toJSON())) };
         }
 
-        return { success: false, message: "User not found." };
+        return { success: false, message: "User not found." , data: null};
     }
 
     /**
@@ -383,7 +383,7 @@ export class FakeBackend extends Interface_BackendAPI
             profile.LastWatched_Media_IDs = profile.LastWatched_Media_IDs.slice(0, Constants.MAX_LAST_WATCHED_MEDIA_LIMIT);
             
             this._saveUsersToStorage(users);
-            return { success: true };
+            return { success: true, data: profile.clone() };
         }
     
         return { success: false, message: "Profile not found." };

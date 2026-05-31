@@ -179,10 +179,10 @@ export class Interface_BackendAPI
      * @param {string} email - The user's unique email address.
      * @param {string} phone - The user's unique phone number.
      * @param {string} password - The chosen password.
-     * @param {string} full_name - The user's full name.
+     * @param {string} fullName - The user's full name.
      * @returns {Promise<{success: boolean, message?: string}>} Registration success or failure status.
      */
-    async register(email, phone, password, full_name) 
+    async register(email, phone, password, fullName) 
     {
         throw new Error("Method 'register()' must be implemented.");
     }
@@ -205,7 +205,7 @@ export class Interface_BackendAPI
      * 
      * @param {string} sessionToken - Token identifying the authenticated client session.
      * @param {Array} profiles - The complete updated profiles array from the UI.
-     * @returns {Promise<{success: boolean, message?: string}>} Operation acknowledgment status.
+     * @returns {Promise<{success: boolean, message?: string, data?: Array<Profile>}>} Success status with an array of Profile instances.
      */
     async saveProfiles(sessionToken, profiles) 
     {
@@ -264,7 +264,7 @@ export class Interface_BackendAPI
      * @param {string} sessionToken - Token identifying the authenticated client session.
      * @param {string} profileID - The unique identifier of the profile.
      * @param {string} mediaID - The unique identifier of the media item.
-     * @returns {Promise<{success: boolean, message?: string}>} Success status.
+     * @returns {Promise<{success: boolean, message?: string, data?: UpdatedProfile}>} Success status.
      */
     async selectMediaItem(sessionToken, profileID, mediaID)
     {

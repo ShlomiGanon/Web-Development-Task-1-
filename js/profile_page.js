@@ -28,7 +28,7 @@ async function renderLastWatched()
 
     last_watched_text.textContent = "Last watched: ";
     const lastWatchedItems = activeProfile.LastWatched_Media_IDs
-        .map(id => Media_Items.find(m => m.id === Number(id)))
+        .map(id => Media_Items.find(m => m.id === id))
         .filter(m => m !== undefined);
 
     last_watched_container.innerHTML = lastWatchedItems.map(item => 
@@ -112,7 +112,15 @@ async function search_on_click()
         await renderAllMovies();
     }
 }
-
+async function handleToggleLike(mediaID)
+{
+    const response = await ClientSessionManager.toggleLike(mediaID);
+    if (!response || !response.success)
+    {
+        console.error("Failed to toggle like");
+        return;
+    }
+}
 async function click_on_media_item(mediaID)
 {
     const response = await ClientSessionManager.selectMediaItem(mediaID);
@@ -122,7 +130,7 @@ async function click_on_media_item(mediaID)
         console.error("Failed to select media");
         return;
     }
-
+    activeProfile = response.data;
     await refreshDisplay();
 }
 
@@ -165,4 +173,6 @@ async function init()
     search_button.addEventListener('click', search_on_click);
     search_input.addEventListener('keypress', (e) => { if (e.key === 'Enter') search_on_click(); });
 }
+window.click_on_media_item = click_on_media_item;
+window.handleToggleLike = handleToggleLike;
 init();
