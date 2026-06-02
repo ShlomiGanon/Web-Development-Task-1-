@@ -1,5 +1,5 @@
 const MAX_LAST_WATCHED_MEDIA_LIMIT = 5;
-const MIN_PASSWORD_LENGTH = 8;
+const MIN_PASSWORD_LENGTH = 4;
 const MAX_PASSWORD_LENGTH = 16;
 
 module.exports = {

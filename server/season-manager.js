@@ -20,7 +20,7 @@ class SessionManager
     {
         const token = this._generateToken();
         this.token_2_user_id[token] = user_id;
-        if (!this.user_id_2_tokens[user_id])
+        if (this.user_id_2_tokens[user_id] === undefined)
         {
             //if the user_id is not in the user_id_2_tokens, add it
             this.user_id_2_tokens[user_id] = {};
@@ -36,7 +36,7 @@ class SessionManager
     removeSession(token)
     {
         const user_id = this.token_2_user_id[token];
-        if (user_id) 
+        if (user_id !== undefined) 
         {
             if (this.user_id_2_tokens[user_id])
             {
@@ -53,7 +53,7 @@ class SessionManager
      */
     getUserIdByToken(token)
     {
-        return this.token_2_user_id[token] || undefined;
+        return this.token_2_user_id[token];
     }
 
     /**
@@ -63,7 +63,7 @@ class SessionManager
     _generateToken()
     {
         let token = crypto.randomBytes(32).toString('hex');
-        while (this.token_2_user_id[token])
+        while (this.token_2_user_id[token] !== undefined)
         {
             token = crypto.randomBytes(32).toString('hex');
         }
