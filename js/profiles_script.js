@@ -4,7 +4,7 @@ import { ClientSessionManager } from './clientSessionManager.js';
 import * as Constants from './constances.js';
 import { AVAILABLE_PROFILES_IMAGES } from './config.js';
 //variables
-
+let profiles = [];
 let isEditing = false;
 let isDeleting = false;
 let HasChanged = false;
@@ -16,11 +16,21 @@ const add_profile_button = document.getElementById('add-profile-button');
 const remove_profile_button = document.getElementById('remove-profile-button');
 const logout_button = document.getElementById('logout-button');
 
-
-
-//profiles array
-let profiles = [];
-
+const UserResponse = await ClientSessionManager.restoreActiveSession();
+if (!UserResponse.success)
+{
+    UI.ShowErrorMessage(UserResponse.message);
+    
+    // Wrapped setTimeout in a Promise so await can properly delay the execution
+    // and the code not continue to load the page before the timeout is over
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    UI.GoToLink('/');//redirect to login page
+}
+else
+{
+    profiles = UserResponse.data.profiles;
+}
 
 async function changeProfileImage(profile) 
 {
@@ -390,9 +400,4 @@ logout_button.addEventListener('click', Logout_OnClick);
 manage_profile_button.addEventListener('click', ManageProfiles_OnClick);
 add_profile_button.addEventListener('click', AddProfile_OnClick);
 remove_profile_button.addEventListener('click', RemoveProfile_OnClick);
-const userData = await ClientSessionManager.restoreActiveSession();
-if (userData && userData.profiles) 
-{
-    profiles = userData.profiles;
-}
 renderProfiles();

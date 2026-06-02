@@ -202,7 +202,8 @@ app.post('/get-user-info', async (req, res) => {
         if (sessionToken === undefined) return res.json({ success: false, message: 'Session token is required' });
 
         const userId = sessionManager.getUserIdByToken(sessionToken);
-        if (userId === undefined) {
+        if (userId === undefined) 
+        {
             return res.json({ success: false, message: 'Invalid or expired session' });
         }
 

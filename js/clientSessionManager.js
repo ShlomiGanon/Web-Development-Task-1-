@@ -1,5 +1,5 @@
 import { Backend } from './config.js';
-import { Profile } from './BACKEND_API/backend-interface.js';
+import { Profile, UserInfo, MediaItem } from './BACKEND_API/backend-interface.js';
 import * as UI from './ui-utils.js';
 const COOKIE_SESSION_KEY = "current_logged_in_user";
 const STORAGE_PROFILE_KEY = "active_profile_id";
@@ -7,9 +7,18 @@ const STORAGE_PROFILE_KEY = "active_profile_id";
 export class ClientSessionManager 
 {
 
-    static isLoggedIn()
+    static async isLoggedIn()
     {
-        return getCookie(COOKIE_SESSION_KEY) !== null;
+        const token = getCookie(COOKIE_SESSION_KEY);
+        if(token === null || token === undefined)
+        {
+            return false;
+        }
+        else
+        {
+            const userResponse = await ClientSessionManager.restoreActiveSession();//verify the token is valid
+            return userResponse.success;
+        }
     }
 
     static getSessionToken() 
@@ -68,13 +77,13 @@ export class ClientSessionManager
     static async restoreActiveSession() 
     {
         const token = ClientSessionManager.getSessionToken();
-        if (!token) 
+        if (token === null || token === undefined) 
         {
-            return null;
+            return { success: false, message: "No session token found." };
         }
         
         const response = await Backend.fetchActiveUserInfo(token);
-        return response.success ? response.data : null;
+        return response.success ? { success: true, data: UserInfo.fromJSON(response.data) } : { success: false, message: response.message };
     }
 
     // ==========================================

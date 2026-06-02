@@ -39,7 +39,7 @@
             {
                 const activeUser = await ClientSessionManager.restoreActiveSession();
                 
-                if (activeUser) 
+                if (activeUser.success) 
                 {
                     UI.ShowMessage("זוהה פרטי התחברות , מתבצעת העברה...");
                     newUrl = "html/profiles.html";
@@ -48,6 +48,7 @@
                 {
                     UI.ShowMessage("לא זוהו פרטי התחברות, הנך מועבר לדף ההתחברות...");
                     newUrl = "html/login_menu.html";
+                    ClientSessionManager.logout();
                 }
             }
             catch (error) 
