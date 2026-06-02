@@ -69,7 +69,7 @@ function attachInputListeners()
     });
 }
 
-function ManageProfiles_OnClick() 
+async function ManageProfiles_OnClick() 
 {
     if (isDeleting) 
     {
@@ -82,7 +82,7 @@ function ManageProfiles_OnClick()
 
     if (isEditing && HasChanged) 
     {
-        saveProfiles();
+        await saveProfiles();
     }
     
     isEditing = !isEditing;
@@ -94,15 +94,29 @@ function ManageProfiles_OnClick()
 async function AddProfile_OnClick() 
 {
     if (UI.isUILocked) return;
-    const newId = profiles.length > 0 ? Math.max(...profiles.map(p => p.id)) + 1 : 1;
-    const newProfile = new Profile(newId, "New Profile_" + newId);
+    const newProfile = new Profile(undefined, "New Profile");
     
     profiles.push(newProfile);
     
-    await ClientSessionManager.saveProfiles(profiles);
-    
+    const response = await ClientSessionManager.saveProfiles(profiles);
+    if (!response.success)
+    {
+        UI.ShowErrorMessage(response.message);
+        //we need to fetch the updated profiles from the server
+        const response = await ClientSessionManager.getUserProfiles();
+        if (!response.success)
+        {
+            UI.ShowErrorMessage("fail to update profiles: " + response.message + "\n please refresh the page.");
+            throw new Error("fail to update profiles: " + response.message);
+        }
+        profiles = response.data.map(p => Profile.fromJSON(p));
+    }
+    else
+    {
+        UI.ShowMessage("הפרופיל נוסף בהצלחה");
+        profiles = response.data.map(p => Profile.fromJSON(p));//update the profiles array on success
+    }
     renderProfiles(isEditing ? 'input' : 'div');
-    UI.ShowMessage("הפרופיל נוסף בהצלחה");
 }
 
 function RemoveProfile_OnClick() 
@@ -144,7 +158,7 @@ async function saveProfiles()
     const response = await ClientSessionManager.saveProfiles(profiles);
     if (!response.success) 
     {
-        UI.ShowErrorMessage("שגיאה בשמירת הפרופילים");
+        UI.ShowErrorMessage(response.message);
         console.error("Error: " + response.message);
     }
     else
@@ -229,10 +243,45 @@ async function confirmAndDeleteProfile(profile)
     const confirmed = confirm(`Are you sure you want to delete profile "${profile.name}"?`);
     if (confirmed) 
     {
-        profiles = profiles.filter(p => p.id !== profile.id);
-        await ClientSessionManager.saveProfiles(profiles);
+        // local temporary filter
+        const filteredProfiles = profiles.filter(p => p.id !== profile.id);
+        
+        // send the updated array to the server
+        const response = await ClientSessionManager.saveProfiles(filteredProfiles);
+        
+        if (!response || !response.success)
+        {
+            UI.ShowErrorMessage(response?.message || "שגיאה במחיקת הפרופיל");
+            
+            const userData = await ClientSessionManager.restoreActiveSession();
+            
+            if (!userData || !userData.profiles)
+            {
+                UI.ShowErrorMessage("fail to update profiles: please refresh the page.");
+                throw new Error("fail to update profiles");
+            }
+            else
+            {
+                // restore the profiles array from the server
+                profiles = userData.profiles;
+            }
+        }
+        else
+        {
+            UI.ShowMessage("הפרופיל נמחק בהצלחה");
+            
+            // update the profiles array from the server response
+            if (response.data)
+            {
+                profiles = response.data;
+            } 
+            else
+            {
+                profiles = filteredProfiles;
+            }
+        }
+        
         renderProfiles('div');
-        UI.ShowMessage("Profile deleted");
     }
 }
 
@@ -269,7 +318,7 @@ async function Profile_OnClick(profile)
         }
         else 
         {
-            UI.ShowErrorMessage("שגיאה בבחירת הפרופיל, נסה שנית.");
+            UI.ShowErrorMessage(response.message);
             Unlock_UI_AND_Profiles();
         }
         

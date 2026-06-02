@@ -144,7 +144,8 @@ app.post('/email-login', async (req, res) => {
         }
 
         const sessionToken = sessionManager.addSession(userRes.data.id);
-        return res.json({ success: true, data: { sessionToken } });
+        console.log(`login: id: [${userRes.data.id}] , token: [${sessionToken}]`);
+        return res.json({ success: true, data: {sessionToken: sessionToken } });
     }
     catch (error)
     {
@@ -182,7 +183,7 @@ app.post('/phone-login', async (req, res) => {
         }
 
         const sessionToken = sessionManager.addSession(userRes.data.id);
-        return res.json({ success: true, data: { sessionToken } });
+        return res.json({ success: true, data: {sessionToken: sessionToken } });
     } catch (error) {
         return res.json({ success: false, message: error.message });
     }
@@ -198,10 +199,10 @@ app.post('/phone-login', async (req, res) => {
 app.post('/get-user-info', async (req, res) => {
     try {
         const { sessionToken } = req.body;
-        if (!sessionToken) return res.json({ success: false, message: 'Session token is required' });
+        if (sessionToken === undefined) return res.json({ success: false, message: 'Session token is required' });
 
         const userId = sessionManager.getUserIdByToken(sessionToken);
-        if (userId === undefined || userId === null) {
+        if (userId === undefined) {
             return res.json({ success: false, message: 'Invalid or expired session' });
         }
 
@@ -222,36 +223,70 @@ app.post('/get-user-info', async (req, res) => {
  * @param {Array} req.body.profiles
  * @returns {Object} {success: boolean, message?: string, data?: Array<UserProfile>}
  */
-app.post('/save-profiles', async (req, res) => {
-    try {
-        const { sessionToken, profiles } = req.body;
-        if (!sessionToken) return res.json({ success: false, message: 'Session token is required' });
-
-        const userId = sessionManager.getUserIdByToken(sessionToken);
-        if (userId === undefined || userId === null) {
-            return res.json({ success: false, message: 'Invalid or expired session' });
-        }
-
-        const profileInstances = profiles.map(p => new UserProfile(p.id, p.name, p.imageName, p.wasLiked_Media_IDs, p.LastWatched_Media_IDs));
-        const existingProfilesRes = await storage.getUserProfiles(userId);
-        if (!existingProfilesRes.success) return res.json({ success: false, message: existingProfilesRes.message });
-
-        for (const prof of profileInstances) {
-            if (prof.id === undefined || prof.id === null) {
-                const addRes = await storage.addProfile(userId, prof);
-                if (!addRes.success) return res.json({ success: false, message: addRes.message });
-            } else {
-                const updateRes = await storage.updateProfile(userId, prof);
-                if (!updateRes.success) return res.json({ success: false, message: updateRes.message });
+app.post('/save-profiles', async (req, res) => 
+    {
+        try 
+        {
+            const { sessionToken, profiles } = req.body;
+            if (!sessionToken) return res.json({ success: false, message: 'Session token is required' });
+    
+            const userId = sessionManager.getUserIdByToken(sessionToken);
+            if (userId === undefined) 
+            {
+                return res.json({ success: false, message: 'Invalid or expired session' });
             }
+    
+            // Convert incoming data to UserProfile instances
+            const profileInstances = profiles.map(p => new UserProfile(p.id, p.name, p.imageName, p.wasLiked_Media_IDs, p.LastWatched_Media_IDs));
+            
+            // 1. Fetch current active profiles from the server storage
+            const existingProfilesRes = await storage.getUserProfiles(userId);
+            if (!existingProfilesRes.success) return res.json({ success: false, message: existingProfilesRes.message });
+            
+            const currentServerProfiles = existingProfilesRes.data || [];
+    
+            // 2. Deletion Stage: Identify profiles removed by the client
+            const incomingIds = profileInstances.map(p => p.id).filter(id => id !== undefined && id !== null);
+            
+            for (const existingProf of currentServerProfiles) 
+            {
+                // If an existing server profile ID is missing from the incoming client array, it was deleted
+                if (!incomingIds.includes(existingProf.id)) 
+                {
+                    const deleteRes = await storage.deleteProfile(userId, existingProf.id);
+                    if (!deleteRes.success) return res.json({ success: false, message: deleteRes.message });
+                }
+            }
+    
+            // 3. Upsert Stage: Add new profiles or update existing ones
+            for (const prof of profileInstances) 
+            {
+                if (prof.id === undefined || prof.id === null) 
+                {
+                    const addRes = await storage.addProfile(userId, prof);
+                    if (!addRes.success) return res.json({ success: false, message: addRes.message });
+                } 
+                else 
+                {
+                    const updateRes = await storage.updateProfile(userId, prof);
+                    if (!updateRes.success) return res.json({ success: false, message: updateRes.message });
+                }
+            }
+    
+            // 4. Final Sync: Fetch the freshly updated array from storage
+            const finalProfiles = await storage.getUserProfiles(userId);
+            if (!finalProfiles.success) return res.json({ success: false, message: finalProfiles.message });
+            
+            // Serialize data to plain JSON objects before sending back to client
+            const serializedProfiles = finalProfiles.data.map(p => p.toJSON ? p.toJSON() : p);
+    
+            return res.json({ success: true, data: serializedProfiles });
+        } 
+        catch (error) 
+        {
+            return res.json({ success: false, message: error.message });
         }
-
-        const finalProfiles = await storage.getUserProfiles(userId);
-        return res.json({ success: true, data: finalProfiles.data });
-    } catch (error) {
-        return res.json({ success: false, message: error.message });
-    }
-});
+    });
 
 /**
  * @route POST /logout
@@ -260,12 +295,21 @@ app.post('/save-profiles', async (req, res) => {
  * @param {string} req.body.sessionToken
  * @returns {Object} {success: boolean}
  */
-app.post('/logout', (req, res) => {
-    const { sessionToken } = req.body;
-    if (sessionToken) {
-        sessionManager.removeSession(sessionToken);
+app.post('/logout', (req, res) => 
+{
+    try
+    {
+        const { sessionToken } = req.body;
+        if (sessionToken) 
+        {
+            sessionManager.removeSession(sessionToken);
+        }
+        return res.json({ success: true });
     }
-    return res.json({ success: true });
+    catch (error)
+    {
+        return res.json({ success: false, message: error.message });
+    }
 });
 
 /**
@@ -346,14 +390,14 @@ app.post('/select-media-item', async (req, res) => {
         if (!sessionToken) return res.json({ success: false, message: 'Session token is required' });
 
         const userId = sessionManager.getUserIdByToken(sessionToken);
-        if (userId === undefined || userId === null) {
+        if (userId === undefined) {
             return res.json({ success: false, message: 'Invalid or expired session' });
         }
 
         const watchRes = await storage.addMediaToWatchHistory(userId, profileID, mediaID);
         if (!watchRes.success) return res.json({ success: false, message: watchRes.message });
 
-        return res.json({ success: true, data: watchRes.data.profile });
+        return res.json({ success: true, data: watchRes.data.profile.toJSON() });
     } catch (error) {
         return res.json({ success: false, message: error.message });
     }

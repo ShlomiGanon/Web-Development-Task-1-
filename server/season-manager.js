@@ -53,6 +53,7 @@ class SessionManager
      */
     getUserIdByToken(token)
     {
+        console.log(`getUserIdByToken: ${token} , user_id: ${this.token_2_user_id[token]}`);
         return this.token_2_user_id[token];
     }
 

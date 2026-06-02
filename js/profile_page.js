@@ -114,11 +114,25 @@ async function search_on_click()
 }
 async function handleToggleLike(mediaID)
 {
-    const response = await ClientSessionManager.toggleLike(mediaID);
+    const response = await ClientSessionManager.toggleMediaLike(mediaID);
     if (!response || !response.success)
     {
         console.error("Failed to toggle like");
         return;
+    }
+    else
+    {
+        let pressed_media = Media_Items.find(m => m.id === mediaID);
+        if (pressed_media)
+        {
+            pressed_media.likes = response.data.media.likes;
+        }
+        else
+        {
+            console.error("Failed to find media");
+        }
+        activeProfile = Profile.fromJSON(response.data.profile);
+        await refreshDisplay();
     }
 }
 async function click_on_media_item(mediaID)
@@ -130,7 +144,10 @@ async function click_on_media_item(mediaID)
         console.error("Failed to select media");
         return;
     }
-    activeProfile = response.data;
+    else
+    {
+        activeProfile = response.data;
+    }
     await refreshDisplay();
 }
 

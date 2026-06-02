@@ -55,7 +55,6 @@ async function Login_Click()
         if (response && response.success)
         {
             UI.ShowMessage("התחברות בוצעה בהצלחה");
-            
             setTimeout(() => 
             {
                 UI.GoToLink('../html/profiles.html'); 

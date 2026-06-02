@@ -26,7 +26,7 @@ export class ClientSessionManager
         const response = await Backend.attemptLoginByEmail(email, password);
         if (response.success) 
         {
-            setCookie(COOKIE_SESSION_KEY, response.sessionToken, rememberMe ? 30 : null);
+            setCookie(COOKIE_SESSION_KEY, response.data.sessionToken, rememberMe ? 30 : null);
         }
         return response;
     }
@@ -36,7 +36,7 @@ export class ClientSessionManager
         const response = await Backend.attemptLoginByPhone(phone, password);
         if (response.success) 
         {
-            setCookie(COOKIE_SESSION_KEY, response.sessionToken, rememberMe ? 30 : null);
+            setCookie(COOKIE_SESSION_KEY, response.data.sessionToken, rememberMe ? 30 : null);
         }
         return response;
     }
@@ -58,7 +58,6 @@ export class ClientSessionManager
             catch (e)
             {
                 console.error("Failed to cleanly logout from backend:", e);
-                return { success: false, message: e.message };
             }
         }
         deleteCookie(COOKIE_SESSION_KEY);
@@ -105,7 +104,7 @@ export class ClientSessionManager
 
         sessionStorage.setItem(STORAGE_PROFILE_KEY, profile.id);
         
-        return { success: true, data: Profile.fromJSON(profile.toJSON()) };
+        return { success: true, data: Profile.fromJSON(profile) };
     }
 
     static async getActiveProfile() 
@@ -129,7 +128,7 @@ export class ClientSessionManager
         }
 
         const profile = userResponse.data.profiles.find(p => p.id === Number(activeProfileID));
-        return profile ? Profile.fromJSON(profile.toJSON()) : null;
+        return profile ? Profile.fromJSON(profile) : null;
     }
 
     static async saveProfiles(profilesArray) 

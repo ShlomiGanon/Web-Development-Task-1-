@@ -281,7 +281,7 @@ class MemoryStorage extends StorageContract
         
         profile.LastWatched_Media_IDs = profile.LastWatched_Media_IDs.slice(0, Constants.MAX_LAST_WATCHED_MEDIA_LIMIT);
         
-        return { success: true, message: "Media added to watch history successfully" , data: { profile: profile.toJSON()}};
+        return { success: true, message: "Media added to watch history successfully" , data: { profile: profile.clone()}};
     }
 
     /** 
