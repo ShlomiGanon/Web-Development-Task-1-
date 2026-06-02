@@ -78,6 +78,7 @@ export class HttpClient extends Interface_BackendAPI
     async getAllMediaItems()
     {
         const result = await this._http_post_request('/get-all-media-items', {});
+        console.log("getAllMediaItems result: ", JSON.stringify(result));
         return { 
             ...result, 
             data: result.success ? result.data.map(item => MediaItem.fromJSON(item)) : [] 

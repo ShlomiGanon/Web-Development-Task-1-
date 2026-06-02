@@ -113,19 +113,19 @@ export class UserInfo
 
 export class MediaItem
 {
-    constructor(id, name, coverImageName = null, likes = 0) 
+    constructor(id, name, cover_imageName = "UNDEFINED.png", likes = 0) 
     {
         this.id = Number(id);
         this.name = name;
-        this.coverImageName = coverImageName ? coverImageName : "UNDEFINED.png";
-        this.likes = likes;
+        this.cover_imageName = cover_imageName;
+        this.likes = Number(likes);
     }
 
     static fromJSON(rawObject)
     {
         if (!rawObject) return null;
 
-        return new MediaItem(rawObject.id, rawObject.name, rawObject.coverImageName, rawObject.likes);
+        return new MediaItem(rawObject.id, rawObject.name, rawObject.cover_imageName, rawObject.likes);
     }
 }
 

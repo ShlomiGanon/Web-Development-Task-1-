@@ -35,7 +35,7 @@ async function renderLastWatched()
     {
         const isLiked = activeProfile.wasLiked_Media_IDs.has(item.id);
         
-        const cover_imageName = item.coverImageName || 'UNDEFINED.png';
+        const cover_imageName = item.cover_imageName || 'UNDEFINED.png';
         return `
             <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
                 <img src="../assets/covers/${cover_imageName}" class="img-fluid rounded movie_image" alt="${item.name}" onclick="click_on_media_item(${item.id})">
@@ -71,7 +71,7 @@ async function renderAllMovies(searchValue = '')
     filteredData.forEach(item => 
     {
         const isLiked = activeProfile ? activeProfile.wasLiked_Media_IDs.has(item.id) : false;
-        const cover_imageName = item.coverImageName || 'UNDEFINED.png';
+        const cover_imageName = item.cover_imageName || 'UNDEFINED.png';
         htmlContent += `
             <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
                 <img src="../assets/covers/${cover_imageName}" 
@@ -183,7 +183,7 @@ async function init()
         all_movies_container.innerHTML = "ERROR GETTING MEDIA ITEMS";
         return;
     }
-    Media_Items = response.data.map(item => MediaItem.fromJSON(item));
+    Media_Items = response.data;
 
     await refreshDisplay();
     
