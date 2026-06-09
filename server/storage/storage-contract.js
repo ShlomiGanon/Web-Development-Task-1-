@@ -56,12 +56,12 @@ class StorageContract
     * */
    //update multiple profiles at once (but update only the name and image name)
    //to add new profiles, set the profile.id to undefined
-    async syncProfileSummaries(userId, profiles) 
+    async updateProfiles(userId, profiles) 
     { throw new Error("Method not implemented."); }
     
     //update an exist only profile (it will update all the profile fields)
     //if the profile id is undefined, this will reject the operation
-    async updateProfileActivity(userId, profile) { throw new Error("Method not implemented."); }
+    async updateProfile(userId, profile) { throw new Error("Method not implemented."); }
     // ==========================================
     // Media & Interaction
     // ==========================================

@@ -1,23 +1,23 @@
-const constants = require('./constances.js');
+const constants = require('./constants.js');
 
 /**
  * A class to store the user information.
  * @param {string} id - The unique identifier of the user.
  * @param {string} email - The email of the user.
  * @param {string} phone - The phone number of the user.
- * @param {string} full_name - The full name of the user.
+ * @param {string} fullName - The full name of the user.
  * @param {Array<UserProfile>} profiles - The profiles of the user.
  * @param {string} password - The password of the user.
  */
 class User 
 {
-    constructor(id, email, phone, full_name, profiles, password) 
+    constructor(id, email, phone, fullName, profiles, password) 
     {
         this.id = id;
         this.email = email;
         this.phone = phone;
-        this.full_name = full_name;
-        this.profiles = (profiles || []).map(p => p instanceof UserProfile ? p : UserProfile.fromJSON(p));
+        this.fullName = fullName;
+        this.profiles = (profiles || []).map(p => p instanceof UserProfile ? p.clone() : UserProfile.fromJSON(p));
         this.password = password;
     }
     
@@ -27,8 +27,9 @@ class User
      */
     clone()
     {
-        return new User(this.id, this.email, this.phone, this.full_name, this.profiles.map(p => p.clone()), this.password);
+        return new User(this.id, this.email, this.phone, this.fullName, this.profiles, this.password);
     }
+
     /**
      * Static method to create a User instance from a raw JSON object.
      * @param {Object} rawObject - The raw JSON object to create a User instance from.
@@ -37,12 +38,12 @@ class User
     static fromJSON(rawObject) 
     {
         if (!rawObject) return null;
-        if (rawObject instanceof User) return rawObject;
+        if (rawObject instanceof User) throw new Error("Invalid JSON: this is already a User instance");
         return new User(
             rawObject.id,
             rawObject.email, 
             rawObject.phone, 
-            rawObject.full_name, 
+            rawObject.fullName, 
             rawObject.profiles, 
             rawObject.password 
         );
@@ -58,7 +59,7 @@ class User
             id: this.id,
             email: this.email,
             phone: this.phone,
-            full_name: this.full_name,
+            fullName: this.fullName,
             profiles: this.profiles.map(p => p.toJSON()),
             password: this.password
         };
@@ -85,22 +86,22 @@ class UserProfile
      * @param {string} id - The unique identifier of the user profile.
      * @param {string} name - The name of the user profile.
      * @param {string} [imageName="profile1.png"] - The name of the image file for the user profile.
-     * @param {Array<number>} [LastWatched_Media_IDs=[]] - The array of media item IDs last watched by the user profile.
-     * @param {Set<number>|Array<number>} [wasLiked_Media_IDs=[]] - The collection of media item IDs liked by the user profile. Will be stored internally as a Set.
+     * @param {Array<string>} [LastWatched_Media_IDs = []] - The array of media item IDs last watched by the user profile.
+     * @param {Set<string>} [wasLiked_Media_IDs = new Set()] - The collection of media item IDs liked by the user profile. Will be stored internally as a Set.
      */
-    constructor(id, name, imageName = "UNDEFINED_PROFILE.png", LastWatched_Media_IDs = [], wasLiked_Media_IDs = []) 
+    constructor(id, name, imageName = null, LastWatched_Media_IDs = [], wasLiked_Media_IDs = new Set()) 
     {
         this.id = id;
         this.name = name;
         
-        this.imageName = imageName ? imageName : "profile1.png";
+        this.imageName = imageName ? imageName : "UNDEFINED_PROFILE.png";
         
         const rawWatchIDs = Array.isArray(LastWatched_Media_IDs) ? LastWatched_Media_IDs : [];
         this.LastWatched_Media_IDs = rawWatchIDs.slice(0, constants.MAX_LAST_WATCHED_MEDIA_LIMIT);
         
         if (wasLiked_Media_IDs instanceof Set) 
         {
-            this.wasLiked_Media_IDs = wasLiked_Media_IDs;
+            this.wasLiked_Media_IDs = new Set(wasLiked_Media_IDs);
         } 
         else
         {
@@ -115,8 +116,9 @@ class UserProfile
      */
     clone()
     {
-        return new UserProfile(this.id, this.name, this.imageName, this.LastWatched_Media_IDs.slice(), new Set(this.wasLiked_Media_IDs));
+        return new UserProfile(this.id, this.name, this.imageName, this.LastWatched_Media_IDs, this.wasLiked_Media_IDs);
     }
+
 
     /**
      * Static method to create a Profile instance from a raw JSON object.
@@ -126,7 +128,7 @@ class UserProfile
     static fromJSON(rawObject) 
     {
         if (!rawObject) return null;
-        if (rawObject instanceof UserProfile) return rawObject;
+        if (rawObject instanceof UserProfile) throw new Error("Invalid JSON: this is already a UserProfile instance");
         return new UserProfile(
             rawObject.id,
             rawObject.name,
@@ -161,7 +163,7 @@ class Media
     {
         this.id = id;
         this.name = name;
-        this.cover_imageName = cover_imageName ? cover_imageName : "media1.png";
+        this.cover_imageName = cover_imageName ? cover_imageName : "UNDEFINED.png";
         this.likes = likes;
     }
     clone()
@@ -172,6 +174,7 @@ class Media
     static fromJSON(rawObject) 
     {
         if (!rawObject) return null;
+        if (rawObject instanceof Media) throw new Error("Invalid JSON: this is already a Media instance");
         return new Media(rawObject.id, rawObject.name, rawObject.cover_imageName, rawObject.likes);
     }
 

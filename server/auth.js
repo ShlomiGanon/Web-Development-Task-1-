@@ -1,4 +1,4 @@
-const Constants = require('./constances');
+const constants = require('./constants');
 function Is_Valid_Name(name)
 {
     return /^[a-zA-Z]+$/.test(name);
@@ -16,7 +16,7 @@ function Is_Valid_Phone(phone)
     return phoneRegex.test(phone);
 }
 
-function Is_Valid_Password(password,minLength = Constants.MIN_PASSWORD_LENGTH,maxLength = Constants.MAX_PASSWORD_LENGTH)
+function Is_Valid_Password(password,minLength = constants.MIN_PASSWORD_LENGTH,maxLength = constants.MAX_PASSWORD_LENGTH)
 {
     if(password.length < minLength || password.length > maxLength)return false;
     const passwordRegex = /^[a-zA-Z0-9!@#$%^&*()_+\-={};':"|,.<>/?]*$/;
