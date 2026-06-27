@@ -1,0 +1,225 @@
+const User = require('../models/user');
+const { tokenManagerInstance } = require('../middlewares/token_manager');
+const { Is_Valid_Name, Is_Valid_Email, Is_Valid_Phone, Is_Valid_Password, get_age_from_birthday, Hash_Password, Compare_Password } = require('../scripts/auth');
+const my_logger = require('../scripts/my_logger');
+
+
+const safe_user = (user) =>
+{
+    return {
+        id: user._id.toString(),
+        email: user.email,
+        phone: user.phone,
+        fullName: user.fullName,
+        birthday: user.birthDate,
+        createdAt: user.createdAt
+    };
+}
+
+
+
+/**
+ * Register a new user
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//req.body: { email: string, phone: string, password: string, fullName: string, birthday: string }
+//res.json: { success: boolean, message: string }
+const register = async (req, res) => 
+{
+    try 
+    {
+        const { email, phone, password, fullName, birthday } = req.body;
+        const firstName = fullName.split(' ')[0];
+        const lastName = fullName.split(' ')[1];
+        if(!firstName || !lastName)return res.json({ success: false, message: 'Invalid full name' });
+        if(!Is_Valid_Name(firstName))return res.json({ success: false, message: 'Invalid first name' });
+        if(!Is_Valid_Name(lastName))return res.json({ success: false, message: 'Invalid last name' });
+        if(!Is_Valid_Email(email))return res.json({ success: false, message: 'Invalid email' });
+        if(!Is_Valid_Phone(phone))return res.json({ success: false, message: 'Invalid phone number' });
+        if(!Is_Valid_Password(password))return res.json({ success: false, message: 'Invalid password' });
+        const birthdayDate = new Date(birthday);
+        const age = get_age_from_birthday(birthdayDate);
+        if(age < 18)return res.json({ success: false, message: 'User must be at least 18 years old' });
+        const hashedPassword = await Hash_Password(password);
+        
+        //check if the email or phone already exists
+        if(await User.findOne({ email }))return res.json({ success: false, message: 'Email already exists' });
+        if(await User.findOne({ phone }))return res.json({ success: false, message: 'Phone number already exists' });
+
+        const user = await User.create({ email, phone, password: hashedPassword, fullName, birthday: birthdayDate });
+        if(!user)return res.json({ success: false, message: 'Failed to register user' });
+        res.json({ success: true, message: 'User registered successfully' });
+        my_logger.ConsoleLog(`User registered successfully.`, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('register', `User registered successfully.`, { "user": user.toJSON() }, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error registering user: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('register', 'Error registering user.', { "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: 'Internal server error' });
+    }
+}
+
+/**
+ * Login a user by email or phone and password
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//req.body: { email_or_phone: string, password: string }
+//res.json: { success: boolean, message: string, token: string }
+const login = async (req, res) => 
+{
+    try
+    {
+        const { email_or_phone, password } = req.body;
+        let user = null;
+        if(Is_Valid_Email(email_or_phone))user = await User.findOne({ email: email_or_phone });
+        else if(Is_Valid_Phone(email_or_phone))user = await User.findOne({ phone: email_or_phone });
+        else return res.json({ success: false, message: 'Invalid email or phone' });
+        if(!user)return res.json({ success: false, message: 'User not found' });
+        const isPasswordCorrect = await Compare_Password(password, user.password);
+        if(!isPasswordCorrect)
+        {
+            my_logger.OperationLog('login', 'Invalid password.', {input_password: password} , my_logger.Log_Level.WARNING);
+            return res.json({ success: false, message: 'Invalid password' });
+        }
+        const token = tokenManagerInstance.addUserToken(user._id.toString());
+        res.json({ success: true, message: 'Login successful', "token": token });
+        my_logger.ConsoleLog(`User logged in successfully for email: ${user.email}.`, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('login', 'User logged in successfully.', { "user": safe_user(user), "token": token }, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error logging in: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('login', 'Error logging in.', { "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: 'Internal server error' });
+    }
+}
+
+
+/**
+ * Get the current user's profile information
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//req.body: { user: Object }
+//res.json: { success: boolean, message: string, user: { id: string, email: string, phone: string, fullName: string, birthday: string } }
+const getUser = async (req, res) => 
+{
+    try
+    {
+        const user_id = req.user_id;
+        const user = await User.findById(user_id);
+        if(!user)
+        {
+            return res.json({ success: false, message: 'User not found' });
+        }
+        my_logger.ConsoleLog(`User found.`, my_logger.Log_Level.INFO);
+        const logUser = safe_user(user);
+        my_logger.OperationLog('getUser', `User found.`, { "user": logUser }, my_logger.Log_Level.INFO);
+        res.json({ success: true, message: 'User found', user: logUser });
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error getting user: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('getUser', 'Error getting user.', { "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: 'Internal server error' });
+    }
+}
+
+
+/**
+ * Update the current user's profile information
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//req.body: { user_id: String, data: Object }
+//data: { email: String, phone: String, fullName: String, birthday: String }
+//res.json: { success: boolean, message: string, user: { id: string, email: string, phone: string, fullName: string, birthday: string } }
+const updateUser = async (req, res) => 
+{
+    try
+    {
+        const user_id = req.user_id;
+        const current_user = await User.findById(user_id);
+        if(!current_user)return res.json({ success: false, message: 'User not found' });
+        let changes = {};
+        let old_data = {};
+        if(req.body.email && req.body.email !== current_user.email)
+        {
+            if(!Is_Valid_Email(req.body.email))return res.json({ success: false, message: 'Invalid email' });
+            if(await User.findOne({ email: req.body.email }))return res.json({ success: false, message: 'Email already exists' });
+            changes.email = req.body.email;
+            old_data.email = current_user.email;
+        }
+        if(req.body.phone && req.body.phone !== current_user.phone)
+        {
+            if(!Is_Valid_Phone(req.body.phone))return res.json({ success: false, message: 'Invalid phone number' });
+            if(await User.findOne({ phone: req.body.phone }))return res.json({ success: false, message: 'Phone number already exists' });
+            changes.phone = req.body.phone;
+            old_data.phone = current_user.phone;
+        }
+        if(req.body.fullName && req.body.fullName !== current_user.fullName)
+        {
+            if(!Is_Valid_Name(req.body.fullName))return res.json({ success: false, message: 'Invalid full name' });
+            changes.fullName = req.body.fullName;
+            old_data.fullName = current_user.fullName;
+        }
+        if(req.body.birthday && req.body.birthday !== current_user.birthday)
+        {
+            const birthdayDate = new Date(req.body.birthday);
+            const age = get_age_from_birthday(birthdayDate);
+            if(age < 18)return res.json({ success: false, message: 'User must be at least 18 years old' });
+            changes.birthday = birthdayDate;
+            old_data.birthday = current_user.birthday;
+        }
+        
+        if(Object.keys(changes).length === 0)return res.json({ success: false, message: 'No changes to update' });
+        const user = await User.findByIdAndUpdate(user_id, changes, { new: true });
+        if(!user)
+        {
+            my_logger.ConsoleLog(`Failed to update user! [request_uid: ${user_id}]`, my_logger.Log_Level.ERROR);
+            my_logger.OperationLog('updateUser', 'Failed to update user! Please try again later.', { "request_uid": user_id, "update_result": user}, my_logger.Log_Level.ERROR);
+            return res.json({ success: false, message: 'Failed to update user! Please try again later.' });
+        }
+
+        my_logger.ConsoleLog(`User updated successfully.`, my_logger.Log_Level.INFO);
+        const logUser = safe_user(user);
+        my_logger.OperationLog('updateUser', `User updated successfully.`, { "old_data": old_data, "changes": changes, "user": logUser }, my_logger.Log_Level.INFO);
+        res.json({ success: true, message: 'User updated successfully', user: logUser });
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error updating user: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('updateUser', 'Error updating user.', { "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: 'Internal server error' });
+    }
+}
+
+const searchUsers = async (req, res) => 
+{
+    try
+    {
+        const query = User.buildQuery(req.query);
+        const limit = req.query.limit || 10;
+        const skip = req.query.skip || 0;
+        const sort = req.query.sort || 'createdAt';
+        const sortOrder = req.query.sortOrder || 'desc';
+        const users = await User.find(query).limit(limit).skip(skip).sort({ [sort]: sortOrder });
+        res.json({ success: true, message: 'Users searched successfully', users: users.map(user => safe_user(user)) });
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error searching users: ${error}`, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: `Internal server error!` });
+    }
+}
+
+
+
+module.exports = { register, login, getUser, updateUser, searchUsers };
