@@ -1,6 +1,7 @@
 const my_logger = require('../scripts/my_logger');
 const { permissionManagerInstance, Premmision_Level } = require('../middlewares/permission_manager');
-
+const User = require('../models/user');
+const { safe_user } = require('./user_controller');
 /**
  * Set permission level for a user
  * @param {Object} req - The request object
@@ -49,4 +50,42 @@ const setPermissionLevel = async (req, res) =>
     }
 }
 
-module.exports = { setPermissionLevel };
+const searchUsers = async (req, res) => 
+    {
+        try
+        {
+            const query = User.buildQuery(req.query);
+            const limit = req.query.limit || 10;
+            const skip = req.query.skip || 0;
+            const sort = req.query.sort || 'createdAt';
+            const sortOrder = req.query.sortOrder || 'desc';
+            const users = await User.find(query).limit(limit).skip(skip).sort({ [sort]: sortOrder });
+            res.json({ success: true, message: 'Users searched successfully', users: users.map(user => safe_user(user)) });
+        }
+        catch (error)
+        {
+            my_logger.ConsoleLog(`Error searching users: ${error}`, my_logger.Log_Level.ERROR);
+            res.json({ success: false, message: `Internal server error!` });
+        }
+    }
+
+const deleteUser = async (req, res) => 
+{
+    try
+    {
+        const user_id = req.params.user_id;
+        const user = await User.findByIdAndDelete(user_id);
+        if(!user)return res.json({ success: false, message: 'User not found!' });
+        res.json({ success: true, message: 'User deleted successfully' });
+        my_logger.ConsoleLog(`User deleted successfully. [user_id: ${user_id}]`, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('deleteUser', 'User deleted successfully.', { "deleted_user": safe_user(user), "activated_by_user_id": req.user_id }, my_logger.Log_Level.INFO);
+    }
+
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error deleting user: ${error}`, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: `Internal server error!` });
+    }
+}
+
+module.exports = { setPermissionLevel, searchUsers, deleteUser };

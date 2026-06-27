@@ -13,7 +13,7 @@ if (!fs.existsSync(`${logDirectory}/${operationDirectoryName}`))
     fs.mkdirSync(`${logDirectory}/${operationDirectoryName}`);
 }
 
-exports.Log_Level = 
+const Log_Level = 
 {
     ERROR: 'error',
     WARNING: 'warning',
@@ -21,7 +21,7 @@ exports.Log_Level =
     DEBUG: 'debug'
 }
 
-function ConsoleLog(message, level = exports.Log_Level.INFO)
+function ConsoleLog(message, level = Log_Level.INFO)
 {
     const timestamp = new Date().toISOString();
     console.log(`[${timestamp}] [${level}] ${message}`);
@@ -29,7 +29,7 @@ function ConsoleLog(message, level = exports.Log_Level.INFO)
 //operation: string -> the operation name
 //message: string -> the message of the operation
 //data: object -> the data of the operation
-function OperationLog(operation , message , data, level = exports.Log_Level.INFO)
+function OperationLog(operation , message , data, level = Log_Level.INFO)
 {
     //write the data to the operation log file
     const timestamp = new Date().toISOString();
@@ -38,4 +38,4 @@ function OperationLog(operation , message , data, level = exports.Log_Level.INFO
     fs.appendFileSync(logFile, logEntry + '\n');
 }
 
-module.exports = { ConsoleLog, OperationLog };
+module.exports = { ConsoleLog, OperationLog, Log_Level };

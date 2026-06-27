@@ -201,25 +201,7 @@ const updateUser = async (req, res) =>
     }
 }
 
-const searchUsers = async (req, res) => 
-{
-    try
-    {
-        const query = User.buildQuery(req.query);
-        const limit = req.query.limit || 10;
-        const skip = req.query.skip || 0;
-        const sort = req.query.sort || 'createdAt';
-        const sortOrder = req.query.sortOrder || 'desc';
-        const users = await User.find(query).limit(limit).skip(skip).sort({ [sort]: sortOrder });
-        res.json({ success: true, message: 'Users searched successfully', users: users.map(user => safe_user(user)) });
-    }
-    catch (error)
-    {
-        my_logger.ConsoleLog(`Error searching users: ${error}`, my_logger.Log_Level.ERROR);
-        res.json({ success: false, message: `Internal server error!` });
-    }
-}
 
 
 
-module.exports = { register, login, getUser, updateUser, searchUsers };
+module.exports = { register, login, getUser, updateUser , safe_user};

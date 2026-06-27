@@ -1,7 +1,7 @@
 const my_logger = require('../scripts/my_logger');
 const fs = require('fs');
 const path = require('path');
-const Premmision_Level = 
+const Permmision_Level = 
 {
     SUPER_ADMIN: 2,
     ADMIN: 1,
@@ -30,9 +30,9 @@ class PermissionManager
         this.authorized_list = JSON.parse(data);
     }
 
-    setPermissionLevel(admin_key, permission_level = Premmision_Level.ADMIN)
+    setPermissionLevel(admin_key, permission_level = Permmision_Level.ADMIN)
     {
-        if(permission_level < Premmision_Level.ADMIN)return false;
+        if(permission_level < Permmision_Level.ADMIN)return false;
         this.authorized_list[admin_key] = permission_level;
         this.save();
         return true;
@@ -48,7 +48,7 @@ class PermissionManager
 
     isAdmin(admin_key)
     {
-        return this.isHavingPermissionLevel(admin_key, Premmision_Level.ADMIN);
+        return this.isHavingPermissionLevel(admin_key, Permmision_Level.ADMIN);
     }
 
     isHavingPermissionLevel(admin_key, permission_level_threshold)
@@ -60,14 +60,14 @@ class PermissionManager
 
     getPermissionLevel(admin_key)
     {
-        return this.authorized_list[admin_key] || Premmision_Level.USER;
+        return this.authorized_list[admin_key] || Permmision_Level.USER;
     }
 }
 
 const permissionManagerInstance = new PermissionManager()
 
 
-const adminAuthorizationPermissionLevel = (permission_level_threshold = Premmision_Level.ADMIN) => {
+const adminAuthorizationPermissionLevel = (permission_level_threshold = Permmision_Level.ADMIN) => {
     return (req, res, next) => 
     {
         const admin_key = req.user_id;
@@ -89,6 +89,6 @@ const adminAuthorizationPermissionLevel = (permission_level_threshold = Premmisi
     };
 }
 
-const adminAuthorization = adminAuthorizationPermissionLevel(Premmision_Level.ADMIN);
+const adminAuthorization = adminAuthorizationPermissionLevel(Permmision_Level.ADMIN);
 
-module.exports = { permissionManagerInstance, adminAuthorization, adminAuthorizationPermissionLevel };
+module.exports = { permissionManagerInstance, adminAuthorization, adminAuthorizationPermissionLevel , Permmision_Level};

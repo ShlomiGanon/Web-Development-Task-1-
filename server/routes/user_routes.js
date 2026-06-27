@@ -3,7 +3,7 @@ const router = express.Router();
 const userController = require('../controllers/user_controller');
 const adminController = require('../controllers/admin_controller');
 const { tokenVerification, removeTokenRequest } = require('../middlewares/token_manager');
-const { adminAuthorization, adminAuthorizationPermissionLevel, Premmision_Level } = require('../middlewares/permission_manager');
+const { adminAuthorization, adminAuthorizationPermissionLevel, Permmision_Level } = require('../middlewares/permission_manager');
 
 // --- Public routes: No authentication required ---
 
@@ -33,6 +33,6 @@ router.patch('/set_permission_level', tokenVerification, adminAuthorization, adm
 router.get('/search', tokenVerification, adminAuthorization, adminController.searchUsers);
 
 // Permanently delete a user account by their ID (super admin only)
-router.delete('/delete', tokenVerification, adminAuthorizationPermissionLevel(Premmision_Level.SUPER_ADMIN), adminController.deleteUser);
+router.delete('/delete', tokenVerification, adminAuthorizationPermissionLevel(Permmision_Level.SUPER_ADMIN), adminController.deleteUser);
 
 module.exports = router;
