@@ -2,3 +2,5 @@ __pycache__/
 .vscode/
 .env
 node_modules/
+server/data/
+server/logs/
