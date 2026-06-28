@@ -8,6 +8,10 @@ const Permmision_Level =
     USER: 0
 }
 
+const PermissionLookup = Object.fromEntries(
+    Object.entries(Permmision_Level).map(([key, val]) => [val, key])
+);
+
 class PermissionManager
 {
     constructor(save_path = path.join(__dirname, '../data/permission_manager.json'))
@@ -32,6 +36,7 @@ class PermissionManager
 
     setPermissionLevel(admin_key, permission_level = Permmision_Level.ADMIN)
     {
+        if (PermissionLookup[permission_level] === undefined) return false;
         if(permission_level < Permmision_Level.ADMIN)return false;
         this.authorized_list[admin_key] = permission_level;
         this.save();

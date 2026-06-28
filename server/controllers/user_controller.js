@@ -48,7 +48,7 @@ const register = async (req, res) =>
         if(await User.findOne({ email }))return res.json({ success: false, message: 'Email already exists' });
         if(await User.findOne({ phone }))return res.json({ success: false, message: 'Phone number already exists' });
 
-        const user = await User.create({ email, phone, password: hashedPassword, fullName, birthday: birthdayDate });
+        const user = await User.AddDefaultUser(email, hashedPassword, fullName, phone, birthdayDate);
         if(!user)return res.json({ success: false, message: 'Failed to register user' });
         res.json({ success: true, message: 'User registered successfully' });
         my_logger.ConsoleLog(`User registered successfully.`, my_logger.Log_Level.INFO);
