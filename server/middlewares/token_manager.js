@@ -59,20 +59,20 @@ const tokenVerification = (req, res, next) =>
 
     if (!token)
     {
-        return res.json({ success: false, data: null, message: "Token missing or invalid" });
+        return res.json({ success: false, message: "Token missing or invalid" });
     }
 
     // Use the single instance to verify the token
     const userId = tokenManagerInstance.getUserIdByToken(token);
     
-    if (!userId)
+    if (userId === undefined)
     {
-        return res.json({ success: false, data: null, message: "Session expired or invalid token" });
+        return res.json({ success: false, message: "Session expired or invalid token" });
     }
 
     // Attach user info to request object
     req.user_id = userId;
-    req.token = undefined;//remove the token from the request object
+    delete req.headers['authorization']; // remove the token so downstream middleware/controllers can't see it
     next();
 }
 
@@ -83,7 +83,7 @@ const removeTokenRequest = (req, res) =>
 
     if (!token)
     {
-        return res.json({ success: false, data: null, message: "Token missing or invalid" });
+        return res.json({ success: false, message: "Token missing or invalid" });
     }
     tokenManagerInstance.removeUserToken(token);
     return res.json({ success: true, message: "Token removed successfully" });

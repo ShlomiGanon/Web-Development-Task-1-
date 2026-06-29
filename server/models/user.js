@@ -129,31 +129,56 @@ userSchema.methods.removeProfile = async function(profileId) {
     }
 };
 
-userSchema.statics.searchFilterMap = {
-    'born_after':   { dbField: 'birthDate', operator: '$gte' },
-    'born_before':  { dbField: 'birthDate', operator: '$lte' },
-    'joined_after': { dbField: 'createdAt', operator: '$gte' },
-    'joined_before':{ dbField: 'createdAt', operator: '$lte' },
-    'email_starts': { dbField: 'email',     operator: 'regex_start' },
-    'phone_starts': { dbField: 'phone',     operator: 'regex_start' }
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const regexPatternBuilders = {
+    regex_start:    (value) => `^${escapeRegex(value)}`,
+    regex_end:      (value) => `${escapeRegex(value)}$`,
+    regex_contains: (value) => `${escapeRegex(value)}`,
 };
 
-userSchema.statics.buildQuery = function(query) {
+userSchema.statics.searchFilterMap = {
+    // Date range filters
+    'born_after':      { dbField: 'birthDate', operator: '$gte', type: 'date' },
+    'born_before':     { dbField: 'birthDate', operator: '$lte', type: 'date' },
+    'joined_after':    { dbField: 'createdAt', operator: '$gte', type: 'date' },
+    'joined_before':   { dbField: 'createdAt', operator: '$lte', type: 'date' },
+
+    // String filters — starts / ends / contains for each searchable field
+    'email_starts':    { dbField: 'email',    operator: 'regex_start',    type: 'string' },
+    'email_ends':      { dbField: 'email',    operator: 'regex_end',      type: 'string' },
+    'email_contains':  { dbField: 'email',    operator: 'regex_contains', type: 'string' },
+
+    'phone_starts':    { dbField: 'phone',    operator: 'regex_start',    type: 'string' },
+    'phone_ends':      { dbField: 'phone',    operator: 'regex_end',      type: 'string' },
+    'phone_contains':  { dbField: 'phone',    operator: 'regex_contains', type: 'string' },
+
+    'fullname_starts':   { dbField: 'fullName', operator: 'regex_start',    type: 'string' },
+    'fullname_ends':     { dbField: 'fullName', operator: 'regex_end',      type: 'string' },
+    'fullname_contains': { dbField: 'fullName', operator: 'regex_contains', type: 'string' },
+};
+
+userSchema.statics.buildQuery = function(rawQuery) {
     const dbFilter = {};
     const map = this.searchFilterMap;
 
-    for (const [key, value] of Object.entries(query)) {
+    for (const [key, value] of Object.entries(rawQuery)) {
         if (!map[key]) continue;
 
-        const { dbField, operator } = map[key];
+        const { dbField, operator, type } = map[key];
 
-        if (operator === 'regex_start') {
-            dbFilter[dbField] = { $regex: `^${value}`, $options: 'i' };
-        } else {
+        if (type === 'date')
+        {
+            // Merge multiple conditions on the same field (e.g. joined_after + joined_before)
             if (!dbFilter[dbField]) dbFilter[dbField] = {};
             dbFilter[dbField][operator] = new Date(value);
         }
+        else if (type === 'string')
+        {
+            dbFilter[dbField] = { $regex: regexPatternBuilders[operator](value), $options: 'i' };
+        }
     }
+
     return dbFilter;
 };
 

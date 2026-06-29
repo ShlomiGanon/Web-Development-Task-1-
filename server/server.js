@@ -13,14 +13,14 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api', routes);
 
-app.listen(PORT, HOST, () => 
+const server = app.listen(PORT, HOST, async () => 
 {
-    connectDB();
+    await connectDB();
     my_logger.ConsoleLog(`Server is running on port ${PORT} and host ${HOST}`, my_logger.Log_Level.INFO);
     my_logger.OperationLog('server', `Server is running on port ${PORT} and host ${HOST}`, {}, my_logger.Log_Level.INFO);
-}).on('close', () => 
+}).on('close', async () => 
 {
-    disconnectDB();
+    await disconnectDB();
     my_logger.ConsoleLog('Server is shutting down', my_logger.Log_Level.INFO);
     my_logger.OperationLog('server', 'Server is shutting down', {}, my_logger.Log_Level.INFO);
 });
@@ -29,9 +29,20 @@ async function ConsoleSetPermission(user_id, permission_level)
 {
     const user = await User.findById(user_id);
     if(!user)return false;
-    if(permission_level == PM.PermissionLevel.USER)return PM.PermissionManagerInstance.removePermissionLevel(user_id);
-    return PM.PermissionManagerInstance.setPermissionLevel(user_id, permission_level);
+    if(permission_level === PM.Permmision_Level.USER)return PM.permissionManagerInstance.removePermissionLevel(user_id);
+    return PM.permissionManagerInstance.setPermissionLevel(user_id, permission_level);
 }
+
+// Shutdown the server and the readline interface after 3 seconds if the server is not closed
+function shutdown()
+{
+    server.close();
+    rl.close();
+    setTimeout(() => process.exit(0), 3000).unref();
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 //-------------------- CMDS ----------------
 const readline = require('readline');
@@ -49,33 +60,42 @@ const rl = readline.createInterface(
 rl.on('line', async (line) => 
 {
     const [cmd , ...params] = line.split(' ');
-
-    if (cmd === 'setpermission')
+    switch(cmd.toLowerCase())
     {
-        if(params.length < 2)
+        case 'closeserver':
         {
-            console.log('[Console] Usage: setpermission <email> <permission_level>');
+            shutdown();
+            break;
+        }
+        case 'setpermission':
+        {
+
+            if(params.length < 2)
+            {
+                console.log('Usage: SetPermission <email> <permission_level>');
+                return;
+            } 
+            const email = params[0];
+            const level = parseInt(params[1]);
+            const user = await User.findOne({ email });
+            if(!user)
+            {
+                console.log(`SetPermission: User with email ${email} not found`);
+                return;
+            }
+            const success = await ConsoleSetPermission(String(user._id), level);
+            if (success)console.log(`SetPermission: Permission updated for user: ${user.email} to level ${level}`);
+            else console.log(`SetPermission: Failed to update user: ${user.email}`);
+            break;
+        }
+        default:
+        {
+            console.log(`Command not found: ${cmd}`);
             return;
-        }
-        const email = params[0];
-        const user = await User.findOne({ email });
-        if(!user)
-        {
-            console.log(`[Console] User with email ${email} not found`);
-            return;
-        }
-        const level = parseInt(params[1]);
-        const success = await ConsoleSetPermission(user._id, level);
-        
-        if (success)
-        {
-            console.log(`[Console] Permission updated for user: ${user.email}`);
-        }
-        else
-        {
-            console.log(`[Console] Failed to update user: ${user.email}`);
         }
     }
 });
+
+
 
 module.exports = app;

@@ -96,4 +96,13 @@ const adminAuthorizationPermissionLevel = (permission_level_threshold = Permmisi
 
 const adminAuthorization = adminAuthorizationPermissionLevel(Permmision_Level.ADMIN);
 
-module.exports = { permissionManagerInstance, adminAuthorization, adminAuthorizationPermissionLevel , Permmision_Level};
+// const exportedData = { permissionManagerInstance, adminAuthorization, adminAuthorizationPermissionLevel, Permmision_Level };
+// console.log("DEBUG: Exporting object:", exportedData);
+module.exports = { 
+    get permissionManagerInstance() {
+        return permissionManagerInstance;
+    },
+    adminAuthorization, 
+    adminAuthorizationPermissionLevel, 
+    Permmision_Level
+};
