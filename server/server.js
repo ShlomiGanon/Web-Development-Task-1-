@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+require("dotenv").config();// load the environment variables from the .env file
 const express = require('express');
 const User = require('./models/user.js');
 const PM = require('./middlewares/permission_manager.js');
@@ -52,7 +53,7 @@ const rl = readline.createInterface(
     {
         input: process.stdin,
         output: process.stdout,
-        terminal: true
+        terminal: true 
     }
 );
 
