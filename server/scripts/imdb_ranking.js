@@ -22,7 +22,8 @@ async function getImdbRatingKeyLess(title, { year, type } = {})
     const response = await fetch(url);
     if (!response.ok)
     {
-        throw new Error(`Network error: ${response.status}`);
+        const body = await response.text().catch(() => "");
+        throw new Error(`Network error: ${response.status} - ${body}`);
     }
     const data = await response.json();
 
@@ -72,7 +73,8 @@ async function getImdbRatingWithKey(title, { year, type } = {})
     const response = await fetch(url);
     if (!response.ok)
     {
-        throw new Error(`Network error: ${response.status}`);
+        const body = await response.text().catch(() => "");
+        throw new Error(`Network error: ${response.status} - ${body}`);
     }
     const data = await response.json();
 
