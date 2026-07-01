@@ -33,6 +33,12 @@ class TokenManager
         }
     }
 
+    deleteAllTokens()
+    {
+        this.token_2_user_id = {};
+        this.user_id_2_tokens = {};
+    }
+
     getUserIdByToken(token)
     {
         return this.token_2_user_id[token];

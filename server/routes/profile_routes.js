@@ -21,7 +21,8 @@ router.put('/update/:profileId', authorizeProfileAccess, profileController.updat
 router.put('/update_all', profileController.updateAllProfiles);
 
 // Route to get a specific profile or list all profiles for the user
-router.get('/get/:profileId?', profileController.getProfile);
+router.get('/get', profileController.getProfile);
+router.get('/get/:profileId', profileController.getProfile);
 
 // Route to get the details of a specific profile
 router.get('/get_details/:profileId', authorizeProfileAccess, profileController.getProfileDetails);

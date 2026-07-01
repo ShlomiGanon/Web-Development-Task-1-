@@ -33,6 +33,6 @@ router.patch('/set_permission_level', tokenVerification, adminAuthorization, adm
 router.get('/search', tokenVerification, adminAuthorization, adminController.searchUsers);
 
 // Permanently delete a user account by their ID (super admin only)
-router.delete('/delete', tokenVerification, adminAuthorizationPermissionLevel(Permmision_Level.SUPER_ADMIN), adminController.deleteUser);
+router.delete('/delete/:user_id', tokenVerification, adminAuthorizationPermissionLevel(Permmision_Level.SUPER_ADMIN), adminController.deleteUser);
 
 module.exports = router;

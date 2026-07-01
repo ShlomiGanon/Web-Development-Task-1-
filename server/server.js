@@ -3,6 +3,7 @@ require("dotenv").config();// load the environment variables from the .env file
 const express = require('express');
 const User = require('./models/user.js');
 const PM = require('./middlewares/permission_manager.js');
+const TM = require('./middlewares/token_manager.js');
 const { connectDB, disconnectDB } = require('./config/db.js');
 const my_logger = require('./scripts/my_logger.js');
 const path = require('path');
@@ -63,11 +64,16 @@ rl.on('line', async (line) =>
     const [cmd , ...params] = line.split(' ');
     switch(cmd.toLowerCase())
     {
+
+        // ------------- CLOSE SERVER -------------
         case 'closeserver':
         {
             shutdown();
             break;
         }
+
+
+        // ------------- SET PERMISSION -------------
         case 'setpermission':
         {
 
@@ -89,6 +95,16 @@ rl.on('line', async (line) =>
             else console.log(`SetPermission: Failed to update user: ${user.email}`);
             break;
         }
+
+        // ------------- DELETE ALL TOKENS -------------
+        case 'deletealltokens':
+        {
+            TM.tokenManagerInstance.deleteAllTokens();
+            console.log('All tokens deleted');
+            break;
+        }
+
+        // ------------- COMMAND NOT FOUND -------------
         default:
         {
             console.log(`Command not found: ${cmd}`);
