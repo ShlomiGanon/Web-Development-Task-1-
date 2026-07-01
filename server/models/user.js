@@ -73,9 +73,9 @@ userSchema.methods.addProfile = async function()
 
         // Create new profile
         const newProfile = await Profile.DefaultProfile(this._id);
+
         await newProfile.save();
 
-        // Add profile ID to user's list
         await this.model('User').updateOne(
             { _id: this._id },
             { $addToSet: { profileIds: newProfile._id } }
@@ -96,6 +96,10 @@ userSchema.methods.addProfile = async function()
 userSchema.methods.removeProfile = async function(profileId) {
     // eslint-disable-next-line no-useless-catch
     try {
+        if (this.profileIds.length === 1)
+        {
+            throw new Error("Cannot remove the last profile.");
+        }
         // 1. Attempt to delete the profile document
         const profileDeletion = await this.model('Profile').deleteOne({ 
             _id: profileId, 

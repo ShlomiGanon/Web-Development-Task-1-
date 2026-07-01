@@ -141,56 +141,79 @@ const getUser = async (req, res) =>
 //req.body: { user_id: String, data: Object }
 //data: { email: String, phone: String, fullName: String, birthday: String }
 //res.json: { success: boolean, message: string, user: { id: string, email: string, phone: string, fullName: string, birthday: string } }
-const updateUser = async (req, res) => 
+const updateUser = async (req, res) =>
 {
     try
     {
         const user_id = req.user_id;
         const current_user = await User.findById(user_id);
-        if(!current_user)return res.json({ success: false, message: 'User not found' });
-        let changes = {};
-        let old_data = {};
-        if(req.body.email && req.body.email !== current_user.email)
+
+        if (!current_user)
         {
-            if(!Is_Valid_Email(req.body.email))return res.json({ success: false, message: 'Invalid email' });
-            if(await User.findOne({ email: req.body.email }))return res.json({ success: false, message: 'Email already exists' });
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        const changes = {};
+        const old_data = {};
+
+        if (req.body.email && req.body.email !== current_user.email)
+        {
+            if (!Is_Valid_Email(req.body.email))
+            {
+                return res.json({ success: false, message: 'Invalid email' });
+            }
+
             changes.email = req.body.email;
             old_data.email = current_user.email;
         }
-        if(req.body.phone && req.body.phone !== current_user.phone)
+
+        if (req.body.phone && req.body.phone !== current_user.phone)
         {
-            if(!Is_Valid_Phone(req.body.phone))return res.json({ success: false, message: 'Invalid phone number' });
-            if(await User.findOne({ phone: req.body.phone }))return res.json({ success: false, message: 'Phone number already exists' });
+            if (!Is_Valid_Phone(req.body.phone))
+            {
+                return res.json({ success: false, message: 'Invalid phone number' });
+            }
+
             changes.phone = req.body.phone;
             old_data.phone = current_user.phone;
         }
-        if(req.body.fullName && req.body.fullName !== current_user.fullName)
+
+        if (Object.keys(changes).length === 0)
         {
-            if(!Is_Valid_Name(req.body.fullName))return res.json({ success: false, message: 'Invalid full name' });
-            changes.fullName = req.body.fullName;
-            old_data.fullName = current_user.fullName;
+            return res.json({ success: false, message: 'No changes to update' });
         }
-        if(req.body.birthday && req.body.birthday !== current_user.birthday)
+
+        let user;
+
+        try
         {
-            const birthdayDate = new Date(req.body.birthday);
-            const age = get_age_from_birthday(birthdayDate);
-            if(age < 18)return res.json({ success: false, message: 'User must be at least 18 years old' });
-            changes.birthday = birthdayDate;
-            old_data.birthday = current_user.birthday;
+            // Inner try/catch specifically to translate MongoDB's duplicate key error (11000)
+            // into a clear message, instead of falling through to the generic error handler below
+            user = await User.findByIdAndUpdate(user_id, changes, { new: true, runValidators: true });
         }
-        
-        if(Object.keys(changes).length === 0)return res.json({ success: false, message: 'No changes to update' });
-        const user = await User.findByIdAndUpdate(user_id, changes, { new: true });
-        if(!user)
+        catch (dbError)
+        {
+            if (dbError.code === 11000)
+            {
+                const duplicatedField = Object.keys(dbError.keyPattern)[0];
+                const fieldLabel = duplicatedField === 'email' ? 'Email' : 'Phone number';
+                return res.json({ success: false, message: `${fieldLabel} already exists` });
+            }
+
+            throw dbError;
+        }
+
+        if (!user)
         {
             my_logger.ConsoleLog(`Failed to update user! [request_uid: ${user_id}]`, my_logger.Log_Level.ERROR);
-            my_logger.OperationLog('updateUser', 'Failed to update user! Please try again later.', { "request_uid": user_id, "update_result": user}, my_logger.Log_Level.ERROR);
+            my_logger.OperationLog('updateUser', 'Failed to update user! Please try again later.', { "request_uid": user_id, "update_result": user }, my_logger.Log_Level.ERROR);
             return res.json({ success: false, message: 'Failed to update user! Please try again later.' });
         }
 
         my_logger.ConsoleLog(`User updated successfully.`, my_logger.Log_Level.INFO);
         const logUser = safe_user(user);
         my_logger.OperationLog('updateUser', `User updated successfully.`, { "old_data": old_data, "changes": changes, "user": logUser }, my_logger.Log_Level.INFO);
+
         res.json({ success: true, message: 'User updated successfully', user: logUser });
     }
     catch (error)
