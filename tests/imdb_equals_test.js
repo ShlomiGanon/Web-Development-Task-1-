@@ -5,8 +5,7 @@
 // This whole suite is skipped automatically when OMDB_API_KEY is not set,
 // because getImdbRatingWithKey() cannot run without it.
 //
-// Each title gets its own test(), so a mismatch on one title fails only
-// that test -- the rest of the titles still run normally.
+// Each title gets its own test()
 const { test, describe } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
