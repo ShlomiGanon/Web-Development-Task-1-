@@ -54,7 +54,7 @@ async function searchLoop()
         const query = await new Promise(resolve => readline.question('\nEnter search filter: ', resolve));
         if (query.toLowerCase() === 'exit') process.exit();
 
-        const response = await fetch(`${BASE_URL}/search?${query}`,
+        const response = await fetch(`${BASE_URL}?${query}`,
         {
             method: 'GET',
             headers:
