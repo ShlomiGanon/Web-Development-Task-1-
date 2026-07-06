@@ -112,7 +112,7 @@ const getUser = async (req, res) =>
 {
     try
     {
-        const user_id = req.user_id;
+        const user_id = req.target_user_id;
         const user = await User.findById(user_id);
         if(!user)
         {
@@ -145,7 +145,7 @@ const updateUser = async (req, res) =>
 {
     try
     {
-        const user_id = req.user_id;
+        const user_id = req.target_user_id;
         const current_user = await User.findById(user_id);
 
         if (!current_user)

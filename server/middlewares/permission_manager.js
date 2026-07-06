@@ -75,7 +75,7 @@ const permissionManagerInstance = new PermissionManager()
 const adminAuthorizationPermissionLevel = (permission_level_threshold = Permmision_Level.ADMIN) => {
     return (req, res, next) => 
     {
-        const admin_key = req.user_id;
+        const admin_key = req.target_user_id;
         if(!admin_key)
             return res.json({ success: false, data: null, message: 'the request object is missing user_id' });
         if (!permissionManagerInstance.isHavingPermissionLevel(admin_key, permission_level_threshold)) 
@@ -88,6 +88,7 @@ const adminAuthorizationPermissionLevel = (permission_level_threshold = Permmisi
                 message: `you are not authorized to access this resource {required_level: ${permission_level_threshold}}` 
             });
         }
+        req.admin_user_id = admin_key;
         my_logger.ConsoleLog(`Admin authorization successful. [admin_key: ${admin_key}]`, my_logger.Log_Level.INFO);
         my_logger.OperationLog('adminAuthorization', 'Admin authorization successful.', { "admin_key": admin_key, "permission_level_threshold": permission_level_threshold }, my_logger.Log_Level.INFO);
         next();//continue to the next middleware or controller

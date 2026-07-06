@@ -8,36 +8,36 @@ const ENABLE_AGE_LIMIT_CHECK = true;
  * The mediaId is expected as a route parameter.
  * Attaches the found media to req.media for use in the controller.
  */
-const mediaAuthorization = async (req, res, next) =>
+const contentAuthorization = async (req, res, next) =>
 {
     try
     {
-        const mediaId = req.params.mediaId;
+        const contentId = req.params.contentId;
 
-        if (!mediaId)
+        if (!contentId)
         {
-            return res.json({ success: false, message: "Media ID is required" });
+            return res.json({ success: false, message: "Content ID is required" });
         }
 
-        if (!mongoose.Types.ObjectId.isValid(mediaId))
+        if (!mongoose.Types.ObjectId.isValid(contentId))
         {
-            return res.json({ success: false, message: "Invalid media ID format" });
+            return res.json({ success: false, message: "Invalid content ID format" });
         }
 
-        const media = await Content.findOne({ _id: mediaId });
+        const content = await Content.findOne({ _id: contentId });
 
-        if (!media)
+        if (!content)
         {
-            return res.json({ success: false, message: "Media not found" });
+            return res.json({ success: false, message: "Content not found" });
         }
 
         // If a profile was already resolved earlier in the chain, enforce the age limit
-        if (ENABLE_AGE_LIMIT_CHECK && req.profile && req.profile.age < media.age_limit)
+        if (ENABLE_AGE_LIMIT_CHECK && req.profile && req.profile.age < content.age_limit)
         {
             return res.json({ success: false, message: "This content is not allowed for this profile" });
         }
 
-        req.media = media;
+        req.content = content;
         next();
     }
     catch (error)
@@ -47,4 +47,4 @@ const mediaAuthorization = async (req, res, next) =>
     }
 }
 
-module.exports = { mediaAuthorization };
+module.exports = { contentAuthorization };

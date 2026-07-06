@@ -77,7 +77,7 @@ const tokenVerification = (req, res, next) =>
     }
 
     // Attach user info to request object
-    req.user_id = userId;
+    req.target_user_id = userId;
     delete req.headers['authorization']; // remove the token so downstream middleware/controllers can't see it
     next();
 }
@@ -90,6 +90,10 @@ const removeTokenRequest = (req, res) =>
     if (!token)
     {
         return res.json({ success: false, message: "Token missing or invalid" });
+    }
+    if (tokenManagerInstance.getUserIdByToken(token) === undefined)
+    {
+        return res.json({ success: false, message: "Token invalid" });
     }
     tokenManagerInstance.removeUserToken(token);
     return res.json({ success: true, message: "Token removed successfully" });

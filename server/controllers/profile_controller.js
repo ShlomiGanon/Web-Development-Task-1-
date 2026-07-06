@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Profile = require('../models/profile');
 const User = require('../models/user');
+const Content = require('../models/content');
 const { MAX_LAST_WATCHED_MEDIA_LIMIT } = require('../scripts/constants');
 const my_logger = require('../scripts/my_logger');
 
@@ -38,10 +39,14 @@ const toProfileSummaryList = (profiles) =>
  * Create a new default profile for the authenticated user.
  * Delegates to User.addProfile to enforce MAX_PROFILES_LIMIT and keep profileIds in sync.
  * On success, returns the current profiles summary list. On any exception, returns an empty list.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
  */
+//res.json: { success: boolean, message: string, profiles: Array }
 const createProfile = async (req, res) =>
 {
-    const userId = req.user_id;
+    const userId = req.target_user_id;
 
     try
     {
@@ -75,10 +80,14 @@ const createProfile = async (req, res) =>
  * Delegates to User.removeProfile to keep profileIds in sync and enforce the
  * "at least one profile" rule. Relies on authorizeProfileAccess for ownership (req.profile).
  * On success, returns the current profiles summary list. On any exception, returns an empty list.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
  */
+//res.json: { success: boolean, message: string, profiles: Array }
 const deleteProfile = async (req, res) =>
 {
-    const userId = req.user_id;
+    const userId = req.target_user_id;
     const profileId = req.profile._id;
 
     try
@@ -112,10 +121,15 @@ const deleteProfile = async (req, res) =>
  * Update profile details (profileName, age, ImageName).
  * Relies on authorizeProfileAccess having already verified ownership (req.profile).
  * On success, returns the current profiles summary list. On any exception, returns an empty list.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
  */
+//req.body: { profileName?: String, age?: Number, ImageName?: String }
+//res.json: { success: boolean, message: string, profiles: Array }
 const updateProfile = async (req, res) =>
 {
-    const userId = req.user_id;
+    const userId = req.target_user_id;
     const profile = req.profile;
 
     try
@@ -163,10 +177,14 @@ const updateProfile = async (req, res) =>
  * This route does not use authorizeProfileAccess, so ownership is checked manually here.
  * Always returns lightweight profile summaries, not full documents - use getProfileDetails for the full document.
  * On any exception, returns an empty profiles list.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
  */
+//res.json: { success: boolean, message: string, profiles?: Array, profile?: Object }
 const getProfile = async (req, res) =>
 {
-    const userId = req.user_id;
+    const userId = req.target_user_id;
 
     try
     {
@@ -216,10 +234,15 @@ const getProfile = async (req, res) =>
  * Ownership is enforced per-entry via the User_ID filter, so a profileId that does not
  * belong to the authenticated user is silently skipped rather than updated.
  * On success, returns the current profiles summary list. On any exception, returns an empty list.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
  */
+//req.body: { updates: [{ profileId: String, profileName?: String, age?: Number, ImageName?: String }] }
+//res.json: { success: boolean, message: string, profiles: Array }
 const updateAllProfiles = async (req, res) =>
 {
-    const userId = req.user_id;
+    const userId = req.target_user_id;
 
     // Fetched once up front - reused for every early-return validation failure,
     // since the DB state has not changed yet at those points
@@ -306,33 +329,38 @@ const updateAllProfiles = async (req, res) =>
 }
 
 /**
- * Add or remove a like on a media item for a specific profile (toggle behavior).
- * Relies on authorizeProfileAccess (req.profile) and mediaAuthorization (req.media).
- * On success, returns the profile's updated liked media list. On any exception, returns an empty list.
+ * Add or remove a like on a content item for a specific profile (toggle behavior).
+ * Relies on authorizeProfileAccess (req.profile) and contentAuthorization (req.content).
+ * On success, returns the profile's updated liked content list. On any exception, returns an empty list.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
  */
+//res.json: { success: boolean, message: string, liked: Boolean, likedMediaIds: Array }
 const pressLike = async (req, res) =>
 {
-    const userId = req.user_id;
+    const userId = req.target_user_id;
     const profile = req.profile;
-    const media = req.media;
+    const content = req.content;
 
     try
     {
-        const likedIndex = profile.Liked_Media_IDs.findIndex((id) => id.toString() === media._id.toString());
+        const likedIndex = profile.Liked_Media_IDs.findIndex((id) => id.toString() === content._id.toString());
 
         let isLiked;
 
         if (likedIndex === -1)
         {
-            profile.Liked_Media_IDs.push(media._id);
+            await Content.updateOne({ _id: content._id }, { $inc: { likes: 1 } });
+            profile.Liked_Media_IDs.push(content._id);
             isLiked = true;
         }
         else
         {
+            await Content.updateOne({ _id: content._id }, { $inc: { likes: -1 } });
             profile.Liked_Media_IDs.splice(likedIndex, 1);
             isLiked = false;
         }
-
         await profile.save();
 
         res.json({
@@ -341,38 +369,42 @@ const pressLike = async (req, res) =>
             liked: isLiked,
             likedMediaIds: profile.Liked_Media_IDs
         });
-        my_logger.ConsoleLog(`Media ${isLiked ? 'liked' : 'unliked'} successfully. [user_id: ${userId}, profile_id: ${profile._id}, media_id: ${media._id}]`, my_logger.Log_Level.INFO);
-        my_logger.OperationLog('pressLike', `Media ${isLiked ? 'liked' : 'unliked'} successfully.`, { "user_id": userId, "profile_id": profile._id, "media_id": media._id, "liked": isLiked }, my_logger.Log_Level.INFO);
+        my_logger.ConsoleLog(`Media ${isLiked ? 'liked' : 'unliked'} successfully. [user_id: ${userId}, profile_id: ${profile._id}, content_id: ${content._id}]`, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('pressLike', `Media ${isLiked ? 'liked' : 'unliked'} successfully.`, { "user_id": userId, "profile_id": profile._id, "content_id": content._id, "liked": isLiked }, my_logger.Log_Level.INFO);
     }
     catch (error)
     {
         my_logger.ConsoleLog(`Error pressing like: ${error}`, my_logger.Log_Level.ERROR);
-        my_logger.OperationLog('pressLike', 'Error pressing like.', { "user_id": userId, "profile_id": profile._id, "media_id": media._id, "error": error }, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('pressLike', 'Error pressing like.', { "user_id": userId, "profile_id": profile._id, "content_id": content._id, "error": error }, my_logger.Log_Level.ERROR);
         res.json({ success: false, message: "Internal server error", likedMediaIds: [] });
     }
 }
 
 /**
- * Update the last watched media for a specific profile.
+ * Update the last watched content for a specific profile.
  * Moves the media to the front of the history and trims it to MAX_LAST_WATCHED_MEDIA_LIMIT.
- * Relies on authorizeProfileAccess (req.profile) and mediaAuthorization (req.media).
+ * Relies on authorizeProfileAccess (req.profile) and contentAuthorization (req.content).
  * On success, returns the profile's updated watch history list. On any exception, returns an empty list.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
  */
+//res.json: { success: boolean, message: string, watchHistory: Array }
 const watchMedia = async (req, res) =>
 {
-    const userId = req.user_id;
+    const userId = req.target_user_id;
     const profile = req.profile;
-    const media = req.media;
+    const content = req.content;
 
     try
     {
         // Remove the media if it already exists in the history, to avoid duplicates
         profile.LastWatched_Media_IDs = profile.LastWatched_Media_IDs.filter(
-            (id) => id.toString() !== media._id.toString()
+            (id) => id.toString() !== content._id.toString()
         );
 
         // Add it to the front, as the most recently watched
-        profile.LastWatched_Media_IDs.unshift(media._id);
+        profile.LastWatched_Media_IDs.unshift(content._id);
 
         // Trim the history to the maximum allowed length
         if (profile.LastWatched_Media_IDs.length > MAX_LAST_WATCHED_MEDIA_LIMIT)
@@ -388,13 +420,13 @@ const watchMedia = async (req, res) =>
             message: "Watch progress updated",
             watchHistory: profile.LastWatched_Media_IDs
         });
-        my_logger.ConsoleLog(`Watch progress updated successfully. [user_id: ${userId}, profile_id: ${profile._id}, media_id: ${media._id}]`, my_logger.Log_Level.INFO);
-        my_logger.OperationLog('watchMedia', 'Watch progress updated successfully.', { "user_id": userId, "profile_id": profile._id, "media_id": media._id }, my_logger.Log_Level.INFO);
+        my_logger.ConsoleLog(`Watch progress updated successfully. [user_id: ${userId}, profile_id: ${profile._id}, content_id: ${content._id}]`, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('watchMedia', 'Watch progress updated successfully.', { "user_id": userId, "profile_id": profile._id, "content_id": content._id }, my_logger.Log_Level.INFO);
     }
     catch (error)
     {
         my_logger.ConsoleLog(`Error updating watch progress: ${error}`, my_logger.Log_Level.ERROR);
-        my_logger.OperationLog('watchMedia', 'Error updating watch progress.', { "user_id": userId, "profile_id": profile._id, "media_id": media._id, "error": error }, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('watchMedia', 'Error updating watch progress.', { "user_id": userId, "profile_id": profile._id, "content_id": content._id, "error": error }, my_logger.Log_Level.ERROR);
         res.json({ success: false, message: "Internal server error", watchHistory: [] });
     }
 }
@@ -403,10 +435,14 @@ const watchMedia = async (req, res) =>
  * Getter - returns the full profile document (all fields), unlike other endpoints
  * which return the lightweight summary via toProfileSummary.
  * Relies on authorizeProfileAccess having already verified ownership (req.profile).
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
  */
+//res.json: { success: boolean, profile: Object }
 const getProfileDetails = async (req, res) =>
 {
-    const userId = req.user_id;
+    const userId = req.target_user_id;
     const profile = req.profile;
 
     try
