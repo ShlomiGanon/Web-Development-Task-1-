@@ -1,94 +1,97 @@
 import * as Constants from '../constances.js';
 
-export class Profile 
+// ==========================================
+//                 Profile
+// ==========================================
+
+export class Profile
 {
     /**
-     * Initializes a Profile instance with the given parameters.
-     * 
-     * @param {number} id - The unique identifier of the profile.
-     * @param {string} name - The name of the profile.
-     * @param {string} [imageName="profile1.png"] - The name of the image file for the profile.
-     * @param {Array<number>} [LastWatched_Media_IDs=[]] - The array of media item IDs last watched by the profile.
-     * @param {Set<number>|Array<number>} [wasLiked_Media_IDs=[]] - The collection of media item IDs liked by the profile. Will be stored internally as a Set.
+     * @param {string} id - Unique identifier as returned by the backend (opaque, do not assume a numeric format).
+     * @param {string} name - Profile display name.
+     * @param {number} [age=0] - Used for content age-gating.
+     * @param {string} [imageName] - Profile image filename.
+     * @param {Array<string>} [LastWatched_Content_IDs=[]]
+     * @param {Set<string>|Array<string>} [wasLiked_Content_IDs=[]]
      */
-    constructor(id, name, imageName = "UNDEFINED_PROFILE.png", LastWatched_Media_IDs = [], wasLiked_Media_IDs = []) 
+    constructor(id, name, age = 0, imageName, LastWatched_Content_IDs = [], wasLiked_Content_IDs = [])
     {
         this.id = id;
         this.name = name;
-        if (!imageName)imageName = "UNDEFINED_PROFILE.png";
+        this.age = age;
         this.imageName = imageName;
-        
-        const rawWatchIDs = Array.isArray(LastWatched_Media_IDs) ? LastWatched_Media_IDs : [];
-        this.LastWatched_Media_IDs = rawWatchIDs.slice(0, Constants.MAX_LAST_WATCHED_MEDIA_LIMIT);
-        
-        if (wasLiked_Media_IDs instanceof Set) 
+        this.LastWatched_Content_IDs = Array.isArray(LastWatched_Content_IDs) ? LastWatched_Content_IDs : [];
+
+        if (wasLiked_Content_IDs instanceof Set)
         {
-            this.wasLiked_Media_IDs = wasLiked_Media_IDs;
-        } 
+            this.wasLiked_Content_IDs = wasLiked_Content_IDs;
+        }
         else
         {
-            const rawLikeIDs = Array.isArray(wasLiked_Media_IDs) ? wasLiked_Media_IDs : [];
-            this.wasLiked_Media_IDs = new Set(rawLikeIDs);
+            const rawLikeIDs = Array.isArray(wasLiked_Content_IDs) ? wasLiked_Content_IDs : [];
+            this.wasLiked_Content_IDs = new Set(rawLikeIDs);
         }
     }
 
     /**
-     * Static method to create a Profile instance from a raw JSON object.
-     * @param {Object} rawObject - The raw JSON object to create a Profile instance from.
-     * @returns {Profile} The Profile instance created from the raw JSON object.
+     * Builds a Profile from a raw backend response object.
+     * Accepts either Liked_Content_IDs (full profile) or likedContentIds (pressLike response).
+     * @param {Object} rawObject
+     * @returns {Profile|null}
      */
-    static fromJSON(rawObject) 
+    static fromJSON(rawObject)
     {
         if (!rawObject) return null;
         if (rawObject instanceof Profile) return rawObject;
+
+        const likedIds = rawObject.Liked_Content_IDs ?? rawObject.likedContentIds ?? [];
+
         return new Profile(
             rawObject.id,
-            rawObject.name,
-            rawObject.imageName,
-            rawObject.LastWatched_Media_IDs,
-            rawObject.wasLiked_Media_IDs
+            rawObject.profileName,
+            rawObject.age,
+            rawObject.ImageName,
+            rawObject.LastWatched_Content_IDs,
+            likedIds
         );
     }
 
-    toJSON() 
+    /**
+     * Converts back to the shape the backend expects on write (updateProfile body).
+     */
+    toJSON()
     {
         return {
             id: this.id,
-            name: this.name,
-            imageName: this.imageName,
-            LastWatched_Media_IDs: this.LastWatched_Media_IDs,
-            wasLiked_Media_IDs: Array.from(this.wasLiked_Media_IDs)
+            profileName: this.name,
+            age: this.age,
+            ImageName: this.imageName,
+            LastWatched_Content_IDs: this.LastWatched_Content_IDs,
+            Liked_Content_IDs: Array.from(this.wasLiked_Content_IDs)
         };
     }
 }
 
-//a class to store the user information
-export class UserInfo 
+// ==========================================
+//                UserInfo
+// ==========================================
+
+export class UserInfo
 {
     /**
-    * Initializes a structured container for authenticated user data and their profiles.
-    * 
-    * @param {string} email - The user's unique email address.
-    * @param {string} phone - The user's unique phone number.
-    * @param {string} fullName - The user's full name.
-    * @param {Array<Profile|Object>} rawProfiles - Collection of profiles, as Profile instances or raw JSON objects.
-    */
-    constructor(email, phone, fullName, rawProfiles = []) 
+     * @param {string} email
+     * @param {string} phone
+     * @param {string} fullName
+     * @param {Array<Profile|Object>} [rawProfiles=[]]
+     */
+    constructor(email, phone, fullName, rawProfiles = [])
     {
         this.email = email;
         this.phone = phone;
         this.fullName = fullName;
-        this.profiles = rawProfiles.map
-        (
-            p => p instanceof Profile ? p : Profile.fromJSON(p)
-        );
+        this.profiles = rawProfiles.map(p => p instanceof Profile ? p : Profile.fromJSON(p));
     }
 
-    /**
-     * Static method to create a UserInfo instance from a raw JSON object.
-     * @param {Object} rawObject - The raw JSON object to create a UserInfo instance from.
-     * @returns {UserInfo} The UserInfo instance created from the raw JSON object.
-     */
     static fromJSON(rawObject)
     {
         if (!rawObject) return null;
@@ -96,11 +99,7 @@ export class UserInfo
         return new UserInfo(rawObject.email, rawObject.phone, rawObject.fullName, rawObject.profiles);
     }
 
-    /**
-     * Converts the UserInfo instance to a JSON object.
-     * @returns {Object} The JSON object representing the UserInfo instance.
-     */
-    toJSON() 
+    toJSON()
     {
         return {
             email: this.email,
@@ -111,163 +110,374 @@ export class UserInfo
     }
 }
 
-export class MediaItem
+// ==========================================
+//               ContentItem
+// ==========================================
+
+export class ContentItem
 {
-    constructor(id, name, cover_imageName = "UNDEFINED.png", likes = 0) 
+    /**
+     * @param {string} id - Unique identifier as returned by the backend (opaque, do not assume a numeric format).
+     * @param {string} name - Content title.
+     * @param {string} [cover_imageName] - Cover image filename.
+     * @param {number} [likes=0]
+     * @param {string} [type] - "movie" | "series".
+     * @param {Array<string>} [categories=[]]
+     * @param {string} [description]
+     * @param {number} [age_limit=0]
+     * @param {string} [videoUrl]
+     */
+    constructor(id, name, cover_imageName, likes = 0, type, categories = [], description, age_limit = 0, videoUrl)
     {
-        this.id = Number(id);
+        this.id = id;
         this.name = name;
         this.cover_imageName = cover_imageName;
-        this.likes = Number(likes);
+        this.likes = likes;
+        this.type = type;
+        this.categories = Array.isArray(categories) ? categories : [];
+        this.description = description;
+        this.age_limit = age_limit;
+        this.videoUrl = videoUrl;
     }
 
     static fromJSON(rawObject)
     {
         if (!rawObject) return null;
 
-        return new MediaItem(rawObject.id, rawObject.name, rawObject.cover_imageName, rawObject.likes);
+        return new ContentItem(
+            rawObject.id,
+            rawObject.title,
+            rawObject.cover_image_name,
+            rawObject.likes,
+            rawObject.type,
+            rawObject.categories,
+            rawObject.description,
+            rawObject.age_limit,
+            rawObject.videoUrl
+        );
     }
 }
 
 /**
  * Abstract Class acting as an interface for the Backend API.
- * Defines the required contract for authentication, session management, and profile synchronization.
+ * One method per backend route, grouped by resource (User, Admin, Profile, Content).
+ * Defines the required contract for authentication, session management, and data sync.
  */
-export class Interface_BackendAPI 
+export class Interface_BackendAPI
 {
-    constructor() 
+    constructor()
     {
         // Prevent direct instantiation of the abstract class
-        if (this.constructor === Interface_BackendAPI) 
+        if (this.constructor === Interface_BackendAPI)
         {
             throw new Error("Cannot instantiate Abstract Class 'Interface_BackendAPI' directly.");
         }
     }
 
-    /**
-     * Step 1A: Email Authentication Attempt
-     * Validates credentials via email and, upon success, establishes an isolated, 
-     * one-to-one session linkage in the server registry for this specific client.
-     * 
-     * @param {string} email - The user's registered email address.
-     * @param {string} password - The plain-text password provided by the user.
-     * @returns {Promise<{success: boolean, sessionToken?: string, message?: string}>} Token generation status without user data.
-     */
-    async attemptLoginByEmail(email, password) 
-    {
-        throw new Error("Method 'attemptLoginByEmail()' must be implemented.");
-    }
+    // ==========================================
+    //         User Routes (public/self)
+    // ==========================================
 
     /**
-     * Step 1B: Phone Authentication Attempt
-     * Validates credentials via phone number and, upon success, establishes an isolated, 
-     * one-to-one session linkage in the server registry for this specific client.
-     * 
-     * @param {string} phone - The user's registered phone number.
-     * @param {string} password - The plain-text password provided by the user.
-     * @returns {Promise<{success: boolean, sessionToken?: string, message?: string}>} Token generation status without user data.
+     * Maps to POST /user/register with { email, phone, password, fullName, birthday }.
+     * @param {string} email
+     * @param {string} phone
+     * @param {string} password
+     * @param {string} fullName
+     * @param {string} birthday
+     * @returns {Promise<{success: boolean, message?: string}>}
      */
-    async attemptLoginByPhone(phone, password) 
-    {
-        throw new Error("Method 'attemptLoginByPhone()' must be implemented.");
-    }
-
-    /**
-     * User Registration
-     * Creates a new user record in the server storage system with the provided credentials.
-     * 
-     * @param {string} email - The user's unique email address.
-     * @param {string} phone - The user's unique phone number.
-     * @param {string} password - The chosen password.
-     * @param {string} fullName - The user's full name.
-     * @returns {Promise<{success: boolean, message?: string}>} Registration success or failure status.
-     */
-    async register(email, phone, password, fullName) 
+    async register(email, phone, password, fullName, birthday)
     {
         throw new Error("Method 'register()' must be implemented.");
     }
 
     /**
-     * Step 2: Secured User Info Fetching
-     * Identifies the specific client via their active session token, retrieves their 
-     * authorized user from the server registry, and populates a dedicated UserInfo instance.
-     * 
-     * @param {string} sessionToken - Token identifying the authenticated client session.
-     * @returns {Promise<{success: boolean, data?: UserInfo, message?: string}>} Success status with a UserInfo instance payload.
+     * Maps to POST /user/login with { email_or_phone, password }.
+     * @param {string} email
+     * @param {string} password
+     * @returns {Promise<{success: boolean, sessionToken?: string, message?: string}>}
      */
-    async fetchActiveUserInfo(sessionToken) 
+    async attemptLoginByEmail(email, password)
     {
-        throw new Error("Method 'fetchActiveUserInfo()' must be implemented.");
+        throw new Error("Method 'attemptLoginByEmail()' must be implemented.");
     }
 
     /**
-     * Synchronizes and updates the active user's profiles array on the server.
-     * 
-     * @param {string} sessionToken - Token identifying the authenticated client session.
-     * @param {Array} profiles - The complete updated profiles array from the UI.
-     * @returns {Promise<{success: boolean, message?: string, data?: Array<Profile>}>} Success status with an array of Profile instances.
+     * Maps to POST /user/login with { email_or_phone, password }.
+     * @param {string} phone
+     * @param {string} password
+     * @returns {Promise<{success: boolean, sessionToken?: string, message?: string}>}
      */
-    async saveProfiles(sessionToken, profiles) 
+    async attemptLoginByPhone(phone, password)
     {
-        throw new Error("Method 'saveProfiles()' must be implemented.");
+        throw new Error("Method 'attemptLoginByPhone()' must be implemented.");
     }
 
     /**
-     * Terminates the active session, revokes the server-side connection token, 
-     * and purges all client-side session data and cookies.
-     * 
-     * @param {string} sessionToken - Token identifying the authenticated client session to terminate.
-     * @returns {Promise<{success: boolean, message?: string}>} Server acknowledgment status of the logout.
+     * Maps to POST /user/logout (Authorization: Bearer <sessionToken>).
+     * @param {string} sessionToken
+     * @returns {Promise<{success: boolean, message?: string}>}
      */
-    async logout(sessionToken) 
+    async logout(sessionToken)
     {
         throw new Error("Method 'logout()' must be implemented.");
     }
 
     /**
-     * Retrieves a media item by its unique identifier.
-     * 
-     * @param {string} mediaID - The unique identifier of the media item.
-     * @returns {Promise<{success: boolean, data?: MediaItem, message?: string}>} Success status with a MediaItem instance payload.
+     * Maps to GET /user/me (Authorization: Bearer <sessionToken>).
+     * @param {string} sessionToken
+     * @returns {Promise<{success: boolean, data?: UserInfo, message?: string}>}
      */
-    async getMediaByID(mediaID)
+    async fetchActiveUserInfo(sessionToken)
     {
-        throw new Error("Method 'getMediaByID()' must be implemented.");
+        throw new Error("Method 'fetchActiveUserInfo()' must be implemented.");
     }
 
     /**
-     * Toggles a like to a media item. (remove or add a like)
-     * 
-     * @param {string} sessionToken - Token identifying the authenticated client session.
-     * @param {string} profileID - The unique identifier of the profile.
-     * @param {string} mediaID - The unique identifier of the media item.
-     * @returns {Promise<{success: boolean, message?: string}>} Operation acknowledgment status.
+     * Maps to PUT /user/me with the fields to change (e.g. { email, phone }).
+     * @param {string} sessionToken
+     * @param {Object} changes
+     * @returns {Promise<{success: boolean, message?: string, data?: UserInfo}>}
      */
-    async toggleMediaLike(sessionToken, profileID, mediaID)
+    async updateActiveUserInfo(sessionToken, changes)
     {
-        throw new Error("Method 'toggleMediaLike()' must be implemented.");
+        throw new Error("Method 'updateActiveUserInfo()' must be implemented.");
+    }
+
+    // ==========================================
+    //         User Routes (admin only)
+    // ==========================================
+
+    /**
+     * Maps to GET /user with search/filter query params (admin only).
+     * See User.searchFilterMap on the backend for supported keys
+     * (e.g. email_contains, fullname_starts, joined_after, limit, skip, sort, sortOrder).
+     * @param {string} sessionToken
+     * @param {Object} [queryParams={}]
+     * @returns {Promise<{success: boolean, users?: Array<UserInfo>, message?: string}>}
+     */
+    async searchUsers(sessionToken, queryParams = {})
+    {
+        throw new Error("Method 'searchUsers()' must be implemented.");
     }
 
     /**
-     * Retrieves all media items.
-     * 
-     * @returns {Promise<{success: boolean, data?: Array<MediaItem>, message?: string}>} Success status with an array of MediaItem instances.
+     * Maps to GET /user/:user_id (admin only).
+     * @param {string} sessionToken
+     * @param {string} userId
+     * @returns {Promise<{success: boolean, data?: UserInfo, message?: string}>}
      */
-    async getAllMediaItems()
+    async fetchUserById(sessionToken, userId)
     {
-        throw new Error("Method 'getAllMediaItems()' must be implemented.");
+        throw new Error("Method 'fetchUserById()' must be implemented.");
     }
 
     /**
-     * Selects a media item and adds it to the user's LastWatched list.
-     * 
-     * @param {string} sessionToken - Token identifying the authenticated client session.
-     * @param {string} profileID - The unique identifier of the profile.
-     * @param {string} mediaID - The unique identifier of the media item.
-     * @returns {Promise<{success: boolean, message?: string, data?: UpdatedProfile}>} Success status.
+     * Maps to PUT /user/:user_id (admin only).
+     * @param {string} sessionToken
+     * @param {string} userId
+     * @param {Object} changes
+     * @returns {Promise<{success: boolean, message?: string, data?: UserInfo}>}
      */
-    async selectMediaItem(sessionToken, profileID, mediaID)
+    async updateUserById(sessionToken, userId, changes)
     {
-        throw new Error("Method 'selectMediaItem()' must be implemented.");
+        throw new Error("Method 'updateUserById()' must be implemented.");
+    }
+
+    /**
+     * Maps to DELETE /user/:user_id (super admin only).
+     * @param {string} sessionToken
+     * @param {string} userId
+     * @returns {Promise<{success: boolean, message?: string}>}
+     */
+    async deleteUser(sessionToken, userId)
+    {
+        throw new Error("Method 'deleteUser()' must be implemented.");
+    }
+
+    /**
+     * Maps to PUT /user/:user_id/permission?permission_level=<level> (admin only).
+     * permission_level: 0 = USER, 1 = ADMIN, 2 = SUPER_ADMIN.
+     * @param {string} sessionToken
+     * @param {string} userId
+     * @param {number} permissionLevel
+     * @returns {Promise<{success: boolean, message?: string}>}
+     */
+    async setUserPermissionLevel(sessionToken, userId, permissionLevel)
+    {
+        throw new Error("Method 'setUserPermissionLevel()' must be implemented.");
+    }
+
+    // ==========================================
+    //              Profile Routes
+    // ==========================================
+
+    /**
+     * Maps to POST /profile - creates a new default profile for the logged-in user.
+     * @param {string} sessionToken
+     * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
+     */
+    async createProfile(sessionToken)
+    {
+        throw new Error("Method 'createProfile()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /profile - all profiles belonging to the logged-in user.
+     * @param {string} sessionToken
+     * @returns {Promise<{success: boolean, profiles?: Array<Profile>, message?: string}>}
+     */
+    async fetchAllProfiles(sessionToken)
+    {
+        throw new Error("Method 'fetchAllProfiles()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /profile/:profileId - lightweight summary of a single profile.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @returns {Promise<{success: boolean, profile?: Profile, message?: string}>}
+     */
+    async fetchProfileById(sessionToken, profileId)
+    {
+        throw new Error("Method 'fetchProfileById()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /profile/:profileId/details - full profile document.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @returns {Promise<{success: boolean, profile?: Profile, message?: string}>}
+     */
+    async fetchProfileDetails(sessionToken, profileId)
+    {
+        throw new Error("Method 'fetchProfileDetails()' must be implemented.");
+    }
+
+    /**
+     * Maps to PUT /profile/:profileId with { profileName?, age?, ImageName? }.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @param {Object} changes
+     * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
+     */
+    async updateProfile(sessionToken, profileId, changes)
+    {
+        throw new Error("Method 'updateProfile()' must be implemented.");
+    }
+
+    /**
+     * Maps to PUT /profile with { updates: [{ profileId, profileName, age, ImageName }] }.
+     * Bulk-updates multiple profiles belonging to the logged-in user in one call.
+     * @param {string} sessionToken
+     * @param {Array} profiles
+     * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
+     */
+    async saveProfiles(sessionToken, profiles)
+    {
+        throw new Error("Method 'saveProfiles()' must be implemented.");
+    }
+
+    /**
+     * Maps to DELETE /profile/:profileId.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
+     */
+    async deleteProfile(sessionToken, profileId)
+    {
+        throw new Error("Method 'deleteProfile()' must be implemented.");
+    }
+
+    /**
+     * Maps to POST /profile/:profileId/likes/:contentId - toggles a like (add or remove).
+     * @param {string} sessionToken
+     * @param {string} profileID
+     * @param {string} contentID
+     * @returns {Promise<{success: boolean, message?: string, liked?: boolean, likedContentIds?: Array<string>}>}
+     */
+    async toggleContentLike(sessionToken, profileID, contentID)
+    {
+        throw new Error("Method 'toggleContentLike()' must be implemented.");
+    }
+
+    /**
+     * Maps to POST /profile/:profileId/watch/:contentId - records a watch, moves it to the front of history.
+     * @param {string} sessionToken
+     * @param {string} profileID
+     * @param {string} contentID
+     * @returns {Promise<{success: boolean, message?: string, watchHistory?: Array<string>}>}
+     */
+    async selectContentItem(sessionToken, profileID, contentID)
+    {
+        throw new Error("Method 'selectContentItem()' must be implemented.");
+    }
+
+    // ==========================================
+    //         Content Routes (public)
+    // ==========================================
+
+    /**
+     * Maps to GET /content/:contentId (public, no token required).
+     * @param {string} contentID
+     * @returns {Promise<{success: boolean, data?: ContentItem, message?: string}>}
+     */
+    async getContentByID(contentID)
+    {
+        throw new Error("Method 'getContentByID()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /content (public). Supports optional search/filter query params -
+     * see Content.searchFilterMap on the backend (e.g. title_contains, exact_category,
+     * contain_category, exclude_category, type, released_after/before, min/max_age_limit,
+     * min_likes, limit, skip, sort, sortOrder). Called with no arguments, returns all content.
+     * @param {Object} [queryParams={}]
+     * @returns {Promise<{success: boolean, data?: Array<ContentItem>, message?: string}>}
+     */
+    async getAllContentItems(queryParams = {})
+    {
+        throw new Error("Method 'getAllContentItems()' must be implemented.");
+    }
+
+    // ==========================================
+    //         Content Routes (admin only)
+    // ==========================================
+
+    /**
+     * Maps to POST /content (admin only).
+     * Required fields: title, type ("movie"|"series"), release_date.
+     * Optional: description, cover_image_name, categories, age_limit, videoUrl.
+     * @param {string} sessionToken
+     * @param {Object} contentData
+     * @returns {Promise<{success: boolean, message?: string, data?: ContentItem}>}
+     */
+    async createContent(sessionToken, contentData)
+    {
+        throw new Error("Method 'createContent()' must be implemented.");
+    }
+
+    /**
+     * Maps to PUT /content/:contentId (admin only).
+     * @param {string} sessionToken
+     * @param {string} contentID
+     * @param {Object} changes
+     * @returns {Promise<{success: boolean, message?: string, data?: ContentItem}>}
+     */
+    async updateContent(sessionToken, contentID, changes)
+    {
+        throw new Error("Method 'updateContent()' must be implemented.");
+    }
+
+    /**
+     * Maps to DELETE /content/:contentId (admin only).
+     * @param {string} sessionToken
+     * @param {string} contentID
+     * @returns {Promise<{success: boolean, message?: string}>}
+     */
+    async deleteContent(sessionToken, contentID)
+    {
+        throw new Error("Method 'deleteContent()' must be implemented.");
     }
 }

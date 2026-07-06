@@ -296,7 +296,7 @@ async function seedContent(adminUserId)
 
 async function seedDatabase()
 {
-    console.log('=== SEEDING DATABASE (via real controllers) ===');
+    console.log('=== SEEDING DATABASE ===');
 
     await clearExistingData();
     const adminUserId = await seedAdmin();
