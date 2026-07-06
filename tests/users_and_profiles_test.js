@@ -14,7 +14,7 @@ var SERVER_PORT = 3000;
 var BASE_PATH = '/api';
 
 // Leave empty to be asked interactively at startup, or fill in to skip the prompt.
-var ADMIN_EMAIL_OR_PHONE = 'test1@test.com';
+var ADMIN_EMAIL_OR_PHONE = 'admin@mail.com';
 var ADMIN_PASSWORD = 'Password123!';
 
 var STAGE1_USER_COUNT = 3;
@@ -23,7 +23,7 @@ var STAGE3_USER_COUNT = 2;
 
 // Real content _id needed for STAGE 3 like/watch checks (no endpoint to list
 // content). Leave empty to skip those checks; profile update still runs.
-var TEST_CONTENT_ID = '';
+var TEST_CONTENT_ID = '6a4bd3715305e6d6ec41c4b0'; //Zero day
 
 // ==================== GLOBAL STATE ====================
 

@@ -1,7 +1,10 @@
 /* eslint-disable no-unused-vars */
 require("dotenv").config();// load the environment variables from the .env file
 const express = require('express');
+const { seedDatabase } = require('./scripts/seed.js');
 const User = require('./models/user.js');
+const Profile = require('./models/profile.js');
+const Content = require('./models/content.js');
 const PM = require('./middlewares/permission_manager.js');
 const TM = require('./middlewares/token_manager.js');
 const { connectDB, disconnectDB } = require('./config/db.js');
@@ -104,6 +107,48 @@ rl.on('line', async (line) =>
             break;
         }
 
+        // ------------- INITIALIZE DATABASE -------------
+        case 'init':
+        {
+            const answer = await new Promise((resolve) =>
+            {
+                rl.question('This will DELETE all existing users, profiles, and content, then reload the initial state. Continue? (y/n): ', resolve);
+            });
+
+            if (answer.toLowerCase() !== 'y')
+            {
+                console.log('Aborted - no changes were made.');
+                break;
+            }
+
+            await seedDatabase();
+            console.log('Database initialized');
+            break;
+        }
+        // ------------- GET ALL USERS -------------
+        case 'getallusers':
+        {
+            const users = await User.find();
+            console.log(users);
+            console.log(`Found ${users.length} users`);
+            break;
+        }
+        // ------------- GET ALL PROFILES -------------
+        case 'getallprofiles':
+        {
+            const profiles = await Profile.find();
+            console.log(profiles);
+            console.log(`Found ${profiles.length} profiles`);
+            break;
+        }
+        // ------------- GET ALL CONTENT -------------
+        case 'getallcontent':
+        {
+            const content = await Content.find();
+            console.log(content);
+            console.log(`Found ${content.length} content`);
+            break;
+        }
         // ------------- COMMAND NOT FOUND -------------
         default:
         {
