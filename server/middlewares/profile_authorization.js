@@ -3,7 +3,7 @@ const Profile = require('../models/profile'); // Adjust path to match your actua
 
 /**
  * Middleware to verify that the requested profile exists and belongs to the authenticated user.
- * Must run after tokenVerification (relies on req.user_id).
+ * Must run after tokenVerification (relies on req.target_user_id).
  * The profileId is expected as a route parameter.
  * Attaches the found profile to req.profile for use in the controller.
  */
@@ -11,7 +11,7 @@ const authorizeProfileAccess = async (req, res, next) =>
 {
     try
     {
-        const userId = req.user_id;
+        const userId = req.target_user_id;
         const profileId = req.params.profileId;
 
         if (!userId)

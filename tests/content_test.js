@@ -16,8 +16,8 @@ var BASE_PATH = '/api';
 // Leave empty to be asked interactively at startup, or fill in to skip the prompt.
 // Must belong to an account that already has ADMIN permission level on the server
 // (this script does not bootstrap admin permissions - it assumes they exist).
-var ADMIN_EMAIL_OR_PHONE = '';
-var ADMIN_PASSWORD = '';
+var ADMIN_EMAIL_OR_PHONE = 'test1@test.com';
+var ADMIN_PASSWORD = 'Password123!';
 
 var TEST_CONTENT_COUNT = 4;
 
