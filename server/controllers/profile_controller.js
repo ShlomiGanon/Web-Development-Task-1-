@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Profile = require('../models/profile');
 const User = require('../models/user');
 const Content = require('../models/content');
-const { MAX_LAST_WATCHED_MEDIA_LIMIT } = require('../scripts/constants');
+const { MAX_LAST_WATCHED_CONTENT_LIMIT } = require('../scripts/constants');
 const my_logger = require('../scripts/my_logger');
 
 /**
@@ -362,20 +362,20 @@ const pressLike = async (req, res) =>
 
     try
     {
-        const likedIndex = profile.Liked_Media_IDs.findIndex((id) => id.toString() === content._id.toString());
+        const likedIndex = profile.Liked_Content_IDs.findIndex((id) => id.toString() === content._id.toString());
 
         let isLiked;
 
         if (likedIndex === -1)
         {
             await Content.updateOne({ _id: content._id }, { $inc: { likes: 1 } });
-            profile.Liked_Media_IDs.push(content._id);
+            profile.Liked_Content_IDs.push(content._id);
             isLiked = true;
         }
         else
         {
             await Content.updateOne({ _id: content._id }, { $inc: { likes: -1 } });
-            profile.Liked_Media_IDs.splice(likedIndex, 1);
+            profile.Liked_Content_IDs.splice(likedIndex, 1);
             isLiked = false;
         }
         await profile.save();
@@ -384,7 +384,7 @@ const pressLike = async (req, res) =>
             success: true,
             message: isLiked ? "Media liked" : "Media unliked",
             liked: isLiked,
-            likedMediaIds: profile.Liked_Media_IDs
+            likedContentIds: profile.Liked_Content_IDs
         });
         my_logger.ConsoleLog(`Media ${isLiked ? 'liked' : 'unliked'} successfully. [user_id: ${userId}, profile_id: ${profile._id}, content_id: ${content._id}]`, my_logger.Log_Level.INFO);
         my_logger.OperationLog('pressLike', `Media ${isLiked ? 'liked' : 'unliked'} successfully.`, { "user_id": userId, "profile_id": profile._id, "content_id": content._id, "liked": isLiked }, my_logger.Log_Level.INFO);
@@ -399,7 +399,7 @@ const pressLike = async (req, res) =>
 
 /**
  * Update the last watched content for a specific profile.
- * Moves the media to the front of the history and trims it to MAX_LAST_WATCHED_MEDIA_LIMIT.
+ * Moves the content to the front of the history and trims it to MAX_LAST_WATCHED_CONTENT_LIMIT.
  * Relies on authorizeProfileAccess (req.profile) and contentAuthorization (req.content).
  * On success, returns the profile's updated watch history list. On any exception, returns an empty list.
  * @param {Object} req - The request object
@@ -416,17 +416,17 @@ const watchMedia = async (req, res) =>
     try
     {
         // Remove the media if it already exists in the history, to avoid duplicates
-        profile.LastWatched_Media_IDs = profile.LastWatched_Media_IDs.filter(
+        profile.LastWatched_Content_IDs = profile.LastWatched_Content_IDs.filter(
             (id) => id.toString() !== content._id.toString()
         );
 
         // Add it to the front, as the most recently watched
-        profile.LastWatched_Media_IDs.unshift(content._id);
+        profile.LastWatched_Content_IDs.unshift(content._id);
 
         // Trim the history to the maximum allowed length
-        if (profile.LastWatched_Media_IDs.length > MAX_LAST_WATCHED_MEDIA_LIMIT)
+        if (profile.LastWatched_Content_IDs.length > MAX_LAST_WATCHED_CONTENT_LIMIT)
         {
-            profile.LastWatched_Media_IDs = profile.LastWatched_Media_IDs.slice(0, MAX_LAST_WATCHED_MEDIA_LIMIT);
+            profile.LastWatched_Content_IDs = profile.LastWatched_Content_IDs.slice(0, MAX_LAST_WATCHED_CONTENT_LIMIT);
         }
 
         await profile.save();
@@ -435,7 +435,7 @@ const watchMedia = async (req, res) =>
         res.json({
             success: true,
             message: "Watch progress updated",
-            watchHistory: profile.LastWatched_Media_IDs
+            watchHistory: profile.LastWatched_Content_IDs
         });
         my_logger.ConsoleLog(`Watch progress updated successfully. [user_id: ${userId}, profile_id: ${profile._id}, content_id: ${content._id}]`, my_logger.Log_Level.INFO);
         my_logger.OperationLog('watchMedia', 'Watch progress updated successfully.', { "user_id": userId, "profile_id": profile._id, "content_id": content._id }, my_logger.Log_Level.INFO);

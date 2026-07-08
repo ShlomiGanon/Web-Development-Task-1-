@@ -30,13 +30,13 @@ const profileSchema = new mongoose.Schema(
         trim: true
     },
 
-    LastWatched_Media_IDs:
+    LastWatched_Content_IDs:
     {
         type: [mongoose.Schema.Types.ObjectId],
         default: [],
     },
 
-    Liked_Media_IDs:
+    Liked_Content_IDs:
     {
         type: [mongoose.Schema.Types.ObjectId],
         default: []

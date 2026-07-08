@@ -35,7 +35,13 @@ export class Profile
 
     /**
      * Builds a Profile from a raw backend response object.
-     * Accepts either Liked_Content_IDs (full profile) or likedContentIds (pressLike response).
+     *
+     * FIXED: the backend's full profile document (GET /profile/:profileId/details) uses the
+     * field names `LastWatched_Media_IDs` and `Liked_Media_IDs` (not `..._Content_IDs`).
+     * The toggle-like response (POST /profile/:profileId/likes/:contentId) uses `likedMediaIds`.
+     * The lightweight profile summary (most other profile endpoints) does NOT include either
+     * of these two fields at all - only { id, profileName, age, ImageName }. In that case both
+     * will simply default to empty, which is correct/expected.
      * @param {Object} rawObject
      * @returns {Profile|null}
      */
@@ -44,31 +50,57 @@ export class Profile
         if (!rawObject) return null;
         if (rawObject instanceof Profile) return rawObject;
 
-        const likedIds = rawObject.Liked_Content_IDs ?? rawObject.likedContentIds ?? [];
+        const lastWatchedIds = rawObject.LastWatched_Media_IDs ?? [];
+        const likedIds = rawObject.Liked_Media_IDs ?? rawObject.likedMediaIds ?? [];
 
         return new Profile(
             rawObject.id,
             rawObject.profileName,
             rawObject.age,
             rawObject.ImageName,
-            rawObject.LastWatched_Content_IDs,
+            lastWatchedIds,
             likedIds
         );
     }
 
     /**
-     * Converts back to the shape the backend expects on write (updateProfile body).
+     * Converts back to the shape the backend expects on write (PUT /profile/:profileId body).
+     *
+     * FIXED: the backend's updateProfile controller only reads profileName / age / ImageName
+     * from req.body - everything else (id, watch history, likes) is ignored if sent, since:
+     *   - the profile id belongs in the URL path (:profileId), not the body.
+     *   - watch history is only ever changed via POST /profile/:profileId/watch/:contentId.
+     *   - likes are only ever changed via POST /profile/:profileId/likes/:contentId.
+     * Sending the extra fields used to be harmless (silently ignored) but is misleading and
+     * has been removed so this payload is an exact match for what the endpoint accepts.
      */
     toJSON()
     {
         return {
-            id: this.id,
             profileName: this.name,
             age: this.age,
-            ImageName: this.imageName,
-            LastWatched_Content_IDs: this.LastWatched_Content_IDs,
-            Liked_Content_IDs: Array.from(this.wasLiked_Content_IDs)
+            ImageName: this.imageName
         };
+    }
+
+
+    update_LastWatched_Content_IDs(New_LastWatched_Content_IDs)
+    {
+        const New_Array = Array.isArray(New_LastWatched_Content_IDs) ? New_LastWatched_Content_IDs : [];
+        this.LastWatched_Content_IDs = New_Array;
+    }
+
+    update_wasLiked_Content_IDs(New_wasLiked_Content_IDs)
+    {
+        if (New_wasLiked_Content_IDs instanceof Set)
+        {
+            this.wasLiked_Content_IDs = New_wasLiked_Content_IDs;
+        }
+        else
+        {
+            const rawLikeIDs = Array.isArray(New_wasLiked_Content_IDs) ? New_wasLiked_Content_IDs : [];
+            this.wasLiked_Content_IDs = new Set(rawLikeIDs);
+        }
     }
 }
 
@@ -79,16 +111,33 @@ export class Profile
 export class UserInfo
 {
     /**
+     * FIXED: added `id`, `birthday`, and `createdAt` - every user endpoint on the backend
+     * (register aside) returns a "safe_user" object shaped exactly as
+     * { id, email, phone, fullName, birthday, createdAt }. The previous version of this class
+     * silently dropped id/birthday/createdAt, which are needed for things like sending admin
+     * requests (needs id) or displaying the birthday/join-date in a UI.
+     *
+     * NOTE: no backend endpoint returns a user bundled together with their profiles in one
+     * response. GET /user/me and friends return ONLY the fields above - profiles must be
+     * fetched separately via the Profile routes (fetchAllProfiles) and merged on the client
+     * if you want a combined view. `rawProfiles` will simply stay empty unless you pass them
+     * in yourself after a separate call.
+     * @param {string} id
      * @param {string} email
      * @param {string} phone
      * @param {string} fullName
+     * @param {string} [birthday]
+     * @param {string} [createdAt]
      * @param {Array<Profile|Object>} [rawProfiles=[]]
      */
-    constructor(email, phone, fullName, rawProfiles = [])
+    constructor(id, email, phone, fullName, birthday, createdAt, rawProfiles = [])
     {
+        this.id = id;
         this.email = email;
         this.phone = phone;
         this.fullName = fullName;
+        this.birthday = birthday;
+        this.createdAt = createdAt;
         this.profiles = rawProfiles.map(p => p instanceof Profile ? p : Profile.fromJSON(p));
     }
 
@@ -96,15 +145,26 @@ export class UserInfo
     {
         if (!rawObject) return null;
         if (rawObject instanceof UserInfo) return rawObject;
-        return new UserInfo(rawObject.email, rawObject.phone, rawObject.fullName, rawObject.profiles);
+        return new UserInfo(
+            rawObject.id,
+            rawObject.email,
+            rawObject.phone,
+            rawObject.fullName,
+            rawObject.birthday,
+            rawObject.createdAt,
+            rawObject.profiles
+        );
     }
 
     toJSON()
     {
         return {
+            id: this.id,
             email: this.email,
             phone: this.phone,
             fullName: this.fullName,
+            birthday: this.birthday,
+            createdAt: this.createdAt,
             profiles: this.profiles.map(p => p.toJSON())
         };
     }
@@ -117,6 +177,9 @@ export class UserInfo
 export class ContentItem
 {
     /**
+     * FIXED: added `release_date` and `createdAt` - both are returned by every content
+     * endpoint on the backend and were previously dropped entirely (release_date is also
+     * what /content search results are sorted by, by default).
      * @param {string} id - Unique identifier as returned by the backend (opaque, do not assume a numeric format).
      * @param {string} name - Content title.
      * @param {string} [cover_imageName] - Cover image filename.
@@ -126,8 +189,10 @@ export class ContentItem
      * @param {string} [description]
      * @param {number} [age_limit=0]
      * @param {string} [videoUrl]
+     * @param {string} [release_date]
+     * @param {string} [createdAt]
      */
-    constructor(id, name, cover_imageName, likes = 0, type, categories = [], description, age_limit = 0, videoUrl)
+    constructor(id, name, cover_imageName, likes = 0, type, categories = [], description, age_limit = 0, videoUrl, release_date, createdAt)
     {
         this.id = id;
         this.name = name;
@@ -138,6 +203,8 @@ export class ContentItem
         this.description = description;
         this.age_limit = age_limit;
         this.videoUrl = videoUrl;
+        this.release_date = release_date;
+        this.createdAt = createdAt;
     }
 
     static fromJSON(rawObject)
@@ -153,7 +220,9 @@ export class ContentItem
             rawObject.categories,
             rawObject.description,
             rawObject.age_limit,
-            rawObject.videoUrl
+            rawObject.videoUrl,
+            rawObject.release_date,
+            rawObject.createdAt
         );
     }
 }
@@ -162,6 +231,9 @@ export class ContentItem
  * Abstract Class acting as an interface for the Backend API.
  * One method per backend route, grouped by resource (User, Admin, Profile, Content).
  * Defines the required contract for authentication, session management, and data sync.
+ *
+ * All "Maps to ..." notes below describe the CURRENT, VERIFIED behaviour of the backend
+ * (confirmed directly against the route/controller/middleware/model source files).
  */
 export class Interface_BackendAPI
 {
@@ -180,6 +252,14 @@ export class Interface_BackendAPI
 
     /**
      * Maps to POST /user/register with { email, phone, password, fullName, birthday }.
+     * NOTE: fullName is split on the first space only - firstName = word 1, lastName = word 2,
+     * any extra words are silently ignored, and both must be letters-only (a-zA-Z).
+     * NOTE: phone must match the Israeli format ^05[0-9]{8}$.
+     * NOTE: password must be 4-16 characters.
+     * NOTE: the 18+ age check on `birthday` is currently ENABLED on the backend
+     * (ENABLE_18_AGE_LIMIT = true in scripts/constants.js).
+     * NOTE: on success, the backend does NOT return a token or user object - call login()
+     * separately right after a successful register().
      * @param {string} email
      * @param {string} phone
      * @param {string} password
@@ -194,28 +274,18 @@ export class Interface_BackendAPI
 
     /**
      * Maps to POST /user/login with { email_or_phone, password }.
-     * @param {string} email
+     * @param {string} email_or_phone
      * @param {string} password
-     * @returns {Promise<{success: boolean, sessionToken?: string, message?: string}>}
+     * @returns {Promise<{success: boolean, token?: string, message?: string}>}
      */
-    async attemptLoginByEmail(email, password)
+    async login(email_or_phone, password)
     {
-        throw new Error("Method 'attemptLoginByEmail()' must be implemented.");
-    }
-
-    /**
-     * Maps to POST /user/login with { email_or_phone, password }.
-     * @param {string} phone
-     * @param {string} password
-     * @returns {Promise<{success: boolean, sessionToken?: string, message?: string}>}
-     */
-    async attemptLoginByPhone(phone, password)
-    {
-        throw new Error("Method 'attemptLoginByPhone()' must be implemented.");
+        throw new Error("Method 'login()' must be implemented.");
     }
 
     /**
      * Maps to POST /user/logout (Authorization: Bearer <sessionToken>).
+     * No body required.
      * @param {string} sessionToken
      * @returns {Promise<{success: boolean, message?: string}>}
      */
@@ -226,8 +296,9 @@ export class Interface_BackendAPI
 
     /**
      * Maps to GET /user/me (Authorization: Bearer <sessionToken>).
+     * FIXED: the backend's response field is `user`, not `data`.
      * @param {string} sessionToken
-     * @returns {Promise<{success: boolean, data?: UserInfo, message?: string}>}
+     * @returns {Promise<{success: boolean, user?: UserInfo, message?: string}>}
      */
     async fetchActiveUserInfo(sessionToken)
     {
@@ -235,10 +306,15 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to PUT /user/me with the fields to change (e.g. { email, phone }).
+     * Maps to PUT /user/me with the fields to change: { password?, email?, phone?, fullName?, birthday? }.
+     * FIXED: the backend now supports all five fields (previously only email/phone worked).
+     * NOTE: birthday updates are also subject to the 18+ check (see register() above) and
+     * must not be a future date.
+     * FIXED: the backend's response field is `user`, not `data` - and it is populated even on
+     * most failure responses (with the pre-change user data), not just on success.
      * @param {string} sessionToken
      * @param {Object} changes
-     * @returns {Promise<{success: boolean, message?: string, data?: UserInfo}>}
+     * @returns {Promise<{success: boolean, message?: string, user?: UserInfo}>}
      */
     async updateActiveUserInfo(sessionToken, changes)
     {
@@ -253,6 +329,9 @@ export class Interface_BackendAPI
      * Maps to GET /user with search/filter query params (admin only).
      * See User.searchFilterMap on the backend for supported keys
      * (e.g. email_contains, fullname_starts, joined_after, limit, skip, sort, sortOrder).
+     * NOTE: `sortOrder` only accepts the exact strings "greater_to_smaller" (descending,
+     * the default) or "smaller_to_greater" (ascending) - any other value, including "asc"/"desc",
+     * returns an error. getAllContentItems() below uses this same scheme.
      * @param {string} sessionToken
      * @param {Object} [queryParams={}]
      * @returns {Promise<{success: boolean, users?: Array<UserInfo>, message?: string}>}
@@ -264,9 +343,10 @@ export class Interface_BackendAPI
 
     /**
      * Maps to GET /user/:user_id (admin only).
+     * FIXED: the backend's response field is `user`, not `data`.
      * @param {string} sessionToken
      * @param {string} userId
-     * @returns {Promise<{success: boolean, data?: UserInfo, message?: string}>}
+     * @returns {Promise<{success: boolean, user?: UserInfo, message?: string}>}
      */
     async fetchUserById(sessionToken, userId)
     {
@@ -274,11 +354,12 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to PUT /user/:user_id (admin only).
+     * Maps to PUT /user/:user_id (admin only), same body/behaviour as updateActiveUserInfo().
+     * FIXED: the backend's response field is `user`, not `data`.
      * @param {string} sessionToken
      * @param {string} userId
      * @param {Object} changes
-     * @returns {Promise<{success: boolean, message?: string, data?: UserInfo}>}
+     * @returns {Promise<{success: boolean, message?: string, user?: UserInfo}>}
      */
     async updateUserById(sessionToken, userId, changes)
     {
@@ -297,7 +378,8 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to PUT /user/:user_id/permission?permission_level=<level> (admin only).
+     * Maps to PUT /user/:user_id/permission (admin only) with BODY { permission_level }.
+     * FIXED: permission_level is sent in the request BODY, not as a query string parameter.
      * permission_level: 0 = USER, 1 = ADMIN, 2 = SUPER_ADMIN.
      * @param {string} sessionToken
      * @param {string} userId
@@ -315,6 +397,8 @@ export class Interface_BackendAPI
 
     /**
      * Maps to POST /profile - creates a new default profile for the logged-in user.
+     * No body required. Limited to 4 profiles per user - if the limit is reached, `success`
+     * is false but `profiles` still returns the current (unchanged) profile list.
      * @param {string} sessionToken
      * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
      */
@@ -334,7 +418,8 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to GET /profile/:profileId - lightweight summary of a single profile.
+     * Maps to GET /profile/:profileId - lightweight summary of a single profile
+     * ({ id, profileName, age, ImageName } only - no watch history / likes).
      * @param {string} sessionToken
      * @param {string} profileId
      * @returns {Promise<{success: boolean, profile?: Profile, message?: string}>}
@@ -345,7 +430,9 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to GET /profile/:profileId/details - full profile document.
+     * Maps to GET /profile/:profileId/details - full profile document, including
+     * LastWatched_Media_IDs and Liked_Media_IDs.
+     * NOTE: on success the backend response has no `message` field, only `success` + `profile`.
      * @param {string} sessionToken
      * @param {string} profileId
      * @returns {Promise<{success: boolean, profile?: Profile, message?: string}>}
@@ -357,6 +444,7 @@ export class Interface_BackendAPI
 
     /**
      * Maps to PUT /profile/:profileId with { profileName?, age?, ImageName? }.
+     * Returns the caller's FULL updated profile list, not just the one changed profile.
      * @param {string} sessionToken
      * @param {string} profileId
      * @param {Object} changes
@@ -368,8 +456,10 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to PUT /profile with { updates: [{ profileId, profileName, age, ImageName }] }.
+     * Maps to PUT /profile with { updates: [{ profileId, profileName?, age?, ImageName? }] }.
      * Bulk-updates multiple profiles belonging to the logged-in user in one call.
+     * NOTE: a profileId in the array that does not belong to the logged-in user is silently
+     * skipped (not an error) - check the returned `profiles` list to confirm what changed.
      * @param {string} sessionToken
      * @param {Array} profiles
      * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
@@ -381,6 +471,8 @@ export class Interface_BackendAPI
 
     /**
      * Maps to DELETE /profile/:profileId.
+     * NOTE: a user's last remaining profile cannot be deleted - the request fails and
+     * `profiles` still returns the current (unchanged) profile list.
      * @param {string} sessionToken
      * @param {string} profileId
      * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
@@ -392,10 +484,13 @@ export class Interface_BackendAPI
 
     /**
      * Maps to POST /profile/:profileId/likes/:contentId - toggles a like (add or remove).
+     * FIXED: the backend's response field is `likedMediaIds`, not `likedContentIds`.
+     * NOTE: fails with an age-restriction error if the profile's age is below the content's
+     * age_limit.
      * @param {string} sessionToken
      * @param {string} profileID
      * @param {string} contentID
-     * @returns {Promise<{success: boolean, message?: string, liked?: boolean, likedContentIds?: Array<string>}>}
+     * @returns {Promise<{success: boolean, message?: string, liked?: boolean, likedMediaIds?: Array<string>}>}
      */
     async toggleContentLike(sessionToken, profileID, contentID)
     {
@@ -403,7 +498,9 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to POST /profile/:profileId/watch/:contentId - records a watch, moves it to the front of history.
+     * Maps to POST /profile/:profileId/watch/:contentId - records a watch, moves it to the
+     * front of history, and trims history to the 5 most recent items.
+     * NOTE: same age-restriction check as toggleContentLike().
      * @param {string} sessionToken
      * @param {string} profileID
      * @param {string} contentID
@@ -420,8 +517,9 @@ export class Interface_BackendAPI
 
     /**
      * Maps to GET /content/:contentId (public, no token required).
+     * FIXED: the backend's response field is `content`, not `data`.
      * @param {string} contentID
-     * @returns {Promise<{success: boolean, data?: ContentItem, message?: string}>}
+     * @returns {Promise<{success: boolean, content?: ContentItem, message?: string}>}
      */
     async getContentByID(contentID)
     {
@@ -433,8 +531,11 @@ export class Interface_BackendAPI
      * see Content.searchFilterMap on the backend (e.g. title_contains, exact_category,
      * contain_category, exclude_category, type, released_after/before, min/max_age_limit,
      * min_likes, limit, skip, sort, sortOrder). Called with no arguments, returns all content.
+     * FIXED: the backend's response field is `content`, not `data`.
+     * NOTE: `sortOrder` uses the same scheme as searchUsers() above: "greater_to_smaller" /
+     * "smaller_to_greater" only (any other value, including "asc"/"desc", is rejected).
      * @param {Object} [queryParams={}]
-     * @returns {Promise<{success: boolean, data?: Array<ContentItem>, message?: string}>}
+     * @returns {Promise<{success: boolean, content?: Array<ContentItem>, message?: string}>}
      */
     async getAllContentItems(queryParams = {})
     {
@@ -449,9 +550,10 @@ export class Interface_BackendAPI
      * Maps to POST /content (admin only).
      * Required fields: title, type ("movie"|"series"), release_date.
      * Optional: description, cover_image_name, categories, age_limit, videoUrl.
+     * FIXED: the backend's response field is `content`, not `data`.
      * @param {string} sessionToken
      * @param {Object} contentData
-     * @returns {Promise<{success: boolean, message?: string, data?: ContentItem}>}
+     * @returns {Promise<{success: boolean, message?: string, content?: ContentItem}>}
      */
     async createContent(sessionToken, contentData)
     {
@@ -460,10 +562,11 @@ export class Interface_BackendAPI
 
     /**
      * Maps to PUT /content/:contentId (admin only).
+     * FIXED: the backend's response field is `content`, not `data`.
      * @param {string} sessionToken
      * @param {string} contentID
      * @param {Object} changes
-     * @returns {Promise<{success: boolean, message?: string, data?: ContentItem}>}
+     * @returns {Promise<{success: boolean, message?: string, content?: ContentItem}>}
      */
     async updateContent(sessionToken, contentID, changes)
     {

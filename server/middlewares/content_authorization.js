@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Content = require('../models/content'); // Adjust path to match your actual model location
-const ENABLE_AGE_LIMIT_CHECK = true;
+const { ENABLE_18_AGE_LIMIT_CHECK } = require('../scripts/constants');
 /**
  * Middleware to verify that the requested media exists and, if a profile
  * is attached to the request (via authorizeProfileAccess), that the
@@ -32,7 +32,7 @@ const contentAuthorization = async (req, res, next) =>
         }
 
         // If a profile was already resolved earlier in the chain, enforce the age limit
-        if (ENABLE_AGE_LIMIT_CHECK && req.profile && req.profile.age < content.age_limit)
+        if (ENABLE_18_AGE_LIMIT_CHECK && req.profile && req.profile.age < content.age_limit)
         {
             return res.json({ success: false, message: "This content is not allowed for this profile" });
         }

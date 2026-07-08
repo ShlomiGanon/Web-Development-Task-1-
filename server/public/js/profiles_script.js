@@ -1,188 +1,188 @@
 import * as UI from './ui-utils.js';
 import { Profile } from './BACKEND_API/backend-interface.js';
-import { ClientSessionManager } from './clientSessionManager.js';
+import { ClientSessionManager } from './client-session-manager.js';
+import { Backend } from './config.js';
 import * as Constants from './constances.js';
 import { AVAILABLE_PROFILES_IMAGES } from './config.js';
-//variables
+
+// ==========================================
+//               Constants
+// ==========================================
+
+// What kind of unsaved change is currently pending in edit mode.
+const CHANGE_TYPE = Object.freeze({
+    NONE: null,
+    TEXT: 'text',
+    IMAGE: 'image'
+});
+
+// The two ways a profile card can be rendered.
+const RENDER_MODE = Object.freeze({
+    VIEW: 'div',
+    EDIT: 'input'
+});
+
+// ==========================================
+//              DOM References
+// ==========================================
+
+const elements = {
+    profilesArea: document.getElementById('profiles'),
+    manageProfileButton: document.getElementById('manage-profile-button'),
+    addProfileButton: document.getElementById('add-profile-button'),
+    removeProfileButton: document.getElementById('remove-profile-button'),
+    logoutButton: document.getElementById('logout-button')
+};
+
+// ==========================================
+//                  State
+// ==========================================
+
+/** @type {Array<Profile>} */
 let profiles = [];
 let isEditing = false;
 let isDeleting = false;
-let HasChanged = false;
+let changeType = CHANGE_TYPE.NONE;
 
-
-const profiles_area = document.getElementById('profiles');
-const manage_profile_button = document.getElementById('manage-profile-button');
-const add_profile_button = document.getElementById('add-profile-button');
-const remove_profile_button = document.getElementById('remove-profile-button');
-const logout_button = document.getElementById('logout-button');
-
-const UserResponse = await ClientSessionManager.restoreActiveSession();
-if (!UserResponse.success)
+// Renders as an editable form while editing, read-only otherwise.
+function currentRenderMode()
 {
-    UI.ShowErrorMessage(UserResponse.message);
-    
+    return isEditing ? RENDER_MODE.EDIT : RENDER_MODE.VIEW;
+}
+
+// ==========================================
+//        Session / Backend helpers
+// ==========================================
+// All server communication goes through Backend directly; ClientSessionManager only
+// stores the token/active-profile-id locally, so we read the token once and reuse it.
+
+const sessionToken = ClientSessionManager.getSessionToken();
+
+/**
+ * Validates the current session against the backend and, if valid, fetches the user's profiles.
+ * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
+ */
+async function restoreActiveSession()
+{
+    const isValid = await ClientSessionManager.isLoggedIn(true);
+    if (!isValid)
+    {
+        return { success: false, message: "ההתחברות פגה, אנא התחבר מחדש" };
+    }
+
+    const profilesResponse = await Backend.fetchAllProfiles(sessionToken);
+    if (!profilesResponse.success)
+    {
+        return { success: false, message: profilesResponse.message };
+    }
+
+    return { success: true, profiles: profilesResponse.profiles };
+}
+
+const sessionResult = await restoreActiveSession();
+if (!sessionResult.success)
+{
+    UI.ShowErrorMessage(sessionResult.message);
+
     // Wrapped setTimeout in a Promise so await can properly delay the execution
     // and the code not continue to load the page before the timeout is over
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    UI.GoToLink('/');//redirect to login page
+
+    UI.GoToLink('/'); // redirect to login page
 }
 else
 {
-    profiles = UserResponse.data.profiles;
+    profiles = sessionResult.profiles;
 }
 
-async function changeProfileImage(profile) 
+// ==========================================
+//         Edit-mode action buttons
+// ==========================================
+
+function showEditActionButtons()
 {
-    const currentIndex = AVAILABLE_PROFILES_IMAGES.indexOf(profile.imageName);
-    const nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % AVAILABLE_PROFILES_IMAGES.length;
-    
-    profile.imageName = AVAILABLE_PROFILES_IMAGES[nextIndex];
-    markAsChanged("image");
-    renderProfiles('input'); 
+    elements.addProfileButton.disabled = false;
+    elements.addProfileButton.style.visibility = "visible";
+    elements.addProfileButton.style.opacity = 1;
+
+    elements.removeProfileButton.disabled = false;
+    elements.removeProfileButton.style.visibility = "visible";
+    elements.removeProfileButton.style.opacity = 1;
 }
 
-//show edit action buttons (add and remove profile buttons)
-function showEditActionButtons() 
+function hideEditActionButtons()
 {
-    add_profile_button.disabled = false;
-    add_profile_button.style.visibility = "visible";
-    add_profile_button.style.opacity = 1;
+    elements.addProfileButton.disabled = true;
+    elements.addProfileButton.style.visibility = "hidden";
+    elements.addProfileButton.style.opacity = 0;
 
-    remove_profile_button.disabled = false;
-    remove_profile_button.style.visibility = "visible";
-    remove_profile_button.style.opacity = 1;
+    elements.removeProfileButton.disabled = true;
+    elements.removeProfileButton.style.visibility = "hidden";
+    elements.removeProfileButton.style.opacity = 0;
 }
 
-//hide edit action buttons (add and remove profile buttons)
-function hideEditActionButtons() 
+// ==========================================
+//         Change-tracking helpers
+// ==========================================
+
+function markAsUnchanged()
 {
-    add_profile_button.disabled = true;
-    add_profile_button.style.visibility = "hidden";
-    add_profile_button.style.opacity = 0;
-
-    remove_profile_button.disabled = true;
-    remove_profile_button.style.visibility = "hidden";
-    remove_profile_button.style.opacity = 0;
+    changeType = CHANGE_TYPE.NONE;
+    elements.manageProfileButton.innerText = "Manage Profiles";
+    showEditActionButtons();
 }
 
-//attach input listeners to the profile input fields
-//when the user starts typing, change the button text to "Save Changes" and hide the add and remove profile buttons
-function attachInputListeners() 
+function markAsChanged(newChangeType)
+{
+    changeType = newChangeType;
+    elements.manageProfileButton.innerText = "Save Changes";
+    hideEditActionButtons();
+}
+
+// When the user starts typing in a profile name field, mark the form as changed
+// so ManageProfiles_Click knows to save instead of just toggling edit mode.
+function attachInputListeners()
 {
     const inputs = document.querySelectorAll('.profile_input');
-    inputs.forEach(input => 
-        {
+    inputs.forEach(input =>
+    {
         input.addEventListener('input', () => {
-            markAsChanged("text");
+            markAsChanged(CHANGE_TYPE.TEXT);
         });
     });
 }
 
-async function ManageProfiles_OnClick() 
+/**
+ * Cycles a profile's avatar to the next image in AVAILABLE_PROFILES_IMAGES and marks
+ * the change as pending (not yet saved to the server).
+ * @param {Profile} profile
+ */
+async function changeProfileImage(profile)
 {
-    if (isDeleting) 
-    {
-        isDeleting = false;
-        manage_profile_button.innerText = "Go Back";
-        renderProfiles('input'); 
-        showEditActionButtons(); 
-        return;
-    }
+    const currentIndex = AVAILABLE_PROFILES_IMAGES.indexOf(profile.imageName);
+    const nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % AVAILABLE_PROFILES_IMAGES.length;
 
-    if (isEditing && HasChanged) 
-    {
-        await saveProfiles();
-    }
-    
-    isEditing = !isEditing;
-    manage_profile_button.innerText = isEditing ? "Go Back" : "Manage Profiles";
-    renderProfiles(isEditing ? 'input' : 'div');
-    isEditing ? showEditActionButtons() : hideEditActionButtons();
+    profile.imageName = AVAILABLE_PROFILES_IMAGES[nextIndex];
+    markAsChanged(CHANGE_TYPE.IMAGE);
+    renderProfiles(RENDER_MODE.EDIT);
 }
 
-async function AddProfile_OnClick() 
+// ==========================================
+//              Rendering
+// ==========================================
+
+/**
+ * Converts a single Profile into an HTML string.
+ * RENDER_MODE.EDIT renders an editable name field; RENDER_MODE.VIEW renders read-only text.
+ * NOTE: even in EDIT mode, the name stays read-only while an image change is still
+ * pending (changeType === IMAGE), to avoid mixing two different unsaved edits at once.
+ * @param {Profile} profile
+ * @param {string} [tagName=RENDER_MODE.VIEW] - one of RENDER_MODE.VIEW / RENDER_MODE.EDIT
+ * @returns {string} HTML markup for this profile's card
+ */
+function renderProfileComponent(profile, tagName = RENDER_MODE.VIEW)
 {
-    if (UI.isUILocked) return;
-    const newProfile = new Profile(undefined, "New Profile");
-    
-    profiles.push(newProfile);
-    
-    const response = await ClientSessionManager.saveProfiles(profiles);
-    if (!response.success)
-    {
-        UI.ShowErrorMessage(response.message);
-        //we need to fetch the updated profiles from the server
-        const response = await ClientSessionManager.getUserProfiles();
-        if (!response.success)
-        {
-            UI.ShowErrorMessage("fail to update profiles: " + response.message + "\n please refresh the page.");
-            throw new Error("fail to update profiles: " + response.message);
-        }
-        profiles = response.data.map(p => Profile.fromJSON(p));
-    }
-    else
-    {
-        UI.ShowMessage("הפרופיל נוסף בהצלחה");
-        profiles = response.data.map(p => Profile.fromJSON(p));//update the profiles array on success
-    }
-    renderProfiles(isEditing ? 'input' : 'div');
-}
-
-function RemoveProfile_OnClick() 
-{
-    if (UI.isUILocked) return;
-    if (profiles.length <= 1) 
-    {
-        UI.ShowErrorMessage("אתה לא יכול למחוק את הפרופיל האחרון");
-        return;
-    }
-    isDeleting = true;
-    renderProfiles('div');
-    hideEditActionButtons();
-    
-    manage_profile_button.innerText = "Cancel Deletion";
-    
-    UI.ShowMessage("לחץ על פרופיל כדי למחוק אותו");
-}
-
-//save profiles - save the profiles names to the profiles array after editing
-async function saveProfiles()
-{
-    for (const profile of profiles) 
-    {
-        const input = document.getElementById(`profile_input_${profile.id}`);
-        if (input && input.value.trim() === "")
-        {
-            UI.ShowErrorMessage(`שם הפרופיל לא יכול להיות ריק`);
-            return;
-        }
-    }
-
-    profiles.forEach(profile => 
-    {
-        const input = document.getElementById(`profile_input_${profile.id}`);
-        if (input) profile.name = input.value;
-    });
-
-    const response = await ClientSessionManager.saveProfiles(profiles);
-    if (!response.success) 
-    {
-        UI.ShowErrorMessage(response.message);
-        console.error("Error: " + response.message);
-    }
-    else
-    {
-        UI.ShowMessage("הפרופילים נשמרו בהצלחה");
-        markAsUnchanged();
-    }
-}
-
-
-// UI Helper: Converts a pure Profile object into HTML string
-function renderProfileComponent(profile, tag_name = 'div') 
-{
-    if (tag_name === 'input' && (HasChanged == 'text' || !HasChanged)) 
+    if (tagName === RENDER_MODE.EDIT && (changeType === CHANGE_TYPE.TEXT || changeType === CHANGE_TYPE.NONE))
     {
         return `
             <div>
@@ -210,140 +210,254 @@ function renderProfileComponent(profile, tag_name = 'div')
     }
 }
 
-function renderProfiles(tag_name = 'div') 
+/**
+ * Renders every Profile in the `profiles` array into #profiles and (re)attaches
+ * their click listeners.
+ * @param {string} [tagName=RENDER_MODE.VIEW] - one of RENDER_MODE.VIEW / RENDER_MODE.EDIT
+ */
+function renderProfiles(tagName = RENDER_MODE.VIEW)
 {
     let allProfilesHTML = "";
-    profiles.forEach(profile => 
+    profiles.forEach(profile =>
     {
-        allProfilesHTML += renderProfileComponent(profile, tag_name);
+        allProfilesHTML += renderProfileComponent(profile, tagName);
     });
-    
-    profiles_area.innerHTML = allProfilesHTML;
 
-    if (UI.isUILocked) 
+    elements.profilesArea.innerHTML = allProfilesHTML;
+
+    if (UI.isUILocked)
     {
-        profiles_area.style.pointerEvents = "none";
-        profiles_area.style.opacity = "0.6";
+        elements.profilesArea.style.pointerEvents = "none";
+        elements.profilesArea.style.opacity = "0.6";
     }
     else
     {
-        profiles_area.style.pointerEvents = "auto";
-        profiles_area.style.opacity = "1";
+        elements.profilesArea.style.pointerEvents = "auto";
+        elements.profilesArea.style.opacity = "1";
     }
 
-    profiles.forEach(profile => 
+    profiles.forEach(profile =>
     {
         const el = document.getElementById(`profile${profile.id}`);
-        if (el) 
+        if (el)
         {
-            el.addEventListener('click', () => Profile_OnClick(profile));
+            el.addEventListener('click', () => Profile_Click(profile));
         }
     });
 
     attachInputListeners();
 }
 
-async function confirmAndDeleteProfile(profile) 
+// ==========================================
+//            UI lock helpers
+// ==========================================
+
+function lockUIAndProfiles(button)
 {
-    if (profiles.length <= 1) 
+    const isInside = elements.profilesArea.contains(button);
+    UI.LockUI(button);
+    renderProfiles(currentRenderMode());
+    if (isInside)
+    {
+        // The render process clears the UI, so we unlock the global state
+        // and re-apply the spinner to the specific element in the new DOM.
+        UI.UnlockUI();
+        const lockedElement = document.getElementById(button.id);
+        UI.LockUI(lockedElement ? lockedElement : null);
+    }
+}
+
+function unlockUIAndProfiles()
+{
+    UI.UnlockUI();
+    renderProfiles(currentRenderMode());
+}
+
+// ==========================================
+//             Event handlers
+// ==========================================
+
+async function ManageProfiles_Click()
+{
+    if (isDeleting)
+    {
+        isDeleting = false;
+        elements.manageProfileButton.innerText = "Go Back";
+        renderProfiles(RENDER_MODE.EDIT);
+        showEditActionButtons();
+        return;
+    }
+
+    if (isEditing && changeType)
+    {
+        await saveEditedProfiles();
+    }
+
+    isEditing = !isEditing;
+    elements.manageProfileButton.innerText = isEditing ? "Go Back" : "Manage Profiles";
+    renderProfiles(currentRenderMode());
+    isEditing ? showEditActionButtons() : hideEditActionButtons();
+}
+
+async function AddProfile_Click()
+{
+    if (UI.isUILocked) return;
+
+    const response = await Backend.createProfile(sessionToken);
+    if (!response.success)
+    {
+        UI.ShowErrorMessage(response.message);
+    }
+    else
+    {
+        UI.ShowMessage("הפרופיל נוסף בהצלחה");
+    }
+    // createProfile() returns the current profiles list whether it succeeded or not
+    // (e.g. when the 4-profile limit is hit), so no separate fallback fetch is needed.
+    profiles = response.profiles;
+    renderProfiles(currentRenderMode());
+}
+
+function RemoveProfile_Click()
+{
+    if (UI.isUILocked) return;
+    if (profiles.length <= 1)
+    {
+        UI.ShowErrorMessage("אתה לא יכול למחוק את הפרופיל האחרון");
+        return;
+    }
+    isDeleting = true;
+    renderProfiles(RENDER_MODE.VIEW);
+    hideEditActionButtons();
+
+    elements.manageProfileButton.innerText = "Cancel Deletion";
+
+    UI.ShowMessage("לחץ על פרופיל כדי למחוק אותו");
+}
+
+// Validates and persists the currently edited profile names (called when leaving edit mode).
+async function saveEditedProfiles()
+{
+    for (const profile of profiles)
+    {
+        const input = document.getElementById(`profile_input_${profile.id}`);
+        if (input && input.value.trim() === "")
+        {
+            UI.ShowErrorMessage(`שם הפרופיל לא יכול להיות ריק`);
+            return;
+        }
+    }
+
+    profiles.forEach(profile =>
+    {
+        const input = document.getElementById(`profile_input_${profile.id}`);
+        if (input) profile.name = input.value;
+    });
+
+    const response = await Backend.saveProfiles(sessionToken, profiles);
+    if (!response.success)
+    {
+        UI.ShowErrorMessage(response.message);
+        console.error("Error: " + response.message);
+    }
+    else
+    {
+        UI.ShowMessage("הפרופילים נשמרו בהצלחה");
+        markAsUnchanged();
+    }
+}
+
+/**
+ * Prompts the user to confirm, then deletes the given profile via the backend
+ * and re-renders the (now server-confirmed) profiles list.
+ * @param {Profile} profile
+ */
+async function confirmAndDeleteProfile(profile)
+{
+    if (profiles.length <= 1)
     {
         UI.ShowMessage("Cannot delete the last profile. You must have at least one.");
         return;
     }
     const confirmed = confirm(`Are you sure you want to delete profile "${profile.name}"?`);
-    if (confirmed) 
+    if (confirmed)
     {
-        // local temporary filter
-        const filteredProfiles = profiles.filter(p => p.id !== profile.id);
-        
-        // send the updated array to the server
-        const response = await ClientSessionManager.saveProfiles(filteredProfiles);
-        
+        const response = await Backend.deleteProfile(sessionToken, profile.id);
+
         if (!response || !response.success)
         {
             UI.ShowErrorMessage(response?.message || "שגיאה במחיקת הפרופיל");
-            
-            const userData = await ClientSessionManager.restoreActiveSession();
-            
-            if (!userData || !userData.profiles)
-            {
-                UI.ShowErrorMessage("fail to update profiles: please refresh the page.");
-                throw new Error("fail to update profiles");
-            }
-            else
-            {
-                // restore the profiles array from the server
-                profiles = userData.profiles;
-            }
         }
         else
         {
             UI.ShowMessage("הפרופיל נמחק בהצלחה");
-            
-            // update the profiles array from the server response
-            if (response.data)
-            {
-                profiles = response.data;
-            } 
-            else
-            {
-                profiles = filteredProfiles;
-            }
         }
-        
-        renderProfiles('div');
+
+        // deleteProfile() returns the current profiles list whether it succeeded or not
+        // (e.g. when trying to delete the last remaining profile), so no separate
+        // fallback fetch is needed.
+        profiles = response.profiles;
+
+        renderProfiles(RENDER_MODE.VIEW);
     }
 }
 
-async function Profile_OnClick(profile) 
+/**
+ * Handles a click on a profile card - deletes/edits/enters it depending on the
+ * current mode (isDeleting / isEditing / normal).
+ * @param {Profile} profile
+ */
+async function Profile_Click(profile)
 {
     if (UI.isUILocked) return;
-    if (isDeleting) 
+    if (isDeleting)
     {
         confirmAndDeleteProfile(profile);
     }
-    else if (isEditing) 
+    else if (isEditing)
     {
-        if(HasChanged === 'image' || !HasChanged)changeProfileImage(profile);
+        if (changeType === CHANGE_TYPE.IMAGE || changeType === CHANGE_TYPE.NONE) changeProfileImage(profile);
         else
         {
             UI.ShowMessage("אתה נמצא במצב עריכה, נא ללחוץ על כפתור שמירה כדי לשמור על השינויים");
             return;
         }
     }
-    else if (!isEditing) 
+    else if (!isEditing)
     {
         const profileNameElement = document.getElementById(`profile_name_${profile.id}`);
-        Lock_UI_AND_Profiles(profileNameElement ? profileNameElement : null);
+        lockUIAndProfiles(profileNameElement ? profileNameElement : null);
         UI.ShowMessage(`Entering ${profile.name}...`);
-        
-        const response = await ClientSessionManager.selectProfile(profile.id);
-        
-        if (response && response.success) 
+
+        // Selecting a profile is a local-only action (no backend route for it) -
+        // it just records which profile is active for this tab/session.
+        try
         {
-            setTimeout(() => 
+            ClientSessionManager.setActiveProfileId(profile.id);
+            setTimeout(() =>
             {
                 UI.GoToLink("../html/profile.html");
             }, 2000);
         }
-        else 
+        catch (error)
         {
-            UI.ShowErrorMessage(response.message);
-            Unlock_UI_AND_Profiles();
+            console.error("Failed to set active profile:", error);
+            UI.ShowErrorMessage("שגיאה בבחירת הפרופיל, נסה שנית");
+            unlockUIAndProfiles();
         }
-        
     }
 }
 
-
-async function Logout_OnClick()
+async function Logout_Click()
 {
-    Lock_UI_AND_Profiles(logout_button);
-    const response = await ClientSessionManager.logout();
+    lockUIAndProfiles(elements.logoutButton);
+    const response = await Backend.logout(sessionToken);
     if (response && response.success)
     {
+        ClientSessionManager.deleteSessionToken();
+        ClientSessionManager.deleteActiveProfileId();
         UI.ShowMessage("התנתקות בוצעה בהצלחה , מתבצעת העברה...");
-        setTimeout(() => 
+        setTimeout(() =>
         {
             UI.GoToLink('../html/login_menu.html');
         }, 2000);
@@ -351,53 +465,21 @@ async function Logout_OnClick()
     else
     {
         UI.ShowErrorMessage(response.message);
-        Unlock_UI_AND_Profiles();
+        unlockUIAndProfiles();
     }
 }
 
-function Lock_UI_AND_Profiles(button)
-{
-    const isInside = profiles_area.contains(button);
-    UI.LockUI(button);
-    renderProfiles(isEditing ? 'input' : 'div');
-    if (isInside) 
-    {
-        // The render process clears the UI, so we unlock the global state 
-        // and re-apply the spinner to the specific element in the new DOM.
-        UI.UnlockUI();  
-        const lockedElement = document.getElementById(button.id);
-        UI.LockUI(lockedElement ? lockedElement : null);
-    }
-}
+// ==========================================
+//                  MAIN
+// ==========================================
 
-function Unlock_UI_AND_Profiles()
-{
-    UI.UnlockUI();
-    renderProfiles(isEditing ? 'input' : 'div');
-}
-
-//mark the changes as "none"
-function markAsUnchanged()
-{
-    HasChanged = null;
-    manage_profile_button.innerText = "Manage Profiles";
-    showEditActionButtons();
-}
-
-//mark the changes as "image" or "text"
-function markAsChanged(the_changes)
-{
-    HasChanged = the_changes;
-    manage_profile_button.innerText = "Save Changes";
-    hideEditActionButtons();
-}
-//---------------------------- MAIN ----------------------------------------
-if (!ClientSessionManager.isLoggedIn())
+if (!(await ClientSessionManager.isLoggedIn()))
 {
     UI.GoToLink('../html/login_menu.html');
 }
-logout_button.addEventListener('click', Logout_OnClick);
-manage_profile_button.addEventListener('click', ManageProfiles_OnClick);
-add_profile_button.addEventListener('click', AddProfile_OnClick);
-remove_profile_button.addEventListener('click', RemoveProfile_OnClick);
+
+elements.logoutButton.addEventListener('click', Logout_Click);
+elements.manageProfileButton.addEventListener('click', ManageProfiles_Click);
+elements.addProfileButton.addEventListener('click', AddProfile_Click);
+elements.removeProfileButton.addEventListener('click', RemoveProfile_Click);
 renderProfiles();

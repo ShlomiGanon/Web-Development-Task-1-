@@ -198,7 +198,19 @@ const searchContent = async (req, res) =>
         const limit = req.query.limit || 20;
         const skip = req.query.skip || 0;
         const sort = req.query.sort || 'release_date';
-        const sortOrder = req.query.sortOrder || 'desc';
+        let sortOrder = 'desc';
+        if(req.query.sortOrder == 'greater_to_smaller')
+        {
+            sortOrder = 'desc';
+        }
+        else if(req.query.sortOrder == 'smaller_to_greater')
+        {
+            sortOrder = 'asc';
+        }
+        else if (req.query.sortOrder)
+        {
+            return res.json({ success: false, message: 'Invalid sort order! [use greater_to_smaller or smaller_to_greater]' });
+        }
 
         const contents = await Content.find(query).limit(limit).skip(skip).sort({ [sort]: sortOrder });
 

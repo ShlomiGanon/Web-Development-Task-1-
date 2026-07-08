@@ -1,5 +1,6 @@
-import { Profile, MediaItem } from './BACKEND_API/backend-interface.js';
-import { ClientSessionManager } from './clientSessionManager.js';
+import { Profile, ContentItem } from './BACKEND_API/backend-interface.js';
+import { Backend } from './config.js';
+import { ClientSessionManager } from './client-session-manager.js';
 import * as Constants from './constances.js';
 import * as UI from './ui-utils.js';
 
@@ -12,7 +13,9 @@ const search_input = document.getElementById('search_input');
 const profile_image = document.getElementById('profile_image');
 let User_Search_Value = '';
 let activeProfile = null;
-let Media_Items = null;
+let Content_Items = null;
+const token = ClientSessionManager.getSessionToken();
+const activeProfileId = ClientSessionManager.getActiveProfileId();
 
 async function renderLastWatched() 
 {
@@ -27,21 +30,23 @@ async function renderLastWatched()
     }
 
     last_watched_text.textContent = "Last watched: ";
-    const lastWatchedItems = activeProfile.LastWatched_Media_IDs
-        .map(id => Media_Items.find(m => m.id === id))
+    const lastWatchedItems = activeProfile.LastWatched_Content_IDs
+        .map(id => Content_Items.find(m => m.id === id))
         .filter(m => m !== undefined);
 
     last_watched_container.innerHTML = lastWatchedItems.map(item => 
     {
-        const isLiked = activeProfile.wasLiked_Media_IDs.has(item.id);
+        const isLiked = activeProfile.wasLiked_Content_IDs.has(item.id);
         
         const cover_imageName = item.cover_imageName || 'UNDEFINED.png';
         return `
             <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
-                <img src="../assets/covers/${cover_imageName}" class="img-fluid rounded movie_image" alt="${item.name}" onclick="click_on_media_item(${item.id})">
+                <img src="../assets/covers/${cover_imageName}" class="img-fluid rounded movie_image" 
+                alt="${item.name}" 
+                onclick="click_on_content_item('${item.id}')">
                 <div class="movie_name text-center text-truncate px-1">${item.name}</div>
                 <button class="btn btn-sm ${isLiked ? 'btn-danger' : 'btn-outline-danger'} w-100 mt-2" 
-                        onclick="handleToggleLike(${item.id})">
+                        onclick="handleToggleLike('${item.id}')">
                     ${isLiked ? `${item.likes} 💔(unlike)` : `${item.likes} ❤️(like)`}
                 </button>
             </div>
@@ -61,8 +66,8 @@ async function renderLastWatched()
 async function renderAllMovies(searchValue = '') 
 {
     const filteredData = searchValue 
-        ? Media_Items.filter(item => item.name.toLowerCase().includes(searchValue.toLowerCase()))
-        : Media_Items;
+        ? Content_Items.filter(item => item.name.toLowerCase().includes(searchValue.toLowerCase()))
+        : Content_Items;
 
     // Prepare a container for the HTML string to minimize DOM reflows
     let htmlContent = '';
@@ -70,17 +75,17 @@ async function renderAllMovies(searchValue = '')
     // Build the movie item cards
     filteredData.forEach(item => 
     {
-        const isLiked = activeProfile ? activeProfile.wasLiked_Media_IDs.has(item.id) : false;
+        const isLiked = activeProfile ? activeProfile.wasLiked_Content_IDs.has(item.id) : false;
         const cover_imageName = item.cover_imageName || 'UNDEFINED.png';
         htmlContent += `
             <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
                 <img src="../assets/covers/${cover_imageName}" 
                      class="img-fluid rounded movie_image" 
                      alt="${item.name}" 
-                     onclick="click_on_media_item(${item.id})">
+                     onclick="click_on_content_item('${item.id}')">
                 <div class="movie_name text-center text-truncate px-1">${item.name}</div>
                 <button class="btn btn-sm ${isLiked ? 'btn-danger' : 'btn-outline-danger'} w-100 mt-2" 
-                        onclick="handleToggleLike(${item.id})">
+                        onclick="handleToggleLike('${item.id}')">
                     ${isLiked ? `${item.likes} 💔(unlike)` : `${item.likes} ❤️(like)`}
                 </button>
             </div>
@@ -112,41 +117,51 @@ async function search_on_click()
         await renderAllMovies();
     }
 }
-async function handleToggleLike(mediaID)
+async function handleToggleLike(ContentID)
 {
-    const response = await ClientSessionManager.toggleMediaLike(mediaID);
+    const response = await Backend.toggleContentLike(token, activeProfileId, ContentID);
     if (!response || !response.success)
     {
-        console.error("Failed to toggle like");
+        console.error("Failed to toggle like: ", response.message || "Unknown error");
         return;
     }
     else
     {
-        let pressed_media = Media_Items.find(m => m.id === mediaID);
-        if (pressed_media)
+        //update the content item likes 
+        const updated_wasLiked_Content_IDs = response.likedContentIds;
+        activeProfile.update_wasLiked_Content_IDs(updated_wasLiked_Content_IDs);
+        let pressed_content = Content_Items.find(content => content.id === ContentID);
+        if (pressed_content)
         {
-            pressed_media.likes = response.data.media.likes;
+            if(response.liked)
+            {
+                pressed_content.likes++;
+            }
+            else
+            {
+                pressed_content.likes--;
+            }
         }
         else
         {
-            console.error("Failed to find media");
+            console.error("Failed to find content");
         }
-        activeProfile = Profile.fromJSON(response.data.profile);
         await refreshDisplay();
     }
 }
-async function click_on_media_item(mediaID)
+async function click_on_content_item(ContentID)
 {
-    const response = await ClientSessionManager.selectMediaItem(mediaID);
+    const response = await Backend.selectContentItem(token, activeProfileId, ContentID);
     
     if (!response || !response.success) 
     {
-        console.error("Failed to select media");
+        console.error("Failed to select content: ", response.message || "Unknown error");
         return;
     }
     else
     {
-        activeProfile = response.data;
+        const updated_LastWatched_Content_IDs = response.watchHistory;//TODO: change to Content_IDs
+        activeProfile.update_LastWatched_Content_IDs(updated_LastWatched_Content_IDs);
     }
     await refreshDisplay();
 }
@@ -159,7 +174,7 @@ async function refreshDisplay()
 
 async function init() 
 {
-    if (!ClientSessionManager.isLoggedIn())
+    if (!await ClientSessionManager.isLoggedIn())
     {
         UI.LockUI(all_movies_container);
         last_watched_container.innerHTML = "NOT LOGGED IN";
@@ -167,8 +182,7 @@ async function init()
         return;
     }
 
-    activeProfile = await ClientSessionManager.getActiveProfile();
-    if (!activeProfile)
+    if (!activeProfileId)
     {
         UI.LockUI(all_movies_container);
         last_watched_container.innerHTML = "NO PROFILE SELECTED";
@@ -176,20 +190,32 @@ async function init()
         return;
     }
 
-    const response = await ClientSessionManager.getAllMediaItems();
-    if (!response || !response.success)
+    //get the active profile details
+    //this is include the last watched contents ids and the wasLiked contents ids
+    const fetchProfileDetails_response = await Backend.fetchProfileDetails(token, activeProfileId);
+    if (!fetchProfileDetails_response || !fetchProfileDetails_response.success)
     {
         UI.LockUI(all_movies_container);
-        all_movies_container.innerHTML = "ERROR GETTING MEDIA ITEMS";
+        all_movies_container.innerHTML = "ERROR GETTING ACTIVE PROFILE";
         return;
     }
-    Media_Items = response.data;
+    activeProfile = fetchProfileDetails_response.profile;
+
+
+    const getAllContent_response = await Backend.getAllContentItems();
+    if (!getAllContent_response || !getAllContent_response.success)
+    {
+        UI.LockUI(all_movies_container);
+        all_movies_container.innerHTML = "ERROR GETTING CONTENT ITEMS";
+        return;
+    }
+    Content_Items = getAllContent_response.content;
 
     await refreshDisplay();
     
     search_button.addEventListener('click', search_on_click);
     search_input.addEventListener('keypress', (e) => { if (e.key === 'Enter') search_on_click(); });
 }
-window.click_on_media_item = click_on_media_item;
+window.click_on_content_item = click_on_content_item;
 window.handleToggleLike = handleToggleLike;
 init();

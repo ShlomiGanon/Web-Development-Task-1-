@@ -25,7 +25,7 @@
   </div>
 
     <script type="module">
-        import { ClientSessionManager } from './js/clientSessionManager.js';
+        import { ClientSessionManager } from './js/client-session-manager.js';
         import * as UI from './js/ui-utils.js';
         const FAKE_BTN = document.getElementById("fake-button");
         (async () => 
@@ -37,9 +37,8 @@
 
             try 
             {
-                const activeUser = await ClientSessionManager.restoreActiveSession();
                 
-                if (activeUser.success) 
+                if (await ClientSessionManager.isLoggedIn(false)) 
                 {
                     UI.ShowMessage("זוהה פרטי התחברות , מתבצעת העברה...");
                     newUrl = "html/profiles.html";
@@ -48,7 +47,6 @@
                 {
                     UI.ShowMessage("לא זוהו פרטי התחברות, הנך מועבר לדף ההתחברות...");
                     newUrl = "html/login_menu.html";
-                    ClientSessionManager.logout();
                 }
             }
             catch (error) 

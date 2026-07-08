@@ -1,7 +1,12 @@
 import * as UI from './ui-utils.js';
 import * as Constants from './constances.js';
 
-
+export function is_valid_birthday(birthday)
+{
+    const birthdayDate = new Date(birthday);
+    const today = new Date();
+    return birthdayDate < today;
+}
 
 export function is_valid_name(name)
 {
