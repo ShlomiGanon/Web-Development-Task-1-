@@ -74,12 +74,9 @@ rl.on('line', async (line) =>
             shutdown();
             break;
         }
-
-
         // ------------- SET PERMISSION -------------
         case 'setpermission':
         {
-
             if(params.length < 2)
             {
                 console.log('Usage: SetPermission <email> <permission_level>');
@@ -98,7 +95,6 @@ rl.on('line', async (line) =>
             else console.log(`SetPermission: Failed to update user: ${user.email}`);
             break;
         }
-
         // ------------- DELETE ALL TOKENS -------------
         case 'deletealltokens':
         {
@@ -106,7 +102,6 @@ rl.on('line', async (line) =>
             console.log('All tokens deleted');
             break;
         }
-
         // ------------- INITIALIZE DATABASE -------------
         case 'init':
         {
@@ -126,7 +121,7 @@ rl.on('line', async (line) =>
             break;
         }
         // ------------- GET ALL USERS -------------
-        case 'getallusers':
+        case 'getusers':
         {
             const users = await User.find();
             console.log(users);
@@ -134,7 +129,7 @@ rl.on('line', async (line) =>
             break;
         }
         // ------------- GET ALL PROFILES -------------
-        case 'getallprofiles':
+        case 'getprofiles':
         {
             const profiles = await Profile.find();
             console.log(profiles);
@@ -142,7 +137,7 @@ rl.on('line', async (line) =>
             break;
         }
         // ------------- GET ALL CONTENT -------------
-        case 'getallcontent':
+        case 'getcontent':
         {
             const content = await Content.find();
             console.log(content);

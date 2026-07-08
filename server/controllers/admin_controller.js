@@ -18,8 +18,8 @@ const setPermissionLevel = async (req, res) =>
         const selected_user_id = req.target_user_id;
         const admin_user_id = req.admin_user_id;
         if(!selected_user_id)return res.json({ success: false, data: null, message: 'setPermissionLevel: request params is missing target_user_id' });
-        if(!req.query.permission_level)return res.json({ success: false, data: null, message: 'setPermissionLevel: request query is missing permission_level' });
-        const permission_level = parseInt(req.query.permission_level);
+        if(!req.body.permission_level)return res.json({ success: false, data: null, message: 'setPermissionLevel: request body is missing permission_level' });
+        const permission_level = parseInt(req.body.permission_level);
         if (permission_level > permissionManagerInstance.getPermissionLevel(admin_user_id))
         {
             return res.json({ success: false, data: null, message: 'cannot assign a permission level higher than your own!' });
@@ -63,7 +63,19 @@ const searchUsers = async (req, res) =>
             const limit = req.query.limit || 10;
             const skip = req.query.skip || 0;
             const sort = req.query.sort || 'createdAt';
-            const sortOrder = req.query.sortOrder || 'desc';
+            let sortOrder = 'desc';
+            if(req.query.sortOrder == 'greater_to_smaller')
+            {
+                sortOrder = 'desc';
+            }
+            else if(req.query.sortOrder == 'smaller_to_greater')
+            {
+                sortOrder = 'asc';
+            }
+            else if (req.query.sortOrder)
+            {
+                return res.json({ success: false, message: 'Invalid sort order! [use greater_to_smaller or smaller_to_greater]' });
+            }
             const users = await User.find(query).limit(limit).skip(skip).sort({ [sort]: sortOrder });
             res.json({ success: true, message: 'Users searched successfully', users: users.map(user => safe_user(user)) });
         }

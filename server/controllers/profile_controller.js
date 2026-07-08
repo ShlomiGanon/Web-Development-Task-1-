@@ -58,8 +58,18 @@ const createProfile = async (req, res) =>
             my_logger.OperationLog('createProfile', 'User not found.', { "user_id": userId }, my_logger.Log_Level.WARNING);
             return res.json({ success: false, message: "User not found", profiles: [] });
         }
+        let newProfile;
+        try
+        {
 
-        const newProfile = await user.addProfile();
+            newProfile = await user.addProfile();
+        }
+        catch (error)
+        {
+            my_logger.ConsoleLog(`Failed to add new profile, error: ${error}`, my_logger.Log_Level.ERROR);
+            my_logger.OperationLog('createProfile', 'Failed to add new profile.', { "user_id": userId, "error": error }, my_logger.Log_Level.ERROR);
+            return res.json({ success: false, message: error.message || "fail to add new profile", profiles: toProfileSummaryList(await fetchUserProfiles(userId)) });
+        }
 
         const profiles = await fetchUserProfiles(userId);
 
@@ -100,9 +110,16 @@ const deleteProfile = async (req, res) =>
             my_logger.OperationLog('deleteProfile', 'User not found.', { "user_id": userId, "profile_id": profileId }, my_logger.Log_Level.WARNING);
             return res.json({ success: false, message: "User not found", profiles: [] });
         }
-
-        await user.removeProfile(profileId);
-
+        try
+        {
+            await user.removeProfile(profileId);
+        }
+        catch (error)
+        {
+            my_logger.ConsoleLog(`Failed to delete profile, error: ${error}`, my_logger.Log_Level.ERROR);
+            my_logger.OperationLog('deleteProfile', 'Failed to delete profile.', { "user_id": userId, "profile_id": profileId, "error": error }, my_logger.Log_Level.ERROR);
+            return res.json({ success: false, message: error.message || "fail to delete profile", profiles: toProfileSummaryList(await fetchUserProfiles(userId)) });
+        }
         const profiles = await fetchUserProfiles(userId);
 
         res.json({ success: true, message: "Profile deleted successfully", profiles: toProfileSummaryList(profiles) });

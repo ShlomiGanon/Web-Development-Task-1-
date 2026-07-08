@@ -2,7 +2,7 @@ const User = require('../models/user');
 const { tokenManagerInstance } = require('../middlewares/token_manager');
 const { Is_Valid_Name, Is_Valid_Email, Is_Valid_Phone, Is_Valid_Password, get_age_from_birthday, Hash_Password, Compare_Password } = require('../scripts/auth');
 const my_logger = require('../scripts/my_logger');
-
+const { ENABLE_18_AGE_LIMIT } = require('../scripts/constants');
 
 const safe_user = (user) =>
 {
@@ -40,8 +40,11 @@ const register = async (req, res) =>
         if(!Is_Valid_Phone(phone))return res.json({ success: false, message: 'Invalid phone number' });
         if(!Is_Valid_Password(password))return res.json({ success: false, message: 'Invalid password' });
         const birthdayDate = new Date(birthday);
-        const age = get_age_from_birthday(birthdayDate);
-        if(age < 18)return res.json({ success: false, message: 'User must be at least 18 years old' });
+        if(ENABLE_18_AGE_LIMIT)
+        {
+            const age = get_age_from_birthday(birthdayDate);
+            if(age < 18)return res.json({ success: false, message: 'User must be at least 18 years old' });
+        }
         const hashedPassword = await Hash_Password(password);
         
         //check if the email or phone already exists
@@ -147,20 +150,27 @@ const updateUser = async (req, res) =>
     {
         const user_id = req.target_user_id;
         const current_user = await User.findById(user_id);
-
+        const current_safe_user = safe_user(current_user);
         if (!current_user)
         {
-            return res.json({ success: false, message: 'User not found' });
+            return res.json({ success: false, message: 'User not found' , "user": undefined });
         }
 
         const changes = {};
         const old_data = {};
 
+        if(req.body.password)
+        {
+            if(!Is_Valid_Password(req.body.password))return res.json({ success: false, message: 'Invalid password' , "user": current_safe_user });
+            changes.password = await Hash_Password(req.body.password);
+            old_data.password = current_user.password;
+        }
+
         if (req.body.email && req.body.email !== current_user.email)
         {
             if (!Is_Valid_Email(req.body.email))
             {
-                return res.json({ success: false, message: 'Invalid email' });
+                return res.json({ success: false, message: 'Invalid email' , "user": current_safe_user });
             }
 
             changes.email = req.body.email;
@@ -171,16 +181,40 @@ const updateUser = async (req, res) =>
         {
             if (!Is_Valid_Phone(req.body.phone))
             {
-                return res.json({ success: false, message: 'Invalid phone number' });
+                return res.json({ success: false, message: 'Invalid phone number' , "user": current_safe_user });
             }
 
             changes.phone = req.body.phone;
             old_data.phone = current_user.phone;
         }
 
+        if (req.body.fullName && req.body.fullName !== current_user.fullName)
+        {
+            const firstName = req.body.fullName.split(' ')[0];
+            const lastName = req.body.fullName.split(' ')[1];
+            if(!firstName || !lastName)return res.json({ success: false, message: 'Invalid full name' , "user": current_safe_user });
+            if(!Is_Valid_Name(firstName))return res.json({ success: false, message: 'Invalid first name' , "user": current_safe_user });
+            if(!Is_Valid_Name(lastName))return res.json({ success: false, message: 'Invalid last name' , "user": current_safe_user });
+            changes.fullName = req.body.fullName;
+            old_data.fullName = current_user.fullName;
+        }
+
+        if (req.body.birthday && req.body.birthday !== current_user.birthDate)
+        {
+            const birthdayDate = new Date(req.body.birthday);
+            if(birthdayDate > new Date())return res.json({ success: false, message: 'Invalid birthday' , "user": current_safe_user });   
+            if(ENABLE_18_AGE_LIMIT)
+            {
+                const age = get_age_from_birthday(birthdayDate);
+                if(age < 18)return res.json({ success: false, message: 'User must be at least 18 years old' , "user": current_safe_user });
+            }
+            changes.birthDate = birthdayDate;
+            old_data.birthDate = current_user.birthDate;
+        }
+
         if (Object.keys(changes).length === 0)
         {
-            return res.json({ success: false, message: 'No changes to update' });
+            return res.json({ success: false, message: 'No changes to update' , "user": current_safe_user });
         }
 
         let user;
@@ -197,7 +231,7 @@ const updateUser = async (req, res) =>
             {
                 const duplicatedField = Object.keys(dbError.keyPattern)[0];
                 const fieldLabel = duplicatedField === 'email' ? 'Email' : 'Phone number';
-                return res.json({ success: false, message: `${fieldLabel} already exists` });
+                return res.json({ success: false, message: `${fieldLabel} already exists` , "user": current_safe_user });
             }
 
             throw dbError;
@@ -207,7 +241,7 @@ const updateUser = async (req, res) =>
         {
             my_logger.ConsoleLog(`Failed to update user! [request_uid: ${user_id}]`, my_logger.Log_Level.ERROR);
             my_logger.OperationLog('updateUser', 'Failed to update user! Please try again later.', { "request_uid": user_id, "update_result": user }, my_logger.Log_Level.ERROR);
-            return res.json({ success: false, message: 'Failed to update user! Please try again later.' });
+            return res.json({ success: false, message: 'Failed to update user! Please try again later.' , "user": current_safe_user });
         }
 
         my_logger.ConsoleLog(`User updated successfully.`, my_logger.Log_Level.INFO);
@@ -220,7 +254,7 @@ const updateUser = async (req, res) =>
     {
         my_logger.ConsoleLog(`Error updating user: ${error}`, my_logger.Log_Level.ERROR);
         my_logger.OperationLog('updateUser', 'Error updating user.', { "error": error }, my_logger.Log_Level.ERROR);
-        res.json({ success: false, message: 'Internal server error' });
+        res.json({ success: false, message: 'Internal server error' , "user": undefined });
     }
 }
 
