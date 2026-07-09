@@ -73,10 +73,9 @@ function Cancel_Click()
     }, 2000);
     profiles = profile_before_changes.map(profile => Profile.fromJSON(profile));
     profile_before_changes = null;
-    markAsUnchanged();
-    hideEditActionButtons();
     isEditing = false;
     isDeleting = false;
+    markAsUnchanged();
     renderProfiles(RENDER_MODE.VIEW);
 }
 
@@ -159,8 +158,8 @@ function markAsUnchanged()
 {
     changeType = CHANGE_TYPE.NONE;
     elements.manageProfileButton.innerText = "Manage Profiles";
-    showEditActionButtons();
     HideCancelButton();
+    isEditing ? showEditActionButtons() : hideEditActionButtons(); 
 }
 
 function markAsChanged(newChangeType)
@@ -180,7 +179,7 @@ function attachInputListeners()
     inputs.forEach(input =>
     {
         input.addEventListener('input', () => {
-            markAsChanged(CHANGE_TYPE.TEXT);
+            if (!changeType) markAsChanged(CHANGE_TYPE.TEXT);
         });
     });
 }
