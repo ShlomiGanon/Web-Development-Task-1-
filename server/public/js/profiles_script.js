@@ -31,7 +31,8 @@ const elements = {
     manageProfileButton: document.getElementById('manage-profile-button'),
     addProfileButton: document.getElementById('add-profile-button'),
     removeProfileButton: document.getElementById('remove-profile-button'),
-    logoutButton: document.getElementById('logout-button')
+    logoutButton: document.getElementById('logout-button'),
+    cancelButton: document.getElementById('cancel-button')
 };
 
 // ==========================================
@@ -40,6 +41,8 @@ const elements = {
 
 /** @type {Array<Profile>} */
 let profiles = [];
+/** @type {Array<Profile>|null} */
+let profile_before_changes = null;
 let isEditing = false;
 let isDeleting = false;
 let changeType = CHANGE_TYPE.NONE;
@@ -48,6 +51,33 @@ let changeType = CHANGE_TYPE.NONE;
 function currentRenderMode()
 {
     return isEditing ? RENDER_MODE.EDIT : RENDER_MODE.VIEW;
+}
+
+function ShowCancelButton()
+{
+    elements.cancelButton.style.visibility = "visible";
+    elements.cancelButton.style.opacity = 1;
+}
+
+function HideCancelButton()
+{
+    elements.cancelButton.style.visibility = "hidden";
+    elements.cancelButton.style.opacity = 0;
+}
+
+function Cancel_Click()
+{
+    UI.ShowMessage("השינויים בוטלו");
+    setTimeout(() => {
+        UI.ClearMessage();
+    }, 2000);
+    profiles = profile_before_changes.map(profile => Profile.fromJSON(profile));
+    profile_before_changes = null;
+    markAsUnchanged();
+    hideEditActionButtons();
+    isEditing = false;
+    isDeleting = false;
+    renderProfiles(RENDER_MODE.VIEW);
 }
 
 // ==========================================
@@ -130,13 +160,16 @@ function markAsUnchanged()
     changeType = CHANGE_TYPE.NONE;
     elements.manageProfileButton.innerText = "Manage Profiles";
     showEditActionButtons();
+    HideCancelButton();
 }
 
 function markAsChanged(newChangeType)
 {
+    profile_before_changes = JSON.parse(JSON.stringify(profiles));
     changeType = newChangeType;
     elements.manageProfileButton.innerText = "Save Changes";
     hideEditActionButtons();
+    ShowCancelButton();
 }
 
 // When the user starts typing in a profile name field, mark the form as changed
@@ -159,11 +192,11 @@ function attachInputListeners()
  */
 async function changeProfileImage(profile)
 {
+    if(!changeType)markAsChanged(CHANGE_TYPE.IMAGE);
     const currentIndex = AVAILABLE_PROFILES_IMAGES.indexOf(profile.imageName);
     const nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % AVAILABLE_PROFILES_IMAGES.length;
 
     profile.imageName = AVAILABLE_PROFILES_IMAGES[nextIndex];
-    markAsChanged(CHANGE_TYPE.IMAGE);
     renderProfiles(RENDER_MODE.EDIT);
 }
 
@@ -279,6 +312,10 @@ function unlockUIAndProfiles()
 
 async function ManageProfiles_Click()
 {
+    if(!isEditing)
+    {
+        UI.ShowMessage("לחץ על התמונה כדי לשנות אותה");
+    }
     if (isDeleting)
     {
         isDeleting = false;
@@ -482,4 +519,6 @@ elements.logoutButton.addEventListener('click', Logout_Click);
 elements.manageProfileButton.addEventListener('click', ManageProfiles_Click);
 elements.addProfileButton.addEventListener('click', AddProfile_Click);
 elements.removeProfileButton.addEventListener('click', RemoveProfile_Click);
+elements.cancelButton.addEventListener('click', Cancel_Click);
+HideCancelButton();
 renderProfiles();

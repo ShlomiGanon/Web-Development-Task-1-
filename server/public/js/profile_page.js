@@ -199,8 +199,8 @@ async function init()
         all_movies_container.innerHTML = "ERROR GETTING ACTIVE PROFILE";
         return;
     }
-    activeProfile = fetchProfileDetails_response.profile;
-
+    activeProfile = Profile.fromJSON(fetchProfileDetails_response.profile);
+    console.log(activeProfile);
 
     const getAllContent_response = await Backend.getAllContentItems();
     if (!getAllContent_response || !getAllContent_response.success)

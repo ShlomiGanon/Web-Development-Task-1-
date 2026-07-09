@@ -36,12 +36,16 @@ export class Profile
     /**
      * Builds a Profile from a raw backend response object.
      *
-     * FIXED: the backend's full profile document (GET /profile/:profileId/details) uses the
-     * field names `LastWatched_Media_IDs` and `Liked_Media_IDs` (not `..._Content_IDs`).
-     * The toggle-like response (POST /profile/:profileId/likes/:contentId) uses `likedMediaIds`.
-     * The lightweight profile summary (most other profile endpoints) does NOT include either
-     * of these two fields at all - only { id, profileName, age, ImageName }. In that case both
-     * will simply default to empty, which is correct/expected.
+     * FIXED (verified against the real Profile mongoose schema and profileController.js -
+     * the previous version of this method assumed field names that don't actually exist
+     * on the backend):
+     * - The lightweight profile summary (createProfile / deleteProfile / updateProfile /
+     *   getProfile / updateAllProfiles) is built via toProfileSummary() and returns
+     *   { id, profileName, age, ImageName } only - no watch history / likes fields at all.
+     * - The full profile document (GET /profile/:profileId/details, getProfileDetails)
+     *   returns the raw Mongoose document AS-IS, with NO field renaming - so it has
+     *   `_id` (not `id`), `LastWatched_Content_IDs`, and `Liked_Content_IDs`, matching the
+     *   schema exactly. There is no "..._Media_IDs" naming anywhere on the backend.
      * @param {Object} rawObject
      * @returns {Profile|null}
      */
@@ -50,11 +54,14 @@ export class Profile
         if (!rawObject) return null;
         if (rawObject instanceof Profile) return rawObject;
 
-        const lastWatchedIds = rawObject.LastWatched_Media_IDs ?? [];
-        const likedIds = rawObject.Liked_Media_IDs ?? rawObject.likedMediaIds ?? [];
+        // id: lightweight summaries already expose `id`; the full profile document
+        // (getProfileDetails) is a raw Mongoose doc and only has `_id`.
+        const id = rawObject.id ?? rawObject._id;
+        const lastWatchedIds = rawObject.LastWatched_Content_IDs ?? [];
+        const likedIds = rawObject.Liked_Content_IDs ?? [];
 
         return new Profile(
-            rawObject.id,
+            id,
             rawObject.profileName,
             rawObject.age,
             rawObject.ImageName,
@@ -77,12 +84,12 @@ export class Profile
     toJSON()
     {
         return {
+            id: this.id,
             profileName: this.name,
             age: this.age,
             ImageName: this.imageName
         };
     }
-
 
     update_LastWatched_Content_IDs(New_LastWatched_Content_IDs)
     {
@@ -328,7 +335,8 @@ export class Interface_BackendAPI
     /**
      * Maps to GET /user with search/filter query params (admin only).
      * See User.searchFilterMap on the backend for supported keys
-     * (e.g. email_contains, fullname_starts, joined_after, limit, skip, sort, sortOrder).
+     * (e.g. email_contains, phone_contains, fullname_contains, born_after, born_before,
+     * joined_after, joined_before, limit, skip, sort, sortOrder).
      * NOTE: `sortOrder` only accepts the exact strings "greater_to_smaller" (descending,
      * the default) or "smaller_to_greater" (ascending) - any other value, including "asc"/"desc",
      * returns an error. getAllContentItems() below uses this same scheme.
@@ -431,8 +439,11 @@ export class Interface_BackendAPI
 
     /**
      * Maps to GET /profile/:profileId/details - full profile document, including
-     * LastWatched_Media_IDs and Liked_Media_IDs.
+     * LastWatched_Content_IDs and Liked_Content_IDs.
      * NOTE: on success the backend response has no `message` field, only `success` + `profile`.
+     * NOTE: this returns the raw Mongoose document (via getProfileDetails), so unlike every
+     * other profile endpoint it is NOT passed through toProfileSummary - the raw object has
+     * `_id` rather than `id`. Profile.fromJSON() already accounts for this.
      * @param {string} sessionToken
      * @param {string} profileId
      * @returns {Promise<{success: boolean, profile?: Profile, message?: string}>}
@@ -484,13 +495,16 @@ export class Interface_BackendAPI
 
     /**
      * Maps to POST /profile/:profileId/likes/:contentId - toggles a like (add or remove).
-     * FIXED: the backend's response field is `likedMediaIds`, not `likedContentIds`.
+     * FIXED (verified against pressLike() in profileController.js): the backend's response
+     * field on success is `likedContentIds`, not `likedMediaIds`. (Note: the backend's own
+     * catch/error branch inconsistently uses `likedMediaIds: []` instead - harmless for us
+     * since we bail out on `!success` before reading this field either way.)
      * NOTE: fails with an age-restriction error if the profile's age is below the content's
      * age_limit.
      * @param {string} sessionToken
      * @param {string} profileID
      * @param {string} contentID
-     * @returns {Promise<{success: boolean, message?: string, liked?: boolean, likedMediaIds?: Array<string>}>}
+     * @returns {Promise<{success: boolean, message?: string, liked?: boolean, likedContentIds?: Array<string>}>}
      */
     async toggleContentLike(sessionToken, profileID, contentID)
     {

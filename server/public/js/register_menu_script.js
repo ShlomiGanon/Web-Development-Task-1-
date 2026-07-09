@@ -3,26 +3,25 @@ import * as Auth from './auth.js';
 import * as Constants from './constances.js';
 import { Backend } from './config.js';
 
-const firstNameInput = document.getElementById('first-name-field');
-const lastNameInput = document.getElementById('last-name-field');
+const FullNameInput = document.getElementById('full-name-field');
+const birthdayInput = document.getElementById('birthday-field');
 const emailInput = document.getElementById('mail-field');
 const phoneInput = document.getElementById('phone-field');
 const passwordInput = document.getElementById('password-field');
 const confirmPasswordInput = document.getElementById('confirm-password-field');
 const registerButton = document.getElementById('register-button');
-const birthdayInput = document.getElementById('birthday-field');
 registerButton.addEventListener('click', Register_Click);
 
 async function Register_Click()
 {
     const isNotEmpty = (text) => text !== "";
-
+    const IsValidFullName = (text) => Auth.is_valid_name(text.split(' ')[0]) && Auth.is_valid_name(text.split(' ')[1]);
     const rules =
     [
-        new Auth.InputRule(firstNameInput, "שם פרטי הוא שדה חובה", isNotEmpty),
-        new Auth.InputRule(firstNameInput, "שם פרטי אינו תקין", Auth.is_valid_name),
-        new Auth.InputRule(lastNameInput, "שם משפחה הוא שדה חובה", isNotEmpty),
-        new Auth.InputRule(lastNameInput, "שם משפחה אינו תקין", Auth.is_valid_name),
+        new Auth.InputRule(FullNameInput, "שם מלא הוא שדה חובה", isNotEmpty),
+        new Auth.InputRule(FullNameInput, "שם פרטי או שם משפחה אינו תקין", IsValidFullName),
+        new Auth.InputRule(birthdayInput, "תאריך לידה הוא שדה חובה", isNotEmpty),
+        new Auth.InputRule(birthdayInput, "תאריך לידה אינו תקין", Auth.is_valid_birthday),
         new Auth.InputRule(emailInput, "אימייל הוא שדה חובה", isNotEmpty),
         new Auth.InputRule(emailInput, "האימייל אינו תקין", Auth.Is_Valid_Email),
         new Auth.InputRule(phoneInput, "מספר נייד הוא שדה חובה", isNotEmpty),
@@ -31,8 +30,7 @@ async function Register_Click()
         new Auth.InputRule(passwordInput, `אורך סיסמה לא תקין [${Constants.MIN_PASSWORD_LENGTH}-${Constants.MAX_PASSWORD_LENGTH}]`, Auth.Is_Valid_Password, [Constants.MIN_PASSWORD_LENGTH, Constants.MAX_PASSWORD_LENGTH]),
         new Auth.InputRule(confirmPasswordInput, "אימות סיסמה הוא שדה חובה", isNotEmpty),
         new Auth.InputRule(confirmPasswordInput, "אימות הסיסמה אינו זהה לסיסמה", (text) => text === passwordInput.value),
-        new Auth.InputRule(birthdayInput, "תאריך לידה הוא שדה חובה", isNotEmpty),
-        new Auth.InputRule(birthdayInput, "תאריך לידה אינו תקין", Auth.is_valid_birthday)
+
     ];
 
     if (!Auth.ValidateForm(rules))

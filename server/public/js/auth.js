@@ -10,6 +10,7 @@ export function is_valid_birthday(birthday)
 
 export function is_valid_name(name)
 {
+    if(!name || name.length < 1) return false;
     return /^[a-zA-Z]+$/.test(name);
 }
 

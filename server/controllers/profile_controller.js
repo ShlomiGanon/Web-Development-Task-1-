@@ -464,7 +464,15 @@ const getProfileDetails = async (req, res) =>
 
     try
     {
-        res.json({ success: true, profile: profile });
+        //need to return the full profile but as profile summary style plus likes conntent ids and last watched content ids.
+        //but as one profile field in response.
+        const responseProfile = 
+        {
+            ...(toProfileSummary(profile)),
+            likedContentIds: profile.Liked_Content_IDs,
+            lastWatchedContentIds: profile.LastWatched_Content_IDs
+        };
+        res.json({ success: true, profile: responseProfile });
         my_logger.ConsoleLog(`Profile details retrieved successfully. [user_id: ${userId}, profile_id: ${profile._id}]`, my_logger.Log_Level.INFO);
         my_logger.OperationLog('getProfileDetails', 'Profile details retrieved successfully.', { "user_id": userId, "profile_id": profile._id }, my_logger.Log_Level.INFO);
     }
