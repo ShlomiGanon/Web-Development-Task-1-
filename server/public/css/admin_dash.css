@@ -1,0 +1,41 @@
+
+#mode_selector_container 
+{
+    transition: all 0.5s ease-in-out;
+}
+
+#controll_container 
+{
+    
+    transition: all 0.5s ease-in-out;
+}
+
+#selection_container 
+{
+    height: 100%;
+    width: 100%;
+    transition: all 0.5s ease-in-out;
+}
+
+#view_container 
+{
+    height: 75%;
+    width: 100%;
+    transition: all 0.5s ease-in-out;
+}
+
+.lable_item:hover
+{
+    /*i want it to scale but only in the y axis*/
+    /*i want to make the text bold*/
+    font-weight: bold;
+    background-color: #333;
+    transition: all 0.1s ease-in-out;
+}
+
+.lable_item
+{
+    font-weight: normal;
+    background-color: transparent;
+    transition: all 0.1s ease-in-out;
+}

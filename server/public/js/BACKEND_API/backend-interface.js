@@ -133,8 +133,8 @@ export class UserInfo
      * @param {string} email
      * @param {string} phone
      * @param {string} fullName
-     * @param {string} [birthday]
-     * @param {string} [createdAt]
+     * @param {Date} [birthday]
+     * @param {Date} [createdAt]
      * @param {Array<Profile|Object>} [rawProfiles=[]]
      */
     constructor(id, email, phone, fullName, birthday, createdAt, rawProfiles = [])
@@ -143,8 +143,8 @@ export class UserInfo
         this.email = email;
         this.phone = phone;
         this.fullName = fullName;
-        this.birthday = birthday;
-        this.createdAt = createdAt;
+        this.birthday = new Date(birthday);
+        this.createdAt = new Date(createdAt);
         this.profiles = rawProfiles.map(p => p instanceof Profile ? p : Profile.fromJSON(p));
     }
 
@@ -157,8 +157,8 @@ export class UserInfo
             rawObject.email,
             rawObject.phone,
             rawObject.fullName,
-            rawObject.birthday,
-            rawObject.createdAt,
+            new Date(rawObject.birthday),
+            new Date(rawObject.createdAt),
             rawObject.profiles
         );
     }
@@ -170,8 +170,8 @@ export class UserInfo
             email: this.email,
             phone: this.phone,
             fullName: this.fullName,
-            birthday: this.birthday,
-            createdAt: this.createdAt,
+            birthday: this.birthday.toISOString(),
+            createdAt: this.createdAt.toISOString(),
             profiles: this.profiles.map(p => p.toJSON())
         };
     }
