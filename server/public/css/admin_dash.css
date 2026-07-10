@@ -7,33 +7,32 @@
 #controll_container 
 {
     
-    transition: all 0.5s ease-in-out;
+    transition: all 1s ease-in-out;
 }
 
 #selection_container 
 {
-    height: 100%;
-    width: 100%;
+    max-height: 60vh;
+    min-height: 45vh;
     transition: all 0.5s ease-in-out;
 }
 
 #view_container 
 {
-    height: 75%;
+    max-height: 60vh;
+    min-height: 60vh;
     width: 100%;
     transition: all 0.5s ease-in-out;
 }
 
-.lable_item:hover
+.label_item:hover
 {
-    /*i want it to scale but only in the y axis*/
-    /*i want to make the text bold*/
     font-weight: bold;
     background-color: #333;
     transition: all 0.1s ease-in-out;
 }
 
-.lable_item
+.label_item
 {
     font-weight: normal;
     background-color: transparent;
