@@ -12,15 +12,15 @@
 
 #selection_container 
 {
-    max-height: 60vh;
-    min-height: 45vh;
+    max-height: 70vh;
+    min-height: 70vh;
     transition: all 0.5s ease-in-out;
 }
 
 #view_container 
 {
-    max-height: 60vh;
-    min-height: 60vh;
+    max-height: 70vh;
+    min-height: 70vh;
     width: 100%;
     transition: all 0.5s ease-in-out;
 }
