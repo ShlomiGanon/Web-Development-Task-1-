@@ -1,4 +1,11 @@
 
+body 
+{
+    background: url("../assets/admin_dashboard_bg.png") no-repeat center center fixed;
+    background-color: black;
+    font-family: 'Graphique W01 Regular', sans-serif;
+}
+
 #mode_selector_container 
 {
     transition: all 0.5s ease-in-out;
