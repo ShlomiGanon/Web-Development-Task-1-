@@ -76,6 +76,7 @@ const adminAuthorizationPermissionLevel = (permission_level_threshold = Permmisi
     return (req, res, next) => 
     {
         const admin_key = req.target_user_id;
+        req.target_user_id = undefined;//clear the target_user_id from the request object
         if(!admin_key)
             return res.json({ success: false, data: null, message: 'the request object is missing user_id' });
         if (!permissionManagerInstance.isHavingPermissionLevel(admin_key, permission_level_threshold)) 

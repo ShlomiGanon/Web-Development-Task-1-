@@ -435,7 +435,7 @@ const watchMedia = async (req, res) =>
         res.json({
             success: true,
             message: "Watch progress updated",
-            watchHistory: profile.LastWatched_Content_IDs
+            lastWatchedContentIds: profile.LastWatched_Content_IDs
         });
         my_logger.ConsoleLog(`Watch progress updated successfully. [user_id: ${userId}, profile_id: ${profile._id}, content_id: ${content._id}]`, my_logger.Log_Level.INFO);
         my_logger.OperationLog('watchMedia', 'Watch progress updated successfully.', { "user_id": userId, "profile_id": profile._id, "content_id": content._id }, my_logger.Log_Level.INFO);

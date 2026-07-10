@@ -417,14 +417,14 @@ async function deleteProfileRequest(token, profileId)
     return response.data;
 }
 
-// Route renamed: POST /profile/press_like/:profileId/:mediaId -> POST /profile/:profileId/likes/:contentId
+// Route renamed: POST /profile/press_like/:profileId/:contentId -> POST /profile/:profileId/likes/:contentId
 async function pressLikeRequest(token, profileId, contentId)
 {
     var response = await requestAsync('POST', '/profile/' + profileId + '/likes/' + contentId, null, token);
     return response.data;
 }
 
-// Route renamed: POST /profile/watch/:profileId/:mediaId -> POST /profile/:profileId/watch/:contentId
+// Route renamed: POST /profile/watch/:profileId/:contentId -> POST /profile/:profileId/watch/:contentId
 async function watchMediaRequest(token, profileId, contentId)
 {
     var response = await requestAsync('POST', '/profile/' + profileId + '/watch/' + contentId, null, token);
@@ -622,7 +622,7 @@ async function testProfileLikeToggle(stats, token, profileId)
     console.log('Adding a like for content ' + TEST_CONTENT_ID);
     var likeResult = await pressLikeRequest(token, profileId, TEST_CONTENT_ID);
 
-    if (likeResult && likeResult.success && likeResult.liked === true && likeResult.likedMediaIds.indexOf(TEST_CONTENT_ID) !== -1)
+    if (likeResult && likeResult.success && likeResult.liked === true && likeResult.likedContentIds.indexOf(TEST_CONTENT_ID) !== -1)
     {
         recordPass(stats, 'like response confirms content was added');
     }
@@ -633,7 +633,7 @@ async function testProfileLikeToggle(stats, token, profileId)
 
     var detailsAfterLike = await getProfileDetails(token, profileId);
 
-    if (detailsAfterLike && detailsAfterLike.success && detailsAfterLike.profile && detailsAfterLike.profile.Liked_Media_IDs.indexOf(TEST_CONTENT_ID) !== -1)
+    if (detailsAfterLike && detailsAfterLike.success && detailsAfterLike.profile && detailsAfterLike.profile.likedContentIds.indexOf(TEST_CONTENT_ID) !== -1)
     {
         recordPass(stats, 'like persisted correctly on the server');
     }
@@ -645,7 +645,7 @@ async function testProfileLikeToggle(stats, token, profileId)
     console.log('Removing the like for content ' + TEST_CONTENT_ID);
     var unlikeResult = await pressLikeRequest(token, profileId, TEST_CONTENT_ID);
 
-    if (unlikeResult && unlikeResult.success && unlikeResult.liked === false && unlikeResult.likedMediaIds.indexOf(TEST_CONTENT_ID) === -1)
+    if (unlikeResult && unlikeResult.success && unlikeResult.liked === false && unlikeResult.likedContentIds.indexOf(TEST_CONTENT_ID) === -1)
     {
         recordPass(stats, 'unlike response confirms content was removed');
     }
@@ -656,7 +656,7 @@ async function testProfileLikeToggle(stats, token, profileId)
 
     var detailsAfterUnlike = await getProfileDetails(token, profileId);
 
-    if (detailsAfterUnlike && detailsAfterUnlike.success && detailsAfterUnlike.profile && detailsAfterUnlike.profile.Liked_Media_IDs.indexOf(TEST_CONTENT_ID) === -1)
+    if (detailsAfterUnlike && detailsAfterUnlike.success && detailsAfterUnlike.profile && detailsAfterUnlike.profile.likedContentIds.indexOf(TEST_CONTENT_ID) === -1)
     {
         recordPass(stats, 'unlike persisted correctly on the server');
     }
@@ -672,7 +672,7 @@ async function testProfileWatchHistory(stats, token, profileId)
     console.log('Recording a watch for content ' + TEST_CONTENT_ID);
     var watchResult = await watchMediaRequest(token, profileId, TEST_CONTENT_ID);
 
-    if (watchResult && watchResult.success && watchResult.watchHistory.length > 0 && watchResult.watchHistory[0] === TEST_CONTENT_ID)
+    if (watchResult && watchResult.success && watchResult.lastWatchedContentIds.length > 0 && watchResult.lastWatchedContentIds[0] === TEST_CONTENT_ID)
     {
         recordPass(stats, 'watch response confirms content is at the front of the history');
     }
@@ -683,7 +683,7 @@ async function testProfileWatchHistory(stats, token, profileId)
 
     var detailsAfterWatch = await getProfileDetails(token, profileId);
 
-    if (detailsAfterWatch && detailsAfterWatch.success && detailsAfterWatch.profile && detailsAfterWatch.profile.LastWatched_Media_IDs.length > 0 && detailsAfterWatch.profile.LastWatched_Media_IDs[0] === TEST_CONTENT_ID)
+    if (detailsAfterWatch && detailsAfterWatch.success && detailsAfterWatch.profile && detailsAfterWatch.profile.lastWatchedContentIds.length > 0 && detailsAfterWatch.profile.lastWatchedContentIds[0] === TEST_CONTENT_ID)
     {
         recordPass(stats, 'watch history persisted correctly on the server');
     }

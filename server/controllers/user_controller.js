@@ -3,7 +3,7 @@ const { tokenManagerInstance } = require('../middlewares/token_manager');
 const { Is_Valid_Name, Is_Valid_Email, Is_Valid_Phone, Is_Valid_Password, get_age_from_birthday, Hash_Password, Compare_Password } = require('../scripts/auth');
 const my_logger = require('../scripts/my_logger');
 const { ENABLE_18_AGE_LIMIT } = require('../scripts/constants');
-
+const {permissionManagerInstance } = require('../middlewares/permission_manager');
 const safe_user = (user) =>
 {
     return {
@@ -12,7 +12,8 @@ const safe_user = (user) =>
         phone: user.phone,
         fullName: user.fullName,
         birthday: user.birthDate,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        permission_level: permissionManagerInstance.getPermissionLevel(user._id.toString())
     };
 }
 
