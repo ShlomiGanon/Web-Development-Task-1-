@@ -602,4 +602,29 @@ export class Interface_BackendAPI
     {
         throw new Error("Method 'deleteContent()' must be implemented.");
     }
+
+    async getRecommendedCategories(sessionToken)
+    {
+        throw new Error("Method 'getRecommendedCategories()' must be implemented.");
+    }
+
+    async getRecommendedCategoriesForUser(sessionToken, userId)
+    {
+        throw new Error("Method 'getRecommendedCategoriesForUser()' must be implemented.");
+    }
+
+    async kickUser(sessionToken, userId)
+    {
+        throw new Error("Method 'kickUser()' must be implemented.");
+    }
+
+    async banUser(sessionToken, userId, hoursToBan)
+    {
+        throw new Error("Method 'banUser()' must be implemented.");
+    }
+
+    async isUserBanned(sessionToken, userId)
+    {
+        throw new Error("Method 'isUserBanned()' must be implemented.");
+    }
 }

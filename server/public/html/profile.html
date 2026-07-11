@@ -21,12 +21,12 @@
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto flex-row flex-wrap gap-3 align-items-center">
-                    <li class="nav-item"><a class="nav-link fs-6" href="#">Home</a></li>
-                    <li class="nav-item"><a class="nav-link fs-6" href="#">TV Shows</a></li>
-                    <li class="nav-item"><a class="nav-link fs-6" href="#">Movies</a></li>
-                    <li class="nav-item"><a class="nav-link fs-6" href="#">Games</a></li>
-                    <li class="nav-item"><a class="nav-link fs-6" href="#">New & Popular</a></li>
-                    <li class="nav-item"><a class="nav-link fs-6" href="#">My List</a></li>
+                    <li class="nav-item" id="home_link"><a class="nav-link fs-6" href="#">Home</a></li>
+                    <li class="nav-item" id="tv_shows_link"><a class="nav-link fs-6" href="#">TV Shows</a></li>
+                    <li class="nav-item" id="movies_link"><a class="nav-link fs-6" href="#">Movies</a></li>
+                    <li class="nav-item" id="games_link"><a class="nav-link fs-6" href="#">Games</a></li>
+                    <li class="nav-item" id="new_and_popular_link"><a class="nav-link fs-6" href="#">New & Popular</a></li>
+                    <li class="nav-item" id="my_list_link"><a class="nav-link fs-6" href="#">My List</a></li>
                 </ul>
             </div>
     
@@ -40,17 +40,27 @@
     </nav>
 
     <!-- CONTENT -->
+     
     <div class="container pt-5 mt-5">
-        
+        <section class="position-relative d-flex flex-column text-center bg-dark rounded border border-secondary mb-2 text-white justify-content-center align-items-center">
+            <h1 id="screen_title" class="display-4 p-3 text-light position-absolute top-0 z-2"></h1>
+            <div class="ratio ratio-16x9">
+                <video id="screen_video" controls>
+                    <source id="screen_video_source" type="video/mp4" src="">
+                </video>
+            </div>
+        </section>
+
+
         <section class="last_watched p-5 rounded border border-secondary mb-4">
             <h2 id = "last_watched_text" class="display-4 me-5">Last watched</h2>
             <div id = "last_watched_container" class="row g-4">
             </div>
         </section>
 
-        <div class="all_movies p-5 rounded border border-secondary mb-4">
-            <h2 id = "all_movies_text" class="display-4 me-5">All movies</h2>
-            <div id = "all_movies_container" class = "row g-4">
+        <div class="all_content p-5 rounded border border-secondary mb-4">
+            <h2 id = "all_content_text" class="display-4 me-5">All content</h2>
+            <div id = "all_content_container" class = "row g-4">
 
                 <!-- WILL BE ADDED BY JAVASCRIPT -->
             </div>

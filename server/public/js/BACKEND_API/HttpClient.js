@@ -139,7 +139,7 @@ export class HttpClient extends Interface_BackendAPI
     async selectContentItem(sessionToken, profileID, contentID)
     {
         return await this._request('POST', `/profile/${profileID}/watch/${contentID}`, { token: sessionToken });
-        
+
     }
 
     // ==========================================
@@ -178,6 +178,28 @@ export class HttpClient extends Interface_BackendAPI
     async deleteContent(sessionToken, contentID)
     {
         return await this._request('DELETE', `/content/${contentID}`, { token: sessionToken });
+    }
+
+    async getContentOthersEngagedWith(sessionToken, profileId)
+    {
+        const result = await this._request('GET', `/profile/${profileId}/other_profiles_recommendations`, { token: sessionToken });
+        return { ...result, content: (result.content ?? []).map(c => ContentItem.fromJSON(c)) };
+    }
+
+    async kickUser(sessionToken, userId)
+    {
+        return await this._request('POST', `/user/${userId}/kick`, { token: sessionToken });
+    }
+
+    async banUser(sessionToken, userId, hours_to_ban)
+    {
+        return await this._request('POST', `/user/${userId}/ban`, { token: sessionToken, body: { hours_to_ban } });
+    }
+
+    async isUserBanned(sessionToken, userId)
+    {
+        const result = await this._request('GET', `/user/${userId}/ban`, { token: sessionToken });
+        return { ...result, is_banned: result.is_banned };
     }
 
     // ==========================================

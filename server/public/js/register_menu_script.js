@@ -45,7 +45,7 @@ async function Register_Click()
     {
         // Backend only stores a single fullName field and splits it on the first space
         // (word 1 = firstName, word 2 = lastName), so first/last must be joined this way.
-        const fullNameValue = `${firstNameInput.value.trim()} ${lastNameInput.value.trim()}`;
+        const fullNameValue = FullNameInput.value.trim();
 
         const response = await Backend.register(
             emailInput.value.trim(),

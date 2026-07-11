@@ -4,7 +4,7 @@ const profileController = require('../controllers/profile_controller');
 const { tokenVerification } = require('../middlewares/token_manager');
 const { authorizeProfileAccess } = require('../middlewares/profile_authorization');
 const { contentAuthorization } = require('../middlewares/content_authorization');
-
+const suggestionsController = require('../controllers/suggestions_controller.js');
 // Apply token authentication to all routes defined in this file
 router.use(tokenVerification);
 
@@ -33,5 +33,7 @@ router.post('/:profileId/likes/:contentId', authorizeProfileAccess , contentAuth
 // Route to update the last watched media for a specific profile
 router.post('/:profileId/watch/:contentId', authorizeProfileAccess , contentAuthorization , profileController.watchMedia);
 
+// Route to get other profiles activity for a specific profile
+router.get('/:profileId/other_profiles_recommendations', authorizeProfileAccess, suggestionsController.getContentOthersEngagedWith);
 
 module.exports = router;

@@ -4,11 +4,13 @@ import {ClientSessionManager} from "./client-session-manager.js";
 import * as UI from "./ui-utils.js";
 
 //=============== Session / Auth Bootstrap ===============
+// Order matters here: each check can redirect away, so later lines assume
+// everything above them already succeeded (token exists, user exists, etc).
 const token = ClientSessionManager.getSessionToken();
-if(!token)throw new Error("No token found");
-const active_user = (await Backend.fetchActiveUserInfo(token)).user;
-if(!active_user)throw new Error("User not found");
-if(!active_user.permission_level)throw new Error("User is not authorized to access the admin dashboard");
+if(!token)redirectToIndex();
+let active_user = (await Backend.fetchActiveUserInfo(token)).user;
+if(!active_user)redirectToIndex();
+if(!active_user.permission_level)redirectToIndex();
 let current_target = null;
 
 //=============== Permission Levels ===============
@@ -18,6 +20,8 @@ const Permmision_Level =
     ADMIN: 1,
     USER: 0
 }
+// Reverse lookup (2 -> "SUPER_ADMIN") so the permission dropdown can render
+// human-readable labels while still storing/sending the numeric level.
 const PermissionLookup = Object.fromEntries(
     Object.entries(Permmision_Level).map(([key, val]) => [val, key])
 );
@@ -38,8 +42,9 @@ const mode = Object.freeze({
     "users": 1,
     "contents": 2
 });
+// Reverse lookup (1 -> "users") - used by the mode-selector buttons to display names.
 const numbers_to_modes = Object.fromEntries(Object.entries(mode).map(([key, value]) => [value, key]));
-let current_mode = mode.empty;
+let current_mode = mode.users;
 
 let users = [];
 let contents = [];
@@ -58,6 +63,11 @@ const FIELDS_CONTAINER_CLASSES = "col-12 row d-flex justify-content-evenly align
 const HAVE_VALUE_CLASS = "text-success";
 const NEW_VALUE_CLASS = "text-warning";
 
+function redirectToIndex(button_was_pressed = null)
+{
+    UI.LockUI(button_was_pressed);
+    UI.GoToLink("/");
+}
 //=============== Clearing Containers ===============
 function clear_selection_container()
 {
@@ -94,7 +104,7 @@ function escapeHtml(value)
 }
 
 //=============== Shared Modal Helpers ===============
-// Every popup window (search/update/permission/confirmation) shares this same
+// Every popup window (search/update/permission/ban/confirmation) shares this same
 // overlay + centered card + title skeleton. Only the inner content differs.
 function create_modal_shell(titleText, { widthClass = 'col-10', titleClass = 'mb-3 text-danger fw-bold fs-1' } = {})
 {
@@ -152,6 +162,11 @@ function build_field_group(field_name, field_elements)
 // "Edit" fields (used by Update User / Update+Add Content windows) compare their live
 // value against the target object's current value, highlighting the label when changed.
 // `target` may be null (create mode) - handled the same way an empty original value would be.
+//
+// NOTE on the comparison logic below: dates and arrays need to be normalized to the same
+// string shape on both sides (input.value vs. the stored value) before they can be
+// compared with ===, otherwise e.g. a Date object vs. an ISO date string would always
+// look "changed" even when nothing was actually edited.
 function build_edit_input_field(target, label, text, type)
 {
     const field = document.createElement('div');
@@ -317,7 +332,7 @@ function build_search_select_field(filters, label, text, options)
 }
 
 //=============== Detail View Renderers ===============
-function view_content()
+async function view_content()
 {
     if (!current_target || !(current_target instanceof ContentItem))
     {
@@ -327,6 +342,23 @@ function view_content()
         `;
         return;
     }
+
+    // Re-fetch by ID instead of trusting the cached list item, since this call
+    // also brings back extra fields (like imdb_rating) that the list view doesn't have.
+    const response = await Backend.getContentByID(current_target.id);
+    if (!response.success || !response.content)
+    {
+        view_container.innerHTML = `
+        <h1>Failed to get content</h1>
+        <p>Please try again</p>
+        <p>${response.message}</p>
+        `;
+        console.log(response);
+        return;
+    }
+    current_target = response.content;
+    console.log(response);
+    const imdb_rating = response.imdb_rating;
 
     const image_element = document.createElement('img');
     image_element.src = `/assets/covers/${escapeHtml(current_target.cover_image_name)}`;
@@ -349,6 +381,7 @@ function view_content()
         ${renderField("Video URL", escapeHtml(current_target.videoUrl))}
         ${renderField("Release Date", escapeHtml(current_target.release_date.toLocaleDateString()))}
         ${renderField("Created At", escapeHtml(current_target.createdAt.toLocaleDateString()))}
+        ${renderField("IMDB Rating", escapeHtml(imdb_rating))}
     </div>
     `;
     view_container.innerHTML = contentHtml;
@@ -412,11 +445,28 @@ function render_controll_container(buttons)
 function rander_mode_selector()
 {
     clear_mode_selector_container();
+
+    // "last_mode" highlights which tab the currently-viewed item belongs to,
+    // independent of which tab is actually active (current_mode). E.g. clicking
+    // "My User" while in Contents mode should still show the Users tab as highlighted.
     let last_mode;
     if (current_target instanceof UserInfo) last_mode = mode.users;
     else if (current_target instanceof ContentItem) last_mode = mode.contents;
-    else last_mode = mode.empty;
-
+    else last_mode = undefined;
+    const back_button = document.createElement("button");
+    back_button.className = "btn btn-group btn-lg btn-outline-light rounded-pill";
+    back_button.textContent = "Back to profiles";
+    back_button.addEventListener("click", () => 
+    {
+        UI.LockUI(back_button);
+        UI.ShowMessage("Redirecting to profiles...");
+        setTimeout(() =>
+        {
+            UI.GoToLink("/html/profiles.html");
+        }, 2000);
+    }
+    );
+    mode_selector_container.appendChild(back_button);
     Object.entries(mode).forEach(([key, value]) =>
     {
         const btn = document.createElement("button");
@@ -475,6 +525,7 @@ function rander_selection_container_to_users()
     }
 
     const sorted_by = users_filters.sort || "createdAt";
+    // Date-valued sort fields need .toLocaleDateString() instead of being shown raw.
     const sorted_by_type = (sorted_by === "createdAt" || sorted_by === "birthday") ? "date" : "text";
     const on_click = (id) => { current_target = users.find(u => u.id === id); view_user(); };
 
@@ -543,6 +594,9 @@ async function search_contents_filters()
     close_filters_window();
 }
 
+// Used by Update/Create windows: reads every input/select in the modal as-is,
+// with no special-casing - the caller (update_user/update_content) does the
+// "did this actually change" comparison against the original object itself.
 function get_filters_from_window(filters_window)
 {
     const filters = {};
@@ -551,6 +605,10 @@ function get_filters_from_window(filters_window)
     return filters;
 }
 
+// Used by Search windows: differs from get_filters_from_window() above in one
+// important way - for <select> elements, the first option is treated as a
+// "no filter" placeholder and is skipped entirely, so it never gets sent as a
+// query param (e.g. sortOrder's first option shouldn't force a sort direction).
 function get_search_filters_from_window(filters_window)
 {
     if (!filters_window) return {};
@@ -590,7 +648,7 @@ function add_filters_listener(enter_like_press_button)
 }
 
 //=============== User: Update Window ===============
-function create_update_user_window(user)
+function create_update_user_window(user , primary_button_func = null)
 {
     if (!user || !(user instanceof UserInfo))
     {
@@ -613,7 +671,7 @@ function create_update_user_window(user)
 
     content.appendChild(create_button_row([
         { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
-        { text: 'Update', className: 'btn btn-primary btn-lg', onClick: () => update_user(user), listenForEnter: true },
+        { text: 'Update', className: 'btn btn-primary btn-lg', onClick: () => primary_button_func ? primary_button_func(user) : update_user(user), listenForEnter: true },
     ]));
 
     document.body.appendChild(overlay);
@@ -626,6 +684,8 @@ async function update_user(user)
     let changes = {};
     const date_fields = ['birthday'];
 
+    // Build a minimal "changes" object: only fields the admin actually typed into
+    // AND that differ from the user's current value get sent to the backend.
     for (const key in form_data)
     {
         if (!(key in user)) continue;
@@ -684,6 +744,8 @@ async function create_content()
     for (const key in form_data)
     {
         if (form_data[key] === '') continue;
+        // Array fields arrive from the form as a comma-separated string
+        // (e.g. "action, comedy") and need to be split back into a real array.
         contentData[key] = array_fields.includes(key)
             ? form_data[key].split(',').map(v => v.trim()).filter(v => v !== '')
             : form_data[key];
@@ -721,9 +783,9 @@ async function create_content()
 // contentItem = null -> "Add Content" mode; otherwise "Update Content" mode.
 function create_update_content_window(contentItem = null)
 {
-    if (contentItem && !(contentItem instanceof ContentItem))
+    if (!contentItem || !(contentItem instanceof ContentItem))
     {
-        UI.ShowErrorMessage("Invalid content");
+        UI.ShowErrorMessage("no content selected");
         return null;
     }
     const is_create_mode = !contentItem;
@@ -765,6 +827,8 @@ async function update_content(content)
     const date_fields = ['release_date'];
     const array_fields = ['categories'];
 
+    // Same "only send what actually changed" pattern as update_user() above,
+    // but also has to normalize array fields (categories) for the comparison.
     for (const key in form_data)
     {
         if (!(key in content)) continue;
@@ -1003,6 +1067,76 @@ function create_set_permission_window(user)
     return overlay;
 }
 
+//=============== Ban Window ===============
+// Prompts the admin for how many hours to ban the user for, instead of using a
+// fixed/hardcoded duration. Follows the same modal pattern as the Permission window above.
+function create_ban_user_window(user)
+{
+    if (!user || !(user instanceof UserInfo))
+    {
+        UI.ShowErrorMessage("No user selected");
+        return null;
+    }
+
+    const { overlay, content } = create_modal_shell(`Ban User - ${user.fullName}`);
+
+    const label_p = document.createElement('p');
+    label_p.className = LABEL_CLASSES;
+    label_p.textContent = "Ban duration (hours):";
+    content.appendChild(label_p);
+
+    const hours_input = document.createElement('input');
+    hours_input.type = 'number';
+    hours_input.id = 'ban_hours';
+    hours_input.min = '1';
+    hours_input.value = '24'; // sensible default so the admin doesn't have to type anything for a "standard" ban
+    hours_input.className = 'form-control w-50 mx-auto mb-4';
+    content.appendChild(hours_input);
+
+    content.appendChild(create_button_row([
+        { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
+        {
+            text: 'Ban',
+            className: 'btn btn-danger btn-lg',
+            listenForEnter: true,
+            onClick: async () =>
+            {
+                const hours = Number(hours_input.value);
+                if (!hours || hours <= 0)
+                {
+                    UI.ShowErrorMessage("Please enter a valid number of hours");
+                    return;
+                }
+                await ban_user_confirm(user, hours);
+            }
+        },
+    ]));
+
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+// Separated from create_ban_user_window() so the actual API call + list update
+// logic isn't buried inside the button's inline onClick handler.
+async function ban_user_confirm(user, hours_to_ban)
+{
+    const response = await Backend.banUser(token, user.id, hours_to_ban);
+    if (!response.success)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage("Ban failed, server error: " + response.message);
+        return;
+    }
+
+    UI.ShowMessage(`User banned successfully for ${hours_to_ban} hours`);
+    // A banned user shouldn't stay in the visible list, same as kick/delete below.
+    users = users.filter(u => u.id !== user.id);
+    if (current_target === user) current_target = null;
+    if(user.id === active_user.id)redirectToIndex();
+    main_renderer();
+    close_filters_window();
+}
+
 //=============== Confirmation / Delete ===============
 function create_confirmation_window(message, onConfirm)
 {
@@ -1088,13 +1222,47 @@ function delete_user_click(user)
     );
 }
 
+function kick_user_click(user)
+{
+    if (!user || !(user instanceof UserInfo))
+    {
+        UI.ShowErrorMessage("No user selected");
+        return;
+    }
+    filters_window = create_confirmation_window(
+        `Are you sure you want to kick "${user.fullName}"?`,
+        async () =>
+        {
+            const response = await Backend.kickUser(token, user.id);
+            if (!response.success)
+            {
+                close_filters_window();
+                UI.ShowErrorMessage("Kick failed, server error: " + response.message);
+                return;
+            }
+            UI.ShowMessage("User kicked successfully");
+            users = users.filter(u => u.id !== user.id);
+            if(user.id === active_user.id)redirectToIndex();
+            main_renderer();
+            close_filters_window();
+        }
+    );
+}
+
 //=============== Main Renderer ===============
+// Central switchboard: every mode change (empty/users/contents) re-runs through here.
+// Each case does 3 things in order: (1) toggle CSS transforms/opacity for the
+// show/hide animation, (2) wire up the mode-specific action buttons, (3) render
+// the selection list + detail view for that mode.
 function main_renderer()
 {
     switch (current_mode)
     {
+        
         case mode.empty:
         {
+            // Animate out, then actually hide (display:none) once the transition finishes -
+            // hiding immediately would skip the animation entirely.
             selection_container.style.transform = "scale(1, 0)";
             selection_counter.style.opacity = "0";
             view_container.style.transform = "scale(1, 0)";
@@ -1108,6 +1276,7 @@ function main_renderer()
             }, 300);
             break;
         }
+        
         case mode.users:
         {
             selection_container.style.display = "block";
@@ -1115,6 +1284,8 @@ function main_renderer()
             controll_container.style.display = "block";
             selection_counter.style.display = "block";
 
+            // requestAnimationFrame ensures the display:block above has been painted
+            // before the transform/opacity transition starts, so the animation actually plays.
             requestAnimationFrame(() =>
             {
                 selection_container.style.transform = "scale(1, 1)";
@@ -1123,11 +1294,13 @@ function main_renderer()
                 selection_counter.style.opacity = "1";
             });
             render_controll_container([
-                {name: "Search", primary: true, function: () => filters_window = create_users_filters_window(users_filters)},
+                {name: "Kick", primary: true, function: () => kick_user_click(current_target)},
+                {name: "Search", function: () => filters_window = create_users_filters_window(users_filters)},
                 {name: "Update", function: () => filters_window = create_update_user_window(current_target)},
-                {name: "Delete", primary: true, function: () => delete_user_click(current_target)},
+                {name: "Delete", function: () => delete_user_click(current_target)},
                 {name: "My User", function: () => {current_target = active_user; view_user()}},
-                {name: "Set Permission", primary: true, function: () => filters_window = create_set_permission_window(current_target)},
+                {name: "Set Permission", function: () => filters_window = create_set_permission_window(current_target)},
+                {name: "Ban", primary: true, function: () => filters_window = create_ban_user_window(current_target)},
             ]);
             rander_selection_container_to_users();
             view_user();
@@ -1162,6 +1335,7 @@ function main_renderer()
 }
 
 //=============== Error Handling / Bootstrap ===============
+
 if (!mode_selector_container) throw new Error("mode_selector_container not found");
 if (!selection_counter) throw new Error("selection_counter not found");
 if (!controll_container) throw new Error("controll_container not found");
@@ -1172,3 +1346,5 @@ if (!msg_box) throw new Error("msg_box not found");
 search_contents_filters();
 search_users_filters();
 UI.ClearMessage();
+
+export { create_update_user_window };

@@ -33,7 +33,7 @@ const userAuthorization = async (req, res, next) =>
             return res.json({ success: false, message: "User not found" });
         }
 
-        req.target_user_id = targetUserId; // 👈 overwrite so getUser/updateUser act on the target, not the admin
+        req.target_user_id = targetUserId;
 
         next();
     }

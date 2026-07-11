@@ -1,7 +1,7 @@
-
+const { ADD_IMDB_RATING_TO_CONTENT } = require('../scripts/constants');
 const Content = require('../models/content');
 const my_logger = require('../scripts/my_logger');
-
+const { getImdbRating } = require('../scripts/imdb_ranking');
 /**
  * Helper to convert a full Content document into the object exposed to the client.
  * Kept as a single choke point so fields like an average rating or review count
@@ -83,10 +83,33 @@ const getContent = async (req, res) =>
     try
     {
         const content = req.content;
-
-        res.json({ success: true, message: 'Content retrieved successfully', content: to_content_summary(content) });
+        let imdb_rating = undefined;
+        if(ADD_IMDB_RATING_TO_CONTENT)
+        {
+            try
+            {
+                const response = await getImdbRating(content.title, { type: content.type });
+                if(!response.error)
+                {
+                    imdb_rating = response;
+                }
+                else
+                {
+                    imdb_rating = undefined;
+                    my_logger.ConsoleLog(`Error getting IMDB rating: ${response.error}`, my_logger.Log_Level.ERROR);
+                    my_logger.OperationLog('getContent', 'Error getting IMDB rating.', { "error": response.error }, my_logger.Log_Level.ERROR);
+                }
+            }
+            catch (error)
+            {
+                my_logger.ConsoleLog(`Error getting IMDB rating: ${error}`, my_logger.Log_Level.ERROR);
+                my_logger.OperationLog('getContent', 'Error getting IMDB rating.', { "error": error }, my_logger.Log_Level.ERROR);
+                imdb_rating = undefined;
+            }
+        }
+        res.json({ success: true, message: 'Content retrieved successfully' + (imdb_rating ? ' with IMDB rating: ' + imdb_rating : ''), content: to_content_summary(content), imdb_rating: imdb_rating });
         my_logger.ConsoleLog(`Content retrieved successfully. [content_id: ${content._id}]`, my_logger.Log_Level.INFO);
-        my_logger.OperationLog('getContent', 'Content retrieved successfully.', { "content_id": content._id }, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('getContent', 'Content retrieved successfully.', { "content_id": content._id, "imdb_rating": imdb_rating }, my_logger.Log_Level.INFO);
     }
     catch (error)
     {
@@ -223,4 +246,4 @@ const searchContent = async (req, res) =>
     }
 }
 
-module.exports = { createContent, getContent, updateContent, deleteContent, searchContent };
+module.exports = { createContent, getContent, updateContent, deleteContent, searchContent , to_content_summary };

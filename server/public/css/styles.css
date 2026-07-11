@@ -9,12 +9,12 @@ body
 .menu-container 
 {
     min-width: 400px;
-    animation: MenuAnimation 0.125s ease-out;
+    animation: MenuAnimation 0.25s ease-out;
 }
 
 .menu-exit 
 {
-    animation: MenuAnimation 0.125s ease-in forwards !important;
+    animation: MenuAnimation 0.25s ease-in forwards !important;
     animation-direction: reverse !important;
 }
 

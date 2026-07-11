@@ -34,11 +34,10 @@
             UI.ShowMessage("מבצע חיפוש אחר פרטי התחברות...");
             await new Promise(resolve => setTimeout(resolve, 2000));//to simulate reading cockies
             let newUrl = "html/login_menu.html"; 
-
             try 
             {
                 
-                if (await ClientSessionManager.isLoggedIn(false)) 
+                if (await ClientSessionManager.isLoggedIn()) 
                 {
                     UI.ShowMessage("זוהה פרטי התחברות , מתבצעת העברה...");
                     newUrl = "html/profiles.html";

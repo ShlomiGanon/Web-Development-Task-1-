@@ -91,6 +91,7 @@ const login = async (req, res) =>
             my_logger.OperationLog('login', 'Invalid password.', {input_password: password} , my_logger.Log_Level.WARNING);
             return res.json({ success: false, message: 'Invalid password' });
         }
+        if(tokenManagerInstance.IsBanned(user._id))return res.json({ success: false, message: 'User is banned' });
         const token = tokenManagerInstance.addUserToken(user._id.toString());
         res.json({ success: true, message: 'Login successful', "token": token });
         my_logger.ConsoleLog(`User logged in successfully for email: ${user.email}.`, my_logger.Log_Level.INFO);
@@ -259,7 +260,6 @@ const updateUser = async (req, res) =>
         res.json({ success: false, message: 'Internal server error' , "user": undefined });
     }
 }
-
 
 
 

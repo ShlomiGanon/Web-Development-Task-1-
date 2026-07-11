@@ -1,10 +1,12 @@
 import * as UI from './ui-utils.js';
-import { Profile } from './BACKEND_API/backend-interface.js';
+import { Profile, UserInfo } from './BACKEND_API/backend-interface.js';
 import { ClientSessionManager } from './client-session-manager.js';
 import { Backend } from './config.js';
 import * as Constants from './constances.js';
 import { AVAILABLE_PROFILES_IMAGES } from './config.js';
-
+let active_user = null;
+let update_user_window = null;
+let update_user_listener = null;
 // ==========================================
 //               Constants
 // ==========================================
@@ -31,8 +33,10 @@ const elements = {
     manageProfileButton: document.getElementById('manage-profile-button'),
     addProfileButton: document.getElementById('add-profile-button'),
     removeProfileButton: document.getElementById('remove-profile-button'),
+    adminDashboardButton: document.getElementById('admin-dashboard-button'),
     logoutButton: document.getElementById('logout-button'),
-    cancelButton: document.getElementById('cancel-button')
+    cancelButton: document.getElementById('cancel-button'),
+    updateUserButton: document.getElementById('update-user-button')
 };
 
 // ==========================================
@@ -87,6 +91,7 @@ function Cancel_Click()
 
 const sessionToken = ClientSessionManager.getSessionToken();
 
+
 /**
  * Validates the current session against the backend and, if valid, fetches the user's profiles.
  * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
@@ -97,6 +102,17 @@ async function restoreActiveSession()
     if (!isValid)
     {
         return { success: false, message: "ההתחברות פגה, אנא התחבר מחדש" };
+    }
+    const user_response = await Backend.fetchActiveUserInfo(sessionToken);
+    if (!user_response.success)
+    {
+        return { success: false, message: user_response.message };
+    }
+    active_user = user_response.user;
+    if (active_user.permission_level == 0)
+    {
+        elements.adminDashboardButton.style.cursor = "not-allowed";
+        elements.adminDashboardButton.style.opacity = 0.5;
     }
 
     const profilesResponse = await Backend.fetchAllProfiles(sessionToken);
@@ -109,6 +125,7 @@ async function restoreActiveSession()
 }
 
 const sessionResult = await restoreActiveSession();
+
 if (!sessionResult.success)
 {
     UI.ShowErrorMessage(sessionResult.message);
@@ -438,6 +455,66 @@ async function confirmAndDeleteProfile(profile)
     }
 }
 
+function UpdateUser_Click()
+{
+    if (UI.isUILocked) return;
+    update_user_window = create_update_user_window(active_user, update_user);
+}
+
+async function update_user(user)
+{
+    const form_data = get_filters_from_window(update_user_window);
+    let changes = {};
+    const date_fields = ['birthday'];
+
+    for (const key in form_data)
+    {
+        if (!(key in user)) continue;
+        if (form_data[key] === "") continue;
+
+        let original_value;
+        if (date_fields.includes(key))
+        {
+            original_value = user[key] ? new Date(user[key]).toISOString().split('T')[0] : '';
+        }
+        else
+        {
+            original_value = String(user[key] ?? '');
+        }
+
+        if (form_data[key] !== original_value)
+        {
+            changes[key] = form_data[key];
+        }
+    }
+
+    if (Object.keys(changes).length === 0)
+    {
+        close_filters_window();
+        UI.ShowMessage("No changes to update");
+        return;
+    }
+
+    const response = await Backend.updateActiveUserInfo(sessionToken, changes);
+    if (!response.success)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage("Update failed, server error: " + response.message);
+        return;
+    }
+    if (!response.user)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage("User update failed - invalid response from server.");
+        return;
+    }
+
+    UI.ShowMessage("User updated successfully");
+    active_user = response.user;
+    close_filters_window();
+}
+
+
 /**
  * Handles a click on a profile card - deletes/edits/enters it depending on the
  * current mode (isDeleting / isEditing / normal).
@@ -505,19 +582,220 @@ async function Logout_Click()
     }
 }
 
+function AdminDashboard_Click()
+{
+    if (active_user.permission_level == 0)
+    {
+        UI.ShowErrorMessage("אין לך הרשאות לגשת ללוח המנהל");
+        return;
+    }
+    UI.LockUI(elements.adminDashboardButton);
+    UI.GoToLink('../html/admin_dashboard.html');
+}
+
+const FIELD_ITEM_CLASSES = "col-12 d-flex justify-content-between align-items-center border border-secondary p-2 m-2";
+const LABEL_CLASSES = "text-start fw-bold fs-5 text-secondary";
+const INPUT_CLASSES = "form-control w-75";
+const SELECT_CLASSES = "form-select w-75";
+const FIELD_GROUP_CLASSES = "col-12 col-lg-5 text-start border border-dark m-1 p-2";
+const FIELD_GROUP_NAME_CLASSES = "text-start fw-bold text-primary mb-4 fs-4";
+const FIELDS_CONTAINER_CLASSES = "col-12 row d-flex justify-content-evenly align-items-start";
+const HAVE_VALUE_CLASS = "text-success";
+const NEW_VALUE_CLASS = "text-warning";
+
+function build_edit_input_field(target, label, text, type)
+{
+    const field = document.createElement('div');
+    field.className = FIELD_ITEM_CLASSES;
+
+    const label_p = document.createElement('p');
+    label_p.className = LABEL_CLASSES;
+    label_p.textContent = text;
+    field.appendChild(label_p);
+
+    const input = document.createElement('input');
+    input.type = type;
+    input.id = label;
+    input.className = INPUT_CLASSES;
+
+    if (target && target[label] !== undefined)
+    {
+        if (Array.isArray(target[label]))
+        {
+            input.value = target[label].join(", ");
+        }
+        else
+        {
+            input.value = (type === 'date') ? new Date(target[label]).toISOString().split('T')[0] : target[label];
+        }
+    }
+
+    input.addEventListener('input', () =>
+    {
+        let original_value = target ? target[label] : '';
+        if (Array.isArray(original_value))
+        {
+            original_value = original_value.join(", ");
+        }
+        else if (type === 'date')
+        {
+            original_value = target ? new Date(original_value).toISOString().split('T')[0] : '';
+        }
+        const unchanged = input.value === '' || (target && input.value === original_value);
+        label_p.classList.toggle(NEW_VALUE_CLASS, !unchanged);
+    });
+
+    field.appendChild(input);
+    return field;
+}
+
+function build_edit_select_field(target, label, text, options)
+{
+    const field = document.createElement('div');
+    field.className = FIELD_ITEM_CLASSES;
+
+    const label_p = document.createElement('p');
+    label_p.className = LABEL_CLASSES;
+    label_p.textContent = text;
+    field.appendChild(label_p);
+
+    const select = document.createElement('select');
+    select.id = label;
+    select.className = SELECT_CLASSES;
+    options.forEach(option =>
+    {
+        const option_element = document.createElement('option');
+        option_element.value = option;
+        option_element.textContent = option;
+        select.appendChild(option_element);
+    });
+
+    if (target && target[label] && target[label] !== options[0])
+    {
+        select.value = target[label];
+    }
+
+    select.addEventListener('change', () =>
+    {
+        const unchanged = select.value === options[0] || (target && select.value === target[label]);
+        label_p.classList.toggle(NEW_VALUE_CLASS, !unchanged);
+    });
+
+    field.appendChild(select);
+    return field;
+}
+
+function create_button_row(buttons)
+{
+    const row = document.createElement('div');
+    row.className = 'col-12 d-flex justify-content-evenly align-items-center';
+    buttons.forEach(({ text, className, onClick, listenForEnter }) =>
+    {
+        const btn = document.createElement('button');
+        btn.className = className;
+        btn.textContent = text;
+        btn.addEventListener('click', onClick);
+        if (listenForEnter) add_filters_listener(btn);
+        row.appendChild(btn);
+    });
+    return row;
+}
+
+function add_filters_listener(enter_like_press_button)
+{
+    const handler = (event) =>
+    {
+        if (event.key === 'Escape') close_filters_window();
+        if (event.key === 'Enter') enter_like_press_button.click();
+    };
+    document.addEventListener('keydown', handler);
+    update_user_listener = handler;
+}
+
+
+function create_modal_shell(titleText, { widthClass = 'col-10', titleClass = 'mb-3 text-danger fw-bold fs-1' } = {})
+{
+    const overlay = document.createElement('div');
+    overlay.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-75';
+    overlay.style.zIndex = '1050';
+
+    const content = document.createElement('div');
+    content.className = `${widthClass} bg-dark bg-opacity-75 p-4 rounded shadow-lg text-center`;
+    content.style.maxHeight = '90vh';
+    content.style.overflowY = 'auto';
+
+    const title = document.createElement('h1');
+    title.className = titleClass;
+    title.textContent = titleText;
+    content.appendChild(title);
+
+    overlay.appendChild(content);
+    return { overlay, content };
+}
+
+function get_filters_from_window(filters_window)
+{
+    const filters = {};
+    filters_window.querySelectorAll('input').forEach(input => { filters[input.id] = input.value; });
+    filters_window.querySelectorAll('select').forEach(select => { filters[select.id] = select.value; });
+    return filters;
+}
+
+function close_filters_window()
+{
+    if (update_user_window)
+    {
+        update_user_window.remove();
+        update_user_window = null;
+    }
+    if (update_user_listener)
+    {
+        document.removeEventListener('keydown', update_user_listener);
+        update_user_listener = null;
+    }
+}
+
+function create_update_user_window(user , primary_button_func = null)
+{
+    if (!user || !(user instanceof UserInfo))
+    {
+        UI.ShowErrorMessage("No user selected");
+        return null;
+    }
+
+    const { overlay, content } = create_modal_shell('Update User');
+
+    const fields_container = document.createElement('div');
+    fields_container.className = FIELDS_CONTAINER_CLASSES;
+    content.appendChild(fields_container);
+
+    // maps to: { email, phone, fullName, birthday } on UserInfo
+    fields_container.appendChild(build_edit_input_field(user, 'email', "Email", 'text'));
+    fields_container.appendChild(build_edit_input_field(user, 'phone', "Phone", 'text'));
+    fields_container.appendChild(build_edit_input_field(user, 'fullName', "Full Name", 'text'));
+    fields_container.appendChild(build_edit_input_field(user, 'birthday', "Birth Date", 'date'));
+    fields_container.appendChild(build_edit_input_field(user, 'password', "Set New password", 'password'));
+
+    content.appendChild(create_button_row([
+        { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
+        { text: 'Update', className: 'btn btn-primary btn-lg', onClick: () => primary_button_func ? primary_button_func(user) : update_user(user), listenForEnter: true },
+    ]));
+
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
 // ==========================================
 //                  MAIN
 // ==========================================
 
-if (!(await ClientSessionManager.isLoggedIn()))
-{
-    UI.GoToLink('../html/login_menu.html');
-}
 
 elements.logoutButton.addEventListener('click', Logout_Click);
+elements.adminDashboardButton.addEventListener('click', AdminDashboard_Click);
 elements.manageProfileButton.addEventListener('click', ManageProfiles_Click);
 elements.addProfileButton.addEventListener('click', AddProfile_Click);
 elements.removeProfileButton.addEventListener('click', RemoveProfile_Click);
 elements.cancelButton.addEventListener('click', Cancel_Click);
+elements.updateUserButton.addEventListener('click', UpdateUser_Click);
 HideCancelButton();
 renderProfiles();

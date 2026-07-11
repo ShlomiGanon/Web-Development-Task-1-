@@ -4,13 +4,29 @@ import { ClientSessionManager } from './client-session-manager.js';
 import * as Constants from './constances.js';
 import * as UI from './ui-utils.js';
 
+let active_content = null;
 const last_watched_container = document.getElementById('last_watched_container');
 const last_watched_text = document.getElementById('last_watched_text');
-const all_movies_container = document.getElementById('all_movies_container');
-const all_movies_text = document.getElementById('all_movies_text');
+const all_content_container = document.getElementById('all_content_container');
+const all_content_text = document.getElementById('all_content_text');
 const search_button = document.getElementById('search_button');
 const search_input = document.getElementById('search_input');
 const profile_image = document.getElementById('profile_image');
+const screen_title = document.getElementById('screen_title');
+const screen_video = document.getElementById('screen_video');
+const home_link = document.getElementById('home_link');
+home_link.addEventListener('click', home_link_on_click);
+const tv_shows_link = document.getElementById('tv_shows_link');
+tv_shows_link.addEventListener('click', tv_shows_link_on_click);    
+const movies_link = document.getElementById('movies_link');
+movies_link.addEventListener('click', movies_link_on_click);
+const games_link = document.getElementById('games_link');
+games_link.addEventListener('click', games_link_on_click);
+const new_and_popular_link = document.getElementById('new_and_popular_link');
+new_and_popular_link.addEventListener('click', new_and_popular_link_on_click);
+const my_list_link = document.getElementById('my_list_link');
+my_list_link.addEventListener('click', my_list_link_on_click);
+
 let User_Search_Value = '';
 let activeProfile = null;
 let Content_Items = null;
@@ -38,11 +54,11 @@ async function renderLastWatched()
     {
         const isLiked = activeProfile.likedContentIds.has(item.id);
         return `
-            <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
-                <img src="../assets/covers/${item.cover_image_name}" class="img-fluid rounded movie_image" 
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 content_item">
+                <img src="../assets/covers/${item.cover_image_name}" class="img-fluid rounded content_image" 
                 alt="${item.title}" 
                 onclick="click_on_content_item('${item.id}')">
-                <div class="movie_name text-center text-truncate px-1">${item.title}</div>
+                <div class="content_name text-center text-truncate px-1">${item.title}</div>
                 <button class="btn btn-sm ${isLiked ? 'btn-danger' : 'btn-outline-danger'} w-100 mt-2" 
                         onclick="handleToggleLike('${item.id}')">
                     ${isLiked ? `${item.likes} 💔(unlike)` : `${item.likes} ❤️(like)`}
@@ -53,34 +69,68 @@ async function renderLastWatched()
 
     if (lastWatchedItems.length === 0)
     {
-        last_watched_text.textContent = "No movies watched";
+        last_watched_text.textContent = "No content watched";
     }
 }
 
-/**
- * Renders all media items to the UI, applying an optional search filter.
- * @param {string} searchValue - The search string to filter movies by name.
- */
-async function renderAllMovies(searchValue = '') 
-{
-    const filteredData = searchValue 
-        ? Content_Items.filter(item => item.title.toLowerCase().includes(searchValue.toLowerCase()))
-        : Content_Items;
 
-    // Prepare a container for the HTML string to minimize DOM reflows
-    let htmlContent = '';
+async function home_link_on_click()
+{
+    const response = await Backend.getContentOthersEngagedWith (token , activeProfile.id);
+    if (!response || !response.success)
+    {
+        console.error("Failed to get recommended categories: ", response.message || "Unknown error");
+        return;
+    }
+    else
+    {
+        const content_others_engaged_with = response.content;
+        renderAllContentItems(content_others_engaged_with);
+        all_content_text.textContent = "Content others engaged with: " + content_others_engaged_with.length;
+    }
+}
+
+function tv_shows_link_on_click()
+{
+
+}
+
+function movies_link_on_click()
+{
+
+}
+
+function games_link_on_click()
+{
+    
+}
+
+function new_and_popular_link_on_click()
+{
+    
+}
+
+function my_list_link_on_click()
+{
+    
+}
+
+async function renderAllContentItems(content_items) 
+{
+
+    let html_content = '';
 
     // Build the movie item cards
-    filteredData.forEach(item => 
+    content_items.forEach(item => 
     {
         const isLiked = activeProfile ? activeProfile.likedContentIds.has(item.id) : false;
-        htmlContent += `
-            <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
+        html_content += `
+            <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 content_item">
                 <img src="../assets/covers/${item.cover_image_name}" 
-                     class="img-fluid rounded movie_image" 
+                     class="img-fluid rounded content_image" 
                      alt="${item.title}" 
                      onclick="click_on_content_item('${item.id}')">
-                <div class="movie_name text-center text-truncate px-1">${item.title}</div>
+                <div class="content_name text-center text-truncate px-1">${item.title}</div>
                 <button class="btn btn-sm ${isLiked ? 'btn-danger' : 'btn-outline-danger'} w-100 mt-2" 
                         onclick="handleToggleLike('${item.id}')">
                     ${isLiked ? `${item.likes} 💔(unlike)` : `${item.likes} ❤️(like)`}
@@ -90,12 +140,12 @@ async function renderAllMovies(searchValue = '')
     });
 
     // Update the DOM once with the fully constructed HTML string
-    all_movies_container.innerHTML = htmlContent;
+    all_content_container.innerHTML = html_content;
 
     // Handle empty results case
-    if (filteredData.length === 0)
+    if (content_items.length === 0)
     {
-        all_movies_container.innerHTML = `<div class="col-12 text-center mt-4"><h1>No movies found</h1></div>`;
+        all_content_container.innerHTML = `<div class="col-12 text-center mt-4"><h1>No content were found</h1></div>`;
     }
 }
 
@@ -105,13 +155,13 @@ async function search_on_click()
     User_Search_Value = search_value;
     if (search_value !== '') 
     {
-        all_movies_text.textContent = "Search results for: " + search_value;
-        await renderAllMovies(User_Search_Value);
+        all_content_text.textContent = "Search results for: " + search_value;
+        await renderAllContentItems(Content_Items.filter(item => item.title.toLowerCase().includes(search_value.toLowerCase())));
     }
     else 
     {
-        all_movies_text.textContent = "All movies: ";
-        await renderAllMovies();
+        all_content_text.textContent = "All content: ";
+        await renderAllContentItems(Content_Items);
     }
 }
 async function handleToggleLike(ContentID)
@@ -146,6 +196,22 @@ async function handleToggleLike(ContentID)
         await refreshDisplay();
     }
 }
+
+function updateVideoPlayer(videoUrl, title) 
+{
+    const videoElement = document.getElementById('screen_video');
+    const sourceElement = document.getElementById('screen_video_source');
+    const titleElement = document.getElementById('screen_title');
+
+    titleElement.textContent = title;
+    sourceElement.setAttribute('src', '/assets/videos/' + videoUrl);
+
+    videoElement.load();
+
+    //autoplay the video
+    videoElement.play();
+}
+
 async function click_on_content_item(ContentID)
 {
     const response = await Backend.selectContentItem(token, activeProfileId, ContentID);
@@ -164,6 +230,15 @@ async function click_on_content_item(ContentID)
         }
         const updated_lastWatchedContentIds = response.lastWatchedContentIds;
         activeProfile.update_LastWatched_Content_IDs(updated_lastWatchedContentIds);
+        active_content = Content_Items.find(content => content.id === ContentID);
+        if (active_content)
+        {
+            updateVideoPlayer(active_content.videoUrl, active_content.title);
+        }
+        else
+        {
+            console.error("Failed to find content");
+        }
     }
     await refreshDisplay();
 }
@@ -171,14 +246,14 @@ async function click_on_content_item(ContentID)
 async function refreshDisplay() 
 {
     await renderLastWatched();
-    await renderAllMovies(User_Search_Value);
+    await renderAllContentItems(Content_Items.filter(item => item.title.toLowerCase().includes(User_Search_Value.toLowerCase())));
 }
 
 async function init() 
 {
     if (!await ClientSessionManager.isLoggedIn())
     {
-        UI.LockUI(all_movies_container);
+        UI.LockUI(all_content_container);
         last_watched_container.innerHTML = "NOT LOGGED IN";
         setTimeout(() => UI.GoToLink('/'), 5000);
         return;
@@ -186,7 +261,7 @@ async function init()
 
     if (!activeProfileId)
     {
-        UI.LockUI(all_movies_container);
+        UI.LockUI(all_content_container);
         last_watched_container.innerHTML = "NO PROFILE SELECTED";
         setTimeout(() => UI.GoToLink('/html/profiles.html'), 5000);
         return;
@@ -197,17 +272,17 @@ async function init()
     const fetchProfileDetails_response = await Backend.fetchProfileDetails(token, activeProfileId);
     if (!fetchProfileDetails_response || !fetchProfileDetails_response.success)
     {
-        UI.LockUI(all_movies_container);
-        all_movies_container.innerHTML = "ERROR GETTING ACTIVE PROFILE";
-        return;
+        UI.LockUI(all_content_container);
+        all_content_container.innerHTML = "ERROR GETTING ACTIVE PROFILE";
+        return; 
     }
     activeProfile = Profile.fromJSON(fetchProfileDetails_response.profile);
 
     const getAllContent_response = await Backend.getAllContentItems();
     if (!getAllContent_response || !getAllContent_response.success)
     {
-        UI.LockUI(all_movies_container);
-        all_movies_container.innerHTML = "ERROR GETTING CONTENT ITEMS";
+        UI.LockUI(all_content_container);
+        all_content_container.innerHTML = "ERROR GETTING CONTENT ITEMS";
         return;
     }
     Content_Items = getAllContent_response.content;
