@@ -1261,10 +1261,10 @@ function main_renderer()
                 selection_counter.style.opacity = "1";
             });
             render_controll_container([
-                {name: "set up filters", function: () => filters_window = create_users_filters_window(users_filters)},
-                {name: "update user", primary: true , function: () => filters_window = create_update_user_window(current_target)},
-                {name: "delete user", function: () => {UI.ShowMessage("Not implemented")}},
-                {name: "my user", function: () => {current_target = active_user; view_user()}},
+                {name: "Search", function: () => filters_window = create_users_filters_window(users_filters)},
+                {name: "Update", primary: true , function: () => filters_window = create_update_user_window(current_target)},
+                {name: "Delete", function: () => {UI.ShowMessage("Not implemented")}},
+                {name: "My User", function: () => {current_target = active_user; view_user()}},
                 {name: "test", function: () => {UI.ShowMessage("Not implemented")}},
                 {name: "test", function: () => {UI.ShowMessage("Not implemented")}},
                 {name: "test", function: () => {UI.ShowMessage("Not implemented")}},
