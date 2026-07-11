@@ -11,43 +11,44 @@
     <link rel="stylesheet" href="../css/admin_dash.css">
     <title>Admin Dashboard</title>
 </head>
-<body class="">
+<body class="d-flex flex-column vh-100">
 
-    <div class="container-fluid row d-flex justify-content-center align-items-center my-1">
+    <div class="container-fluid flex-shrink-0">
+        <div class="row d-flex justify-content-center align-items-center my-1 g-2">
 
-        <div id="mode_selector_container" class="col-md-9 col-sm-12 bg-opacity-50 rounded d-flex justify-content-evenly align-items-center my-2">
+            <div id="mode_selector_container" class="col-12 col-md-9 bg-opacity-50 rounded d-flex flex-wrap justify-content-evenly align-items-center gap-2 py-2">
             </div>
 
-        <div id="msg_box" class="col-md-3 col-sm-12 bg-dark bg-opacity-50 rounded d-flex justify-content-center align-items-center text-center fw-bold fs-5">
+            <div id="msg_box" class="col-12 col-md-3 bg-dark bg-opacity-50 rounded d-flex justify-content-center align-items-center text-center fw-bold fs-5 py-3">
             </div>
 
-    </div>
-
-    <div class="container-fluid">
-
-        <div class="row d-flex justify-content-evenly align-items-stretch">
-            <div class="col-md-3 col-sm-12 order-md-2 order-1">
-                <div class="h-100 w-100 position-relative d-flex flex-column">
-                    <div id="selection_counter" class="text-center text-light fw-bold fs-5 bg-dark position-relative w-100">
-                        Selection Counter: [#]
-                    </div>
-                    <div id="selection_container" class="d-grid overflow-y-auto overflow-x-hidden flex-grow-1 bg-light text-dark bg-opacity-50">
-            
-                    </div>
-                </div>
-            </div>
-        
-            <div class="col-md-9 col-sm-12 order-md-1 order-2">
-                <div id="view_container" class="d-grid overflow-y-auto overflow-x-hidden rounded border border-secondary justify-content-evenly align-items-center text-center bg-dark text-light bg-opacity-50 h-100 w-100">
-        
-                </div>
-            </div>
         </div>
     </div>
 
-    <div class="container-fluid">
-        <div class="row justify-content-evenly align-items-center my-4">
-            <div id="controll_container" class="col-md-12 col-sm-12 bg-opacity-50 rounded overflow-x-auto">
+    <div class="container-fluid flex-grow-1 overflow-hidden">
+        <div class="row h-100 d-flex flex-column flex-md-row justify-content-evenly align-items-stretch g-2">
+
+            <div class="col-12 col-md-3 order-2 order-md-2 h-100">
+                <div class="h-100 w-100 d-flex flex-column">
+                    <div id="selection_counter" class="text-center text-light fw-bold fs-5 bg-dark w-100 flex-shrink-0">
+                        Selection Counter: [#]
+                    </div>
+                    <div id="selection_container" class="d-grid overflow-y-auto overflow-x-hidden flex-grow-1 bg-light text-dark bg-opacity-50">
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-9 order-1 order-md-1 h-100">
+                <div id="view_container" class="d-grid overflow-y-auto overflow-x-hidden rounded border border-secondary justify-content-evenly align-items-center text-center bg-dark text-light bg-opacity-50 h-100 w-100">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="container-fluid flex-shrink-0">
+        <div class="row justify-content-evenly align-items-center my-2">
+            <div id="controll_container" class="col-12 bg-opacity-50 rounded overflow-x-auto d-flex flex-nowrap flex-md-wrap">
             </div>
         </div>
     </div>

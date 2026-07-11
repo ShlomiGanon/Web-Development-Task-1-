@@ -22,6 +22,10 @@ body
     transition: all 0.25s ease-in-out;
 }
 
+#selection_counter 
+{
+    transition: all 0.25s ease-in-out;
+}
 #view_container 
 {
     max-height: 70vh;

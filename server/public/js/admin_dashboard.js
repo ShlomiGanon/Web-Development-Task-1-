@@ -1,4 +1,4 @@
-//i want to create a js file for the admin dashbord page
+
 import { UserInfo, ContentItem } from "./BACKEND_API/backend-interface.js";
 import { Backend } from "./config.js";
 import {ClientSessionManager} from "./client-session-manager.js";
@@ -1235,9 +1235,11 @@ function main_renderer()
         {
             UI.ShowMessage("Please select a mode");
             selection_container.style.transform = "scale(1, 0)";
+            selection_counter.style.opacity = "0";
             view_container.style.transform = "scale(1, 0)";
             controll_container.style.opacity = "0";
             setTimeout(() => {
+                selection_counter.style.display = "none";
                 selection_container.style.display = "none";
                 view_container.style.display = "none";
                 controll_container.style.display = "none";
@@ -1249,12 +1251,14 @@ function main_renderer()
             selection_container.style.display = "block";
             view_container.style.display = "block";
             controll_container.style.display = "block";
+            selection_counter.style.display = "block";
     
     // allow the browser to render the display: block before running the transform
             requestAnimationFrame(() => {
                 selection_container.style.transform = "scale(1, 1)";
                 view_container.style.transform = "scale(1, 1)";
                 controll_container.style.opacity = "1";
+                selection_counter.style.opacity = "1";
             });
             render_controll_container([
                 {name: "set up filters", function: () => filters_window = create_users_filters_window(users_filters)},
