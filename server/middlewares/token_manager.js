@@ -1,11 +1,14 @@
 const crypto = require('crypto');
-
+const fs = require('fs');
+const path = require('path');
 class TokenManager
 {
-    constructor()
+    constructor(save_directory = path.join(__dirname, '../data/'))
     {
         this.token_2_user_id = {}; 
         this.user_id_2_tokens = {};
+        this.save_directory = save_directory;
+        this.load();
     }
 
     addUserToken(user_id)
@@ -17,6 +20,7 @@ class TokenManager
             this.user_id_2_tokens[user_id] = {};
         }
         this.user_id_2_tokens[user_id][token] = true;
+        this.save();
         return token;
     }
 
@@ -31,6 +35,7 @@ class TokenManager
             }
             delete this.token_2_user_id[token];
         }
+        this.save();
     }
 
     deleteAllTokens()
@@ -52,6 +57,37 @@ class TokenManager
             token = crypto.randomBytes(32).toString('hex');
         }
         return token;
+    }
+
+    load(directory_path = null)
+    {
+        if(directory_path === null)directory_path = this.save_directory;
+        try
+        {
+            const data = fs.readFileSync(path.join(directory_path, 'token_manager.json'), 'utf8');
+            if(!data)return;//if the file is empty, return , we don't need to load anything
+            const parsed_data = JSON.parse(data);
+            if(!parsed_data.token_2_user_id || !parsed_data.user_id_2_tokens)return;//if the data is not valid, return , we don't need to load anything
+            this.token_2_user_id = parsed_data.token_2_user_id;
+            this.user_id_2_tokens = parsed_data.user_id_2_tokens;
+        }
+        catch (error)
+        {
+            console.error('Error loading token manager: ', error);
+        }
+    }
+
+    save(directory_path = null)
+    {
+        if(directory_path === null)directory_path = this.save_directory;
+        try
+        {
+            fs.writeFileSync(path.join(directory_path, 'token_manager.json'), JSON.stringify({ token_2_user_id: this.token_2_user_id, user_id_2_tokens: this.user_id_2_tokens }));
+        }
+        catch (error)
+        {
+            console.error('Error saving token manager: ', error);
+        }
     }
 }
 

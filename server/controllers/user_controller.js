@@ -4,16 +4,17 @@ const { Is_Valid_Name, Is_Valid_Email, Is_Valid_Phone, Is_Valid_Password, get_ag
 const my_logger = require('../scripts/my_logger');
 const { ENABLE_18_AGE_LIMIT } = require('../scripts/constants');
 const {permissionManagerInstance } = require('../middlewares/permission_manager');
-const safe_user = (user) =>
+const safe_user = (user , user_permission_level = null) =>
 {
+    if(user_permission_level === null)user_permission_level = permissionManagerInstance.getPermissionLevel(user._id);
     return {
         id: user._id.toString(),
         email: user.email,
         phone: user.phone,
         fullName: user.fullName,
-        birthday: user.birthDate,
-        createdAt: user.createdAt,
-        permission_level: permissionManagerInstance.getPermissionLevel(user._id.toString())
+        birthday: user.birthDate.toISOString(),
+        createdAt: user.createdAt.toISOString(),
+        permission_level: user_permission_level
     };
 }
 
@@ -122,7 +123,7 @@ const getUser = async (req, res) =>
         {
             return res.json({ success: false, message: 'User not found' });
         }
-        my_logger.ConsoleLog(`User found.`, my_logger.Log_Level.INFO);
+        my_logger.ConsoleLog(`getUser [user_id: ${user_id}] successful.`, my_logger.Log_Level.INFO);
         const logUser = safe_user(user);
         my_logger.OperationLog('getUser', `User found.`, { "user": logUser }, my_logger.Log_Level.INFO);
         res.json({ success: true, message: 'User found', user: logUser });

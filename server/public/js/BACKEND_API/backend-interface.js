@@ -136,8 +136,9 @@ export class UserInfo
      * @param {Date} [birthday]
      * @param {Date} [createdAt]
      * @param {Array<Profile|Object>} [rawProfiles=[]]
+     * @param {number} [permission_level]
      */
-    constructor(id, email, phone, fullName, birthday, createdAt, rawProfiles = [])
+    constructor(id, email, phone, fullName, birthday, createdAt, rawProfiles = [] , permission_level = undefined)
     {
         this.id = id;
         this.email = email;
@@ -146,6 +147,7 @@ export class UserInfo
         this.birthday = new Date(birthday);
         this.createdAt = new Date(createdAt);
         this.profiles = rawProfiles.map(p => p instanceof Profile ? p : Profile.fromJSON(p));
+        this.permission_level = permission_level;
     }
 
     static fromJSON(rawObject)
@@ -159,7 +161,8 @@ export class UserInfo
             rawObject.fullName,
             new Date(rawObject.birthday),
             new Date(rawObject.createdAt),
-            rawObject.profiles
+            rawObject.profiles,
+            rawObject.permission_level
         );
     }
 
@@ -172,7 +175,8 @@ export class UserInfo
             fullName: this.fullName,
             birthday: this.birthday.toISOString(),
             createdAt: this.createdAt.toISOString(),
-            profiles: this.profiles.map(p => p.toJSON())
+            profiles: this.profiles.map(p => p.toJSON()),
+            permission_level: this.permission_level
         };
     }
 }
@@ -187,23 +191,24 @@ export class ContentItem
      * FIXED: added `release_date` and `createdAt` - both are returned by every content
      * endpoint on the backend and were previously dropped entirely (release_date is also
      * what /content search results are sorted by, by default).
-     * @param {string} id - Unique identifier as returned by the backend (opaque, do not assume a numeric format).
-     * @param {string} name - Content title.
-     * @param {string} [cover_imageName] - Cover image filename.
-     * @param {number} [likes=0]
-     * @param {string} [type] - "movie" | "series".
-     * @param {Array<string>} [categories=[]]
-     * @param {string} [description]
-     * @param {number} [age_limit=0]
-     * @param {string} [videoUrl]
-     * @param {string} [release_date]
-     * @param {string} [createdAt]
+     *  
+        id: content._id.toString(),
+        title: content.title,
+        description: content.description,
+        cover_image_name: content.cover_image_name,
+        type: content.type,
+        categories: content.categories,
+        release_date: content.release_date,
+        age_limit: content.age_limit,
+        likes: content.likes,
+        videoUrl: content.videoUrl,
+        createdAt: content.createdAt
      */
-    constructor(id, name, cover_imageName, likes = 0, type, categories = [], description, age_limit = 0, videoUrl, release_date, createdAt)
+    constructor(id, title, cover_image_name, likes = 0, type, categories = [], description, age_limit = 0, videoUrl, release_date, createdAt)
     {
         this.id = id;
-        this.name = name;
-        this.cover_imageName = cover_imageName;
+        this.title = title;
+        this.cover_image_name = cover_image_name;
         this.likes = likes;
         this.type = type;
         this.categories = Array.isArray(categories) ? categories : [];

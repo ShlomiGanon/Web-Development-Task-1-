@@ -167,10 +167,9 @@ userSchema.statics.buildQuery = function(rawQuery) {
     const map = this.searchFilterMap;
 
     for (const [key, value] of Object.entries(rawQuery)) {
-        if (!map[key]) continue;
+        if (!map[key] || value === undefined || value === null || value === "") continue;
 
         const { dbField, operator, type } = map[key];
-
         if (type === 'date')
         {
             // Merge multiple conditions on the same field (e.g. joined_after + joined_before)

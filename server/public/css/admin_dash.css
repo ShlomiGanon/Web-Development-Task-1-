@@ -14,14 +14,12 @@ body
 #controll_container 
 {
     
-    transition: all 1s ease-in-out;
+    transition: all 0.5s ease-in-out;
 }
 
 #selection_container 
 {
-    max-height: 70vh;
-    min-height: 70vh;
-    transition: all 0.5s ease-in-out;
+    transition: all 0.25s ease-in-out;
 }
 
 #view_container 
@@ -29,19 +27,17 @@ body
     max-height: 70vh;
     min-height: 70vh;
     width: 100%;
-    transition: all 0.5s ease-in-out;
+    transition: all 0.25s ease-in-out;
 }
 
 .label_item:hover
 {
-    font-weight: bold;
     background-color: #333;
     transition: all 0.1s ease-in-out;
 }
 
 .label_item
 {
-    font-weight: normal;
     background-color: transparent;
     transition: all 0.1s ease-in-out;
 }
