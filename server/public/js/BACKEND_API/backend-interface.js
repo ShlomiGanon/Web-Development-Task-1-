@@ -8,28 +8,28 @@ export class Profile
 {
     /**
      * @param {string} id - Unique identifier as returned by the backend (opaque, do not assume a numeric format).
-     * @param {string} name - Profile display name.
+     * @param {string} profileName - Profile display name.
      * @param {number} [age=0] - Used for content age-gating.
-     * @param {string} [imageName] - Profile image filename.
-     * @param {Array<string>} [LastWatched_Content_IDs=[]]
-     * @param {Set<string>|Array<string>} [wasLiked_Content_IDs=[]]
+     * @param {string} [ImageName] - Profile image filename.
+     * @param {Array<string>} [lastWatchedContentIds=[]]
+     * @param {Set<string>|Array<string>} [likedContentIds=[]]      
      */
-    constructor(id, name, age = 0, imageName, LastWatched_Content_IDs = [], wasLiked_Content_IDs = [])
+    constructor(id, profileName, age = 0, ImageName, lastWatchedContentIds = [], likedContentIds = [])
     {
         this.id = id;
-        this.name = name;
+        this.profileName = profileName;
         this.age = age;
-        this.imageName = imageName;
-        this.LastWatched_Content_IDs = Array.isArray(LastWatched_Content_IDs) ? LastWatched_Content_IDs : [];
+        this.ImageName = ImageName;
+        this.lastWatchedContentIds = Array.isArray(lastWatchedContentIds) ? lastWatchedContentIds : [];
 
-        if (wasLiked_Content_IDs instanceof Set)
+        if (likedContentIds instanceof Set)
         {
-            this.wasLiked_Content_IDs = wasLiked_Content_IDs;
+            this.likedContentIds = likedContentIds;
         }
         else
         {
-            const rawLikeIDs = Array.isArray(wasLiked_Content_IDs) ? wasLiked_Content_IDs : [];
-            this.wasLiked_Content_IDs = new Set(rawLikeIDs);
+            const rawLikeIDs = Array.isArray(likedContentIds) ? likedContentIds : [];
+            this.likedContentIds = new Set(rawLikeIDs);
         }
     }
 
@@ -57,8 +57,8 @@ export class Profile
         // id: lightweight summaries already expose `id`; the full profile document
         // (getProfileDetails) is a raw Mongoose doc and only has `_id`.
         const id = rawObject.id ?? rawObject._id;
-        const lastWatchedIds = rawObject.LastWatched_Content_IDs ?? [];
-        const likedIds = rawObject.Liked_Content_IDs ?? [];
+        const lastWatchedIds = rawObject.lastWatchedContentIds ?? [];
+        const likedIds = rawObject.likedContentIds ?? [];
 
         return new Profile(
             id,
@@ -85,28 +85,28 @@ export class Profile
     {
         return {
             id: this.id,
-            profileName: this.name,
+            profileName: this.profileName,
             age: this.age,
-            ImageName: this.imageName
+            ImageName: this.ImageName
         };
     }
 
     update_LastWatched_Content_IDs(New_LastWatched_Content_IDs)
     {
         const New_Array = Array.isArray(New_LastWatched_Content_IDs) ? New_LastWatched_Content_IDs : [];
-        this.LastWatched_Content_IDs = New_Array;
+        this.lastWatchedContentIds = New_Array;
     }
 
     update_wasLiked_Content_IDs(New_wasLiked_Content_IDs)
     {
         if (New_wasLiked_Content_IDs instanceof Set)
         {
-            this.wasLiked_Content_IDs = New_wasLiked_Content_IDs;
+            this.likedContentIds = New_wasLiked_Content_IDs;
         }
         else
         {
             const rawLikeIDs = Array.isArray(New_wasLiked_Content_IDs) ? New_wasLiked_Content_IDs : [];
-            this.wasLiked_Content_IDs = new Set(rawLikeIDs);
+            this.likedContentIds = new Set(rawLikeIDs);
         }
     }
 }
@@ -215,8 +215,8 @@ export class ContentItem
         this.description = description;
         this.age_limit = age_limit;
         this.videoUrl = videoUrl;
-        this.release_date = release_date;
-        this.createdAt = createdAt;
+        this.release_date = new Date(release_date);
+        this.createdAt = new Date(createdAt);
     }
 
     static fromJSON(rawObject)
@@ -233,8 +233,8 @@ export class ContentItem
             rawObject.description,
             rawObject.age_limit,
             rawObject.videoUrl,
-            rawObject.release_date,
-            rawObject.createdAt
+            new Date(rawObject.release_date),
+            new Date(rawObject.createdAt)
         );
     }
 }

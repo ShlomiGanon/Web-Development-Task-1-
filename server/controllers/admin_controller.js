@@ -18,7 +18,7 @@ const setPermissionLevel = async (req, res) =>
         const selected_user_id = req.target_user_id;
         const admin_user_id = req.admin_user_id;
         if(!selected_user_id)return res.json({ success: false, data: null, message: 'setPermissionLevel: request params is missing target_user_id' });
-        if(!req.body.permission_level)return res.json({ success: false, data: null, message: 'setPermissionLevel: request body is missing permission_level' });
+        if(req.body.permission_level === undefined)return res.json({ success: false, data: null, message: 'setPermissionLevel: request body is missing permission_level' });
         const permission_level = parseInt(req.body.permission_level);
         if (permission_level > permissionManagerInstance.getPermissionLevel(admin_user_id))
         {

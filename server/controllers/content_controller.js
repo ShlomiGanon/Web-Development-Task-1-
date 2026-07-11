@@ -16,11 +16,11 @@ const to_content_summary = (content) =>
         cover_image_name: content.cover_image_name,
         type: content.type,
         categories: content.categories,
-        release_date: content.release_date,
+        release_date: content.release_date.toISOString(),
         age_limit: content.age_limit,
         likes: content.likes,
         videoUrl: content.videoUrl,
-        createdAt: content.createdAt
+        createdAt: content.createdAt.toISOString()
     };
 }
 
@@ -214,7 +214,7 @@ const searchContent = async (req, res) =>
 
         const contents = await Content.find(query).limit(limit).skip(skip).sort({ [sort]: sortOrder });
 
-        res.json({ success: true, message: 'Content searched successfully', content: contents.map(to_content_summary) });
+        res.json({ success: true, message: 'Content searched successfully', content: contents.map(content => to_content_summary(content))});
     }
     catch (error)
     {

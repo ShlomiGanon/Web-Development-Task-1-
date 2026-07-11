@@ -444,7 +444,7 @@ const watchMedia = async (req, res) =>
     {
         my_logger.ConsoleLog(`Error updating watch progress: ${error}`, my_logger.Log_Level.ERROR);
         my_logger.OperationLog('watchMedia', 'Error updating watch progress.', { "user_id": userId, "profile_id": profile._id, "content_id": content._id, "error": error }, my_logger.Log_Level.ERROR);
-        res.json({ success: false, message: "Internal server error", watchHistory: [] });
+        res.json({ success: false, message: "Internal server error", lastWatchedContentIds: [] });
     }
 }
 

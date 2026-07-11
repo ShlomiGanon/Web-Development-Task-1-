@@ -21,30 +21,28 @@ async function renderLastWatched()
 {
     
 
-    document.title = `Profile - ${activeProfile.name}`;
+    document.title = `Profile - ${activeProfile.profileName}`;
 
     if (profile_image) 
     {
-        profile_image.src = `../assets/profiles_images/${activeProfile.imageName}`;
-        profile_image.alt = activeProfile.name;
+        profile_image.src = `../assets/profiles_images/${activeProfile.ImageName}`;
+        profile_image.alt = activeProfile.profileName;
     }
 
     last_watched_text.textContent = "Last watched: ";
-    const lastWatchedItems = activeProfile.LastWatched_Content_IDs
+    const lastWatchedItems = activeProfile.lastWatchedContentIds
         .map(id => Content_Items.find(m => m.id === id))
         .filter(m => m !== undefined);
 
     last_watched_container.innerHTML = lastWatchedItems.map(item => 
     {
-        const isLiked = activeProfile.wasLiked_Content_IDs.has(item.id);
-        
-        const cover_imageName = item.cover_imageName || 'UNDEFINED.png';
+        const isLiked = activeProfile.likedContentIds.has(item.id);
         return `
             <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
-                <img src="../assets/covers/${cover_imageName}" class="img-fluid rounded movie_image" 
-                alt="${item.name}" 
+                <img src="../assets/covers/${item.cover_image_name}" class="img-fluid rounded movie_image" 
+                alt="${item.title}" 
                 onclick="click_on_content_item('${item.id}')">
-                <div class="movie_name text-center text-truncate px-1">${item.name}</div>
+                <div class="movie_name text-center text-truncate px-1">${item.title}</div>
                 <button class="btn btn-sm ${isLiked ? 'btn-danger' : 'btn-outline-danger'} w-100 mt-2" 
                         onclick="handleToggleLike('${item.id}')">
                     ${isLiked ? `${item.likes} 💔(unlike)` : `${item.likes} ❤️(like)`}
@@ -66,7 +64,7 @@ async function renderLastWatched()
 async function renderAllMovies(searchValue = '') 
 {
     const filteredData = searchValue 
-        ? Content_Items.filter(item => item.name.toLowerCase().includes(searchValue.toLowerCase()))
+        ? Content_Items.filter(item => item.title.toLowerCase().includes(searchValue.toLowerCase()))
         : Content_Items;
 
     // Prepare a container for the HTML string to minimize DOM reflows
@@ -75,15 +73,14 @@ async function renderAllMovies(searchValue = '')
     // Build the movie item cards
     filteredData.forEach(item => 
     {
-        const isLiked = activeProfile ? activeProfile.wasLiked_Content_IDs.has(item.id) : false;
-        const cover_imageName = item.cover_imageName || 'UNDEFINED.png';
+        const isLiked = activeProfile ? activeProfile.likedContentIds.has(item.id) : false;
         htmlContent += `
             <div class="col-6 col-sm-4 col-md-3 col-lg-2 mb-4 movie_item">
-                <img src="../assets/covers/${cover_imageName}" 
+                <img src="../assets/covers/${item.cover_image_name}" 
                      class="img-fluid rounded movie_image" 
-                     alt="${item.name}" 
+                     alt="${item.title}" 
                      onclick="click_on_content_item('${item.id}')">
-                <div class="movie_name text-center text-truncate px-1">${item.name}</div>
+                <div class="movie_name text-center text-truncate px-1">${item.title}</div>
                 <button class="btn btn-sm ${isLiked ? 'btn-danger' : 'btn-outline-danger'} w-100 mt-2" 
                         onclick="handleToggleLike('${item.id}')">
                     ${isLiked ? `${item.likes} 💔(unlike)` : `${item.likes} ❤️(like)`}
@@ -128,8 +125,8 @@ async function handleToggleLike(ContentID)
     else
     {
         //update the content item likes 
-        const updated_wasLiked_Content_IDs = response.likedContentIds;
-        activeProfile.update_wasLiked_Content_IDs(updated_wasLiked_Content_IDs);
+        const updated_likedContentIds = response.likedContentIds;
+        activeProfile.update_wasLiked_Content_IDs(updated_likedContentIds);
         let pressed_content = Content_Items.find(content => content.id === ContentID);
         if (pressed_content)
         {
@@ -160,8 +157,13 @@ async function click_on_content_item(ContentID)
     }
     else
     {
-        const updated_LastWatched_Content_IDs = response.watchHistory;//TODO: change to Content_IDs
-        activeProfile.update_LastWatched_Content_IDs(updated_LastWatched_Content_IDs);
+        if(!response.lastWatchedContentIds)
+        {
+            console.error("Failed to get last watched content ids: ", response.message || "Unknown error");
+            return;
+        }
+        const updated_lastWatchedContentIds = response.lastWatchedContentIds;
+        activeProfile.update_LastWatched_Content_IDs(updated_lastWatchedContentIds);
     }
     await refreshDisplay();
 }
@@ -200,7 +202,6 @@ async function init()
         return;
     }
     activeProfile = Profile.fromJSON(fetchProfileDetails_response.profile);
-    console.log(activeProfile);
 
     const getAllContent_response = await Backend.getAllContentItems();
     if (!getAllContent_response || !getAllContent_response.success)

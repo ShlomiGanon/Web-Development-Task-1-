@@ -192,10 +192,10 @@ function attachInputListeners()
 async function changeProfileImage(profile)
 {
     if(!changeType)markAsChanged(CHANGE_TYPE.IMAGE);
-    const currentIndex = AVAILABLE_PROFILES_IMAGES.indexOf(profile.imageName);
+    const currentIndex = AVAILABLE_PROFILES_IMAGES.indexOf(profile.ImageName);
     const nextIndex = (currentIndex === -1) ? 0 : (currentIndex + 1) % AVAILABLE_PROFILES_IMAGES.length;
 
-    profile.imageName = AVAILABLE_PROFILES_IMAGES[nextIndex];
+    profile.ImageName = AVAILABLE_PROFILES_IMAGES[nextIndex];
     renderProfiles(RENDER_MODE.EDIT);
 }
 
@@ -220,10 +220,10 @@ function renderProfileComponent(profile, tagName = RENDER_MODE.VIEW)
             <div>
                 <div class="profile" id="profile${profile.id}" style="cursor: pointer;">
                     <div class="profile_image">
-                        <img src="../assets/profiles_images/${profile.imageName}" alt="${profile.name}" class="img-fluid border border-3 border-dark">
+                        <img src="../assets/profiles_images/${profile.ImageName}" alt="${profile.profileName}" class="img-fluid border border-3 border-dark">
                     </div>
                 </div>
-                <input id="profile_input_${profile.id}" autocomplete="off" type="text" class="profile_input mt-3 text-secondary text-center" value="${profile.name}">
+                <input id="profile_input_${profile.id}" autocomplete="off" type="text" class="profile_input mt-3 text-secondary text-center" value="${profile.profileName}">
             </div>
         `;
     }
@@ -232,10 +232,10 @@ function renderProfileComponent(profile, tagName = RENDER_MODE.VIEW)
         return `
             <div class="profile" id="profile${profile.id}" style="cursor: pointer;">
                 <div class="profile_image">
-                    <img src="../assets/profiles_images/${profile.imageName}" alt="${profile.name}" class="img-fluid border border-3 border-dark">
+                    <img src="../assets/profiles_images/${profile.ImageName}" alt="${profile.profileName}" class="img-fluid border border-3 border-dark">
                 </div>
                 <div class="profile_name mt-3 text-secondary text-center" id="profile_name_${profile.id}">
-                    ${profile.name}
+                    ${profile.profileName}
                 </div>
             </div>
         `;
@@ -387,7 +387,7 @@ async function saveEditedProfiles()
     profiles.forEach(profile =>
     {
         const input = document.getElementById(`profile_input_${profile.id}`);
-        if (input) profile.name = input.value;
+        if (input) profile.profileName = input.value;
     });
 
     const response = await Backend.saveProfiles(sessionToken, profiles);
@@ -415,7 +415,7 @@ async function confirmAndDeleteProfile(profile)
         UI.ShowMessage("Cannot delete the last profile. You must have at least one.");
         return;
     }
-    const confirmed = confirm(`Are you sure you want to delete profile "${profile.name}"?`);
+    const confirmed = confirm(`Are you sure you want to delete profile "${profile.profileName}"?`);
     if (confirmed)
     {
         const response = await Backend.deleteProfile(sessionToken, profile.id);
@@ -463,7 +463,7 @@ async function Profile_Click(profile)
     {
         const profileNameElement = document.getElementById(`profile_name_${profile.id}`);
         lockUIAndProfiles(profileNameElement ? profileNameElement : null);
-        UI.ShowMessage(`Entering ${profile.name}...`);
+        UI.ShowMessage(`Entering ${profile.profileName}...`);
 
         // Selecting a profile is a local-only action (no backend route for it) -
         // it just records which profile is active for this tab/session.

@@ -70,7 +70,7 @@ contentSchema.statics.buildQuery = function(rawQuery) {
     const map = this.searchFilterMap;
 
     for (const [key, value] of Object.entries(rawQuery)) {
-        if (!map[key]) continue;
+        if (!map[key] || value === undefined || value === null || value === "") continue;
 
         const { dbField, operator, type } = map[key];
 
@@ -91,9 +91,15 @@ contentSchema.statics.buildQuery = function(rawQuery) {
         else if (type === 'array')
         {
             // Supports both a single value ("action") and a comma-separated list ("action,comedy")
-            const values = Array.isArray(value) ? value : value.split(',').map(v => v.trim());
+            const values = Array.isArray(value) ? value : value.split(',').map(v => v.trim()).filter(v => v !== '');
             if (!dbFilter[dbField]) dbFilter[dbField] = {};
             dbFilter[dbField][operator] = values;
+        
+            // exact_category means "has exactly these categories, no more, no fewer" -
+            if (operator === '$all')
+            {
+                dbFilter[dbField]['$size'] = new Set(values).size;
+            }
         }
         else if (type === 'string')
         {
