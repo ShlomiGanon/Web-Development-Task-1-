@@ -11,10 +11,10 @@
     <link rel="stylesheet" href="../css/admin_dash.css">
     <title>Admin Dashboard</title>
 </head>
-<body class="d-flex flex-column" style="min-height: 100dvh;">
+<body class="container-fluid" style="">
 
     <!-- ============ Header: mode selector + message box ============ -->
-    <div class="container-fluid flex-shrink-0">
+    <div class="container-fluid ">
         <div class="row g-2 my-2 justify-content-center align-items-center">
 
             <div id="mode_selector_container"
@@ -29,18 +29,20 @@
     </div>
 
     <!-- ============ Selection counter ============ -->
-    <div id="selection_counter" class="flex-shrink-0"></div>
+    
 
     <!-- ============ Main content: selection list + detail view ============ -->
-    <div class="container d-flex flex-column flex-grow-1 overflow-hidden">
-
+    <div id="selection_counter" class="text-center text-light fw-bold fs-5 bg-light bg-opacity-50 w-100"></div> 
+    <div class="container-fluid d-flex flex-column flex-grow-1 overflow-hidden m-2">
         <div class="row flex-column flex-md-row flex-grow-1 overflow-hidden">
 
             <div class="col-12 col-md-3 order-1 order-md-2 d-flex flex-column flex-grow-1 overflow-auto">
+                
                 <div id="selection_container"
                      class="d-grid flex-grow-1 overflow-auto text-center rounded border border-secondary bg-light bg-opacity-50">
                     <h1>Selection Container</h1>
                 </div>
+                
             </div>
 
             <div class="col-12 col-md-9 order-2 order-md-1 d-flex flex-column flex-grow-1 overflow-hidden">
