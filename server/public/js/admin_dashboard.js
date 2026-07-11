@@ -177,7 +177,7 @@ function render_controll_container(buttons)
     {
         const btn = document.createElement("button");
         const btn_type = (button.primary) ? "btn-primary" : "btn-secondary";
-        btn.className = `btn btn-group btn-lg ${btn_type} rounded-pill m-0`;
+        btn.className = `btn btn-group btn-lg ${btn_type} rounded-pill mx-2`;
         btn.textContent = button.name;
         btn.addEventListener("click", button.function); 
         buttons_html.appendChild(btn);
@@ -1261,6 +1261,9 @@ function main_renderer()
                 {name: "update user", primary: true , function: () => filters_window = create_update_user_window(current_target)},
                 {name: "delete user", function: () => {UI.ShowMessage("Not implemented")}},
                 {name: "my user", function: () => {current_target = active_user; view_user()}},
+                {name: "test", function: () => {UI.ShowMessage("Not implemented")}},
+                {name: "test", function: () => {UI.ShowMessage("Not implemented")}},
+                {name: "test", function: () => {UI.ShowMessage("Not implemented")}},
             ]);
             rander_selection_container_to_users();
             view_user();
