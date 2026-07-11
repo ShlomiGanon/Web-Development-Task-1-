@@ -84,10 +84,10 @@ async function randerContentItems(content_item)
     `;
     last_watched_container.innerHTML = contentHtml;
 }
-async function renderLastWatched() 
-{
-    
 
+function randerProfileDetails()
+{
+    if(!activeProfile)return;
     document.title = `Profile - ${activeProfile.profileName}`;
 
     if (profile_image) 
@@ -95,6 +95,12 @@ async function renderLastWatched()
         profile_image.src = `../assets/profiles_images/${activeProfile.ImageName}`;
         profile_image.alt = activeProfile.profileName;
     }
+}
+
+async function renderLastWatched() 
+{
+    
+
 
     last_watched_text.textContent = "Last watched: ";
     const lastWatchedItems = activeProfile.lastWatchedContentIds
@@ -202,7 +208,7 @@ async function new_and_popular_link_on_click()
 
 function my_list_link_on_click()
 {
-    
+    renderLastWatched();
 }
 
 async function renderAllContentItems(content_items) 
@@ -250,7 +256,7 @@ async function search_on_click()
     }
     else 
     {
-        all_content_text.textContent = "All content: ";
+        all_content_text.textContent = "";
         await renderAllContentItems(Content_Items);
     }
 }
@@ -342,6 +348,7 @@ async function refreshDisplay()
 
 async function init() 
 {
+    
     if (!await ClientSessionManager.isLoggedIn())
     {
         UI.LockUI(all_content_container);
@@ -382,6 +389,7 @@ async function init()
     
     search_button.addEventListener('click', search_on_click);
     search_input.addEventListener('keypress', (e) => { if (e.key === 'Enter') search_on_click(); });
+    randerProfileDetails();
 }
 window.click_on_content_item = click_on_content_item;
 window.handleToggleLike = handleToggleLike;
