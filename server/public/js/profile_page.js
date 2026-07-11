@@ -32,7 +32,58 @@ let activeProfile = null;
 let Content_Items = null;
 const token = ClientSessionManager.getSessionToken();
 const activeProfileId = ClientSessionManager.getActiveProfileId();
-
+function escapeHtml(value)
+{
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+function renderField(label, value, seperator = ':', labelClass = 'text-danger', valueClass = 'text-white')
+{
+    return `
+    <div class="label_item border border-white rounded-pill p-2 w-100 m-2" dir="ltr"
+         style="display: grid; grid-template-columns: 5fr 1fr 6fr; align-items: center; column-gap: 0.5rem;">
+        <div class="text-center ${labelClass} fw-bold fs-4" style="overflow-wrap: break-word; word-break: break-word;">${label}</div>
+        <div class="text-center text-warning fw-bold fs-4">${seperator}</div>
+        <div class="text-center ${valueClass} fs-5" style="overflow-wrap: break-word; word-break: break-word;">${value}</div>
+    </div>
+`;
+}
+async function randerContentItems(content_item)
+{
+    const response = await Backend.getContentByID(content_item.id);
+    if (!response || !response.success)
+    {
+        console.error("Failed to get content item: ", response.message || "Unknown error");
+        return;
+    }
+    else
+    {
+        content_item = ContentItem.fromJSON(response.content);
+    }
+    last_watched_text.textContent = escapeHtml(content_item.title);
+    last_watched_container.innerHTML = "";
+    const contentHtml = `
+    <div class="w-100 p-4">
+        ${renderField("ID", escapeHtml(content_item.id))}
+        ${renderField("Cover Image Name", escapeHtml(content_item.cover_image_name))}
+        ${renderField("Likes", escapeHtml(content_item.likes))}
+        ${renderField("Type", escapeHtml(content_item.type))}
+        ${renderField("Categories", escapeHtml(content_item.categories.join(", ")))}
+        ${renderField("Description", escapeHtml(content_item.description))}
+        ${renderField("Age Limit", escapeHtml(content_item.age_limit))}
+        ${renderField("Video URL", escapeHtml(content_item.videoUrl))}
+        ${renderField("Release Date", escapeHtml(content_item.release_date.toLocaleDateString()))}
+        ${renderField("Created At", escapeHtml(content_item.createdAt.toLocaleDateString()))}
+        ${renderField("IMDB Rating", escapeHtml(content_item.imdb_rating))}
+    </div>
+    `;
+    last_watched_container.innerHTML = contentHtml;
+}
 async function renderLastWatched() 
 {
     
@@ -90,24 +141,63 @@ async function home_link_on_click()
     }
 }
 
-function tv_shows_link_on_click()
+async function tv_shows_link_on_click()
 {
-
+    const response = await Backend.getAllContentItems({ type: "series"  , limit: 100 });
+    if (!response || !response.success)
+    {
+        console.error("Failed to get all content items: ", response.message || "Unknown error");
+        return;
+    }
+    else
+    {
+        const content_items = response.content;
+        Content_Items = content_items;
+        renderAllContentItems(Content_Items);
+        all_content_text.textContent = "TV Shows[" + Content_Items.length + "]: ";
+    }
 }
 
-function movies_link_on_click()
+async function movies_link_on_click()
 {
-
+    const response = await Backend.getAllContentItems({ type: "movie"  , limit: 100 });
+    if (!response || !response.success)
+    {
+        console.error("Failed to get all content items: ", response.message || "Unknown error");
+        return;
+    }
+    else
+    {
+        const content_items = response.content;
+        Content_Items = content_items;
+        renderAllContentItems(Content_Items);
+        all_content_text.textContent = "Movies[" + Content_Items.length + "]: ";
+    }
 }
 
-function games_link_on_click()
+async function games_link_on_click()
 {
-    
+    all_content_text.textContent = "We dont have games....";
+    Content_Items = [];
+    renderAllContentItems(Content_Items);
 }
 
-function new_and_popular_link_on_click()
+async function new_and_popular_link_on_click()
 {
-    
+    let current_date = new Date();
+    const response = await Backend.getAllContentItems({  released_before: current_date , sort_order: "greater_to_smaller" , limit: 100 });
+    if (!response || !response.success)
+    {
+        console.error("Failed to get all content items: ", response.message || "Unknown error");
+        return;
+    }
+    else
+    {
+        const content_items = response.content;
+        Content_Items = content_items;
+        renderAllContentItems(Content_Items);
+        all_content_text.textContent = "News[" + Content_Items.length + "]: ";
+    }
 }
 
 function my_list_link_on_click()
@@ -233,7 +323,9 @@ async function click_on_content_item(ContentID)
         active_content = Content_Items.find(content => content.id === ContentID);
         if (active_content)
         {
+            UI.GoToLink("#");
             updateVideoPlayer(active_content.videoUrl, active_content.title);
+            randerContentItems(active_content);
         }
         else
         {
@@ -245,7 +337,6 @@ async function click_on_content_item(ContentID)
 
 async function refreshDisplay() 
 {
-    await renderLastWatched();
     await renderAllContentItems(Content_Items.filter(item => item.title.toLowerCase().includes(User_Search_Value.toLowerCase())));
 }
 
