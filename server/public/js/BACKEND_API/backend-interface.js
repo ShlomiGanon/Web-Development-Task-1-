@@ -202,9 +202,10 @@ export class ContentItem
         age_limit: content.age_limit,
         likes: content.likes,
         videoUrl: content.videoUrl,
-        createdAt: content.createdAt
+        createdAt: content.createdAt,
+        imdb_rating: content.imdb_rating
      */
-    constructor(id, title, cover_image_name, likes = 0, type, categories = [], description, age_limit = 0, videoUrl, release_date, createdAt)
+    constructor(id, title, cover_image_name, likes = 0, type, categories = [], description, age_limit = 0, videoUrl, release_date, createdAt, imdb_rating = null)
     {
         this.id = id;
         this.title = title;
@@ -217,6 +218,7 @@ export class ContentItem
         this.videoUrl = videoUrl;
         this.release_date = new Date(release_date);
         this.createdAt = new Date(createdAt);
+        this.imdb_rating = imdb_rating;
     }
 
     static fromJSON(rawObject)
@@ -234,7 +236,8 @@ export class ContentItem
             rawObject.age_limit,
             rawObject.videoUrl,
             new Date(rawObject.release_date),
-            new Date(rawObject.createdAt)
+            new Date(rawObject.createdAt),
+            rawObject.imdb_rating
         );
     }
 }

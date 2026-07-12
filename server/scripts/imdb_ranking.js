@@ -1,5 +1,6 @@
 const API_KEY = process.env.OMDB_API_KEY;
-
+//i dont have the key because i dont need it until today , because the server of the keyless is down :(
+//but i register to the withkey api and when i will get it i will add it here.
 // Output format follows imdbapi.dev: year, imdbRating and votes are numbers
 // (or null when missing); type is always "movie" or "series".
 
@@ -100,14 +101,14 @@ async function getImdbRatingWithKey(title, { year, type } = {})
         const firstYear = String(value).match(/\d+/);
         return firstYear ? Number(firstYear[0]) : null;
     };
-
   return {
     title: data.Title ?? null,
     year: toYear(data.Year),
     type: data.Type ?? null, // OMDb already uses "movie"/"series"
-    imdbRating: toNumber(data.imdbRating),
+    imdbRating: data.imdbRating,
     imdbID: data.imdbID ?? null,
     votes: toNumber(data.imdbVotes),
+    Response: data.Response,
   };
 }
 

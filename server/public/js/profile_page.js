@@ -1,3 +1,4 @@
+//i know this code is can be reused for other pages but i dont have time to refactor it , sorry for that.
 import { Profile, ContentItem } from './BACKEND_API/backend-interface.js';
 import { Backend } from './config.js';
 import { ClientSessionManager } from './client-session-manager.js';
@@ -79,7 +80,7 @@ async function randerContentItems(content_item)
         ${renderField("Video URL", escapeHtml(content_item.videoUrl))}
         ${renderField("Release Date", escapeHtml(content_item.release_date.toLocaleDateString()))}
         ${renderField("Created At", escapeHtml(content_item.createdAt.toLocaleDateString()))}
-        ${renderField("IMDB Rating", escapeHtml(content_item.imdb_rating))}
+        ${renderField("IMDB Rating", escapeHtml(String(content_item.imdb_rating) || "N/A"))}
     </div>
     `;
     last_watched_container.innerHTML = contentHtml;

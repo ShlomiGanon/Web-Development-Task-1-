@@ -1,3 +1,5 @@
+//i know this code is can be reused for other pages but i dont have time to refactor it , sorry for that.
+
 import { UserInfo, ContentItem } from "./BACKEND_API/backend-interface.js";
 import { Backend } from "./config.js";
 import {ClientSessionManager} from "./client-session-manager.js";
