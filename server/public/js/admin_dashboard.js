@@ -360,7 +360,6 @@ async function view_content()
     }
     current_target = response.content;
     console.log(response);
-    const imdb_rating = response.imdb_rating;
 
     const image_element = document.createElement('img');
     image_element.src = `/assets/covers/${escapeHtml(current_target.cover_image_name)}`;
@@ -383,7 +382,7 @@ async function view_content()
         ${renderField("Video URL", escapeHtml(current_target.videoUrl))}
         ${renderField("Release Date", escapeHtml(current_target.release_date.toLocaleDateString()))}
         ${renderField("Created At", escapeHtml(current_target.createdAt.toLocaleDateString()))}
-        ${renderField("IMDB Rating", escapeHtml(imdb_rating))}
+        ${renderField("IMDB Rating", escapeHtml(current_target.imdb_rating))}
     </div>
     `;
     view_container.innerHTML = contentHtml;

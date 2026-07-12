@@ -144,7 +144,7 @@ async function home_link_on_click()
     {
         const content_others_engaged_with = response.content;
         renderAllContentItems(content_others_engaged_with);
-        all_content_text.textContent = "Content others engaged with: " + content_others_engaged_with.length;
+        all_content_text.textContent = "Other Profiles Suggested[" + content_others_engaged_with.length + "]: ";
     }
 }
 
@@ -354,7 +354,7 @@ async function init()
     {
         UI.LockUI(all_content_container);
         last_watched_container.innerHTML = "NOT LOGGED IN";
-        setTimeout(() => UI.GoToLink('/'), 5000);
+        UI.GoToLink('/');
         return;
     }
 
@@ -362,7 +362,7 @@ async function init()
     {
         UI.LockUI(all_content_container);
         last_watched_container.innerHTML = "NO PROFILE SELECTED";
-        setTimeout(() => UI.GoToLink('/html/profiles.html'), 5000);
+        UI.GoToLink('/html/profiles.html');
         return;
     }
 
