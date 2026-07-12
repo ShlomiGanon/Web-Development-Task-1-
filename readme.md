@@ -1,26 +1,24 @@
-## Setup and Launch Guide (Windows)
+this is a movie streaming platform project
+to start the server, run the following command:
+```bash
+cd server
+npm start
+```
 
-Follow these steps to clone the repository and launch the project:
+this project is used env file to store the api key to the imdb api to get the imdb rating of the movies and tv shows.
 
-1. **Prepare the Folder** :
-   Create a new folder on your computer and open it.
+i hard coded the DB connection string to the mongodb database to store the user and content data.
+but if you want to use a different database, you can set in the env file. [MONGO_URI = ....]
 
-2. **Open Command Prompt (CMD)** :
-   Click on the folder's address bar (or press `Ctrl + L`), type `cmd`, and press **Enter**.
+to get to the main page, go to the following url:
+```bash
+http://localhost:3000
+```
 
-3. **Clone and Run** :
-   Copy and paste the following commands into your terminal:
-
-   # Clone the repository :
-   ```bash
-   git clone https://github.com/ShlomiGanon/Web-Development-Task-1-.git
-   ```
-   
-   # Navigate to the project folder :
-   ```bash
-   cd Web-Development-Task-1-/html
-   ```
-   # Launch the project :
-   ```bash
-   start index.html
-   ```
+and we have the following pages:
+- login page
+- register page
+- profiles selection page
+- profile page [main page]
+- admin dashboard page
+- more information page
