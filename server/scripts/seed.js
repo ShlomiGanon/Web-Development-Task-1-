@@ -70,6 +70,8 @@ const seedUsersData =
 // that one entry; all others have fully confirmed dates.
 // No videoUrl is set here - falls back to the schema default ("UNDEFINED_VIDEO.mp4").
 
+
+//controller req.body = { title, description, cover_image_name, type, categories, release_date, age_limit, videoUrl }
 const seedContentData =
 [
     {
@@ -79,7 +81,7 @@ const seedContentData =
         categories: ['drama', 'crime', 'thriller'],
         description: 'When the owner of a New York City hotspot allows his chaotic brother back into his life, he opens the door to escalating dangers that threaten to bring down everything he\'s built.',
         release_date: '2025-09-18',
-        video_url: 'gavriela.mp4',
+        videoUrl: 'gavriela.mp4',
         age_limit: 16
     },
     {
@@ -89,7 +91,7 @@ const seedContentData =
         categories: ['reality', 'drama'],
         description: 'Six Israeli top criminal lawyers take on high-profile cases while juggling the complexities of a male-dominated field and their own personal dramas.',
         release_date: '2024-01-01',
-        video_url: 'spiderman.mp4',
+        videoUrl: 'spiderman.mp4',
         age_limit: 13
     },
     {
@@ -99,7 +101,7 @@ const seedContentData =
         categories: ['drama'],
         description: 'An ex-Secret Service agent-turned-fixer plays by his own rules as he brokers shady property deals between the Arab residents of East Jerusalem.',
         release_date: '2023-02-19',
-        video_url: 'gavriela.mp4',
+        videoUrl: 'gavriela.mp4',
         age_limit: 16
     },
     {
@@ -109,7 +111,7 @@ const seedContentData =
         categories: ['crime', 'drama'],
         description: 'Chronicles the life of Griselda Blanco, who created one of the most profitable cartels in history.',
         release_date: '2024-01-25',
-        video_url: 'gavriela.mp4',
+        videoUrl: 'gavriela.mp4',
         age_limit: 18
     },
     {
@@ -119,7 +121,7 @@ const seedContentData =
         categories: ['comedy', 'romance'],
         description: 'An agnostic sex podcaster and a newly single rabbi fall in love, but can their relationship survive their wildly different lives and meddling families?',
         release_date: '2024-09-26',
-        video_url: 'spiderman.mp4',
+        videoUrl: 'spiderman.mp4',
         age_limit: 16
     },
     {
@@ -129,7 +131,7 @@ const seedContentData =
         categories: ['reality', 'travel'],
         description: 'Two Israeli actors and real-life best friends embark on a 4x4 off-road trip through Kyrgyzstan and Kazakhstan, testing their friendship along the way.',
         release_date: '2025-07-10',
-        video_url: 'spiderman.mp4',
+        videoUrl: 'spiderman.mp4',
         age_limit: 12
     },
     {
@@ -139,7 +141,7 @@ const seedContentData =
         categories: ['comedy', 'sport'],
         description: 'A reformed party girl must prove herself as a businesswoman when she\'s unexpectedly put in charge of her family\'s pro basketball team.',
         release_date: '2025-02-27',
-        video_url: 'video1.mp4',
+        videoUrl: 'video1.mp4',
         age_limit: 16
     },
     {
@@ -149,7 +151,7 @@ const seedContentData =
         categories: ['drama', 'thriller'],
         description: 'In the 1960s, Israeli clerk-turned-secret agent Eli Cohen goes deep undercover inside Syria on a perilous, years-long mission to spy for Mossad.',
         release_date: '2019-09-06',
-        video_url: 'spiderman.mp4',
+        videoUrl: 'spiderman.mp4',
         age_limit: 16
     },
     {
@@ -159,7 +161,7 @@ const seedContentData =
         categories: ['thriller', 'drama'],
         description: 'A beloved and highly respected former United States president leads the investigation into a nationwide cyberattack while battling his own personal demons.',
         release_date: '2025-02-20',
-        video_url: 'video1.mp4',
+        videoUrl: 'video1.mp4',
         age_limit: 16
     }
 ];

@@ -784,12 +784,12 @@ async function create_content()
 // contentItem = null -> "Add Content" mode; otherwise "Update Content" mode.
 function create_update_content_window(contentItem = null)
 {
-    if (!contentItem || !(contentItem instanceof ContentItem))
+    const is_create_mode = !contentItem;
+    if (!is_create_mode && !(contentItem instanceof ContentItem))
     {
         UI.ShowErrorMessage("no content selected");
         return null;
     }
-    const is_create_mode = !contentItem;
 
     const { overlay, content } = create_modal_shell(is_create_mode ? 'Add Content' : 'Update Content');
 
@@ -971,7 +971,7 @@ function create_contents_filters_window(filters)
         build_search_input_field(filters, 'min_likes', 'Minimum likes', 'number'),
     ];
     const sort_filters = [
-        build_search_select_field(filters, 'sort', 'Sort', ['release_date', 'likes', 'title', 'age_limit', 'createdAt']),
+        build_search_select_field(filters, 'sort', 'Sort', ['createdAt', 'likes', 'title', 'age_limit', 'release_date']),
         build_search_select_field(filters, 'sortOrder', 'Sort Order', ['greater_to_smaller', 'smaller_to_greater']),
     ];
     const pagination_filters = [
@@ -1117,6 +1117,82 @@ function create_ban_user_window(user)
     return overlay;
 }
 
+//=============== Statistics Window ===============
+function create_statistics_content_window()
+{
+    const { overlay, content } = create_modal_shell('Content Statistics');
+
+    const loading_p = document.createElement('p');
+    loading_p.className = 'text-light fs-5';
+    loading_p.textContent = 'Loading statistics...';
+    content.appendChild(loading_p);
+
+    content.appendChild(create_button_row([
+        { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
+    ]));
+
+    document.body.appendChild(overlay);
+
+    // Everything below runs async in the background - the overlay above is already
+    // returned/appended, this just fills it in once the 3 queries come back.
+    (async () =>
+    {
+        const [most_liked_res, newest_release_res, recently_added_res] = await Promise.all([
+            Backend.getAllContentItems({ sort: 'likes', sortOrder: 'greater_to_smaller', limit: 5 }),
+            Backend.getAllContentItems({ sort: 'release_date', sortOrder: 'greater_to_smaller', limit: 5 }),
+            Backend.getAllContentItems({ sort: 'createdAt', sortOrder: 'greater_to_smaller', limit: 5 }),
+        ]);
+
+        loading_p.remove();
+
+        if (!most_liked_res.success || !newest_release_res.success || !recently_added_res.success)
+        {
+            const error_p = document.createElement('p');
+            error_p.className = 'text-danger fs-5';
+            error_p.textContent = 'Failed to load statistics: ' +
+                (most_liked_res.message || newest_release_res.message || recently_added_res.message || 'unknown error');
+            content.insertBefore(error_p, content.lastElementChild);
+            return;
+        }
+
+        // renderField() returns an HTML string (same helper used in view_content/view_user),
+        // so wrap it in a throwaway div to get back a real element for build_field_group().
+        const build_stat_row = (label, value) =>
+        {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = renderField(escapeHtml(label), escapeHtml(value));
+            return wrapper.firstElementChild;
+        };
+
+        const stats_container = document.createElement('div');
+        stats_container.className = FIELDS_CONTAINER_CLASSES;
+
+        const most_liked_fields = (most_liked_res.content ?? [])
+            .map(c => build_stat_row(c.title, `${c.likes} likes`));
+        stats_container.appendChild(build_field_group(
+            'Most Liked',
+            most_liked_fields.length ? most_liked_fields : [build_stat_row('No content found', '')]
+        ));
+
+        const newest_release_fields = (newest_release_res.content ?? [])
+            .map(c => build_stat_row(c.title, c.release_date.toLocaleDateString()));
+        stats_container.appendChild(build_field_group(
+            'Newest Release',
+            newest_release_fields.length ? newest_release_fields : [build_stat_row('No content found', '')]
+        ));
+
+        const recently_added_fields = (recently_added_res.content ?? [])
+            .map(c => build_stat_row(c.title, c.createdAt.toLocaleDateString()));
+        stats_container.appendChild(build_field_group(
+            'Recently Added',
+            recently_added_fields.length ? recently_added_fields : [build_stat_row('No content found', '')]
+        ));
+
+        content.insertBefore(stats_container, content.lastElementChild);
+    })();
+
+    return overlay;
+}
 // Separated from create_ban_user_window() so the actual API call + list update
 // logic isn't buried inside the button's inline onClick handler.
 async function ban_user_confirm(user, hours_to_ban)
@@ -1326,6 +1402,7 @@ function main_renderer()
                 {name: "Search", function: () => filters_window = create_contents_filters_window(contents_filters)},
                 {name: "Update", primary: true, function: () => filters_window = create_update_content_window(current_target)},
                 {name: "Delete", function: () => delete_content_click(current_target)},
+                {name: "Statistics", function: () => filters_window = create_statistics_content_window()},
             ]);
             rander_selection_container_to_contents();
             view_content();

@@ -47,6 +47,7 @@ const createContent = async (req, res) =>
         if (!release_date) return res.json({ success: false, message: 'Release date is required' });
 
         const content = new Content({
+
             title,
             description,
             cover_image_name,
@@ -54,6 +55,7 @@ const createContent = async (req, res) =>
             categories,
             release_date,
             age_limit,
+            likes: 0,
             videoUrl
         });
 
