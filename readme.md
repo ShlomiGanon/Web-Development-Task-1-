@@ -22,3 +22,26 @@ and we have the following pages:
 - profile page [main page]
 - admin dashboard page
 - more information page
+
+my server have some commands that you can type in the terminal
+```bash
+init - this will delete all existing users, profiles, and content, then feed the database with the initial data.
+```
+```bash
+setpermission - this will set the permission of the user.
+```
+```bash
+deletealltokens - this will delete all existing tokens.
+```
+```bash
+getusers - this will get all users from the database.
+```
+```bash
+getprofiles - this will get all profiles from the database.
+```
+```bash
+getcontent - this will get all content from the database.
+```
+```bash
+closeserver - this will close the server.
+```
