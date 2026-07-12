@@ -7,6 +7,7 @@ const User = require('../models/user');
 const Profile = require('../models/profile');
 const Content = require('../models/content');
 const { permissionManagerInstance, Permmision_Level } = require('../middlewares/permission_manager');
+const {tokenManagerInstance } = require('../middlewares/token_manager');
 
 // ==================== FAKE req/res HELPERS ====================
 // Lets this module call the real controller functions directly, in-process,
@@ -163,8 +164,10 @@ async function clearExistingData()
     await User.deleteMany({});
     await Profile.deleteMany({});
     await Content.deleteMany({});
+    tokenManagerInstance.deleteAllTokens();
     permissionManagerInstance.authorized_list = {};
     permissionManagerInstance.save();
+
 
     console.log('Existing data cleared.');
 }

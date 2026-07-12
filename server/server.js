@@ -115,7 +115,7 @@ rl.on('line', async (line) =>
                 console.log('Aborted - no changes were made.');
                 break;
             }
-
+            
             await seedDatabase();
             console.log('Database initialized');
             break;
