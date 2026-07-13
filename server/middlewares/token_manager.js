@@ -226,8 +226,8 @@ const BanUserRequest = (req, res) =>
 {
     const user_id = req.target_user_id;
     if (user_id === undefined)return res.json({ success: false, message: "user_id is missing in the request" });
-    const hours_to_ban = req.body.hours_to_ban;
-    if (hours_to_ban === undefined)return res.json({ success: false, message: "hours_to_ban is missing in the request" });
+    const hours_to_ban = parseInt(req.body.hours_to_ban);
+    if (isNaN(hours_to_ban))return res.json({ success: false, message: "hours_to_ban is not a number" });
     tokenManagerInstance.BanUser(user_id, hours_to_ban);
     return res.json({ success: true });
 }

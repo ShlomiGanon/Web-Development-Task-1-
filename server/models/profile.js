@@ -1,68 +1,96 @@
 const mongoose = require("mongoose");
-
+ 
 const DEFAULT_AGE = 0;
 const MIN_AGE = 0;
 const MAX_AGE = 100;
 const DEFAULT_IMAGE_NAME = "UNDEFINED_PROFILE.png";
-
+ 
+/**
+ * Profile Schema
+ * Represents a viewing profile belonging to a User account.
+ */
 const profileSchema = new mongoose.Schema(
 {
-    profileName:
-    {
-        type: String,
-        required: true,
-        trim: true
+    // Display name of the profile
+    profile_name: 
+    { 
+        type: String, 
+        required: true, 
+        trim: true 
     },
-
-    age://to be able to block profile from watching movies under their age
-    {
-        type: Number,
-        default: DEFAULT_AGE,
-        min: MIN_AGE,
-        max: MAX_AGE
+ 
+    // Age used to restrict content by age_limit
+    age: 
+    { 
+        type: Number, 
+        default: DEFAULT_AGE, 
+        min: MIN_AGE, 
+        max: MAX_AGE 
     },
-
-    ImageName:
-    {
-        type: String,
-        default: DEFAULT_IMAGE_NAME,
-        required: true,
-        trim: true
+ 
+    // Filename of the profile image
+    image_name: 
+    { 
+        type: String, 
+        default: DEFAULT_IMAGE_NAME, 
+        required: true, 
+        trim: true 
     },
-
-    LastWatched_Content_IDs:
-    {
-        type: [mongoose.Schema.Types.ObjectId],
-        default: [],
+ 
+    // Episodes most recently watched by this profile, oldest to newest
+    last_watched: 
+    { 
+        type: 
+        [
+            {
+                // Episode that was watched
+                episode_id: 
+                { 
+                    type: mongoose.Schema.Types.ObjectId, 
+                    ref: "Episode" 
+                },
+ 
+                // Parent content of the episode, denormalized to skip an extra populate
+                content_id: 
+                { 
+                    type: mongoose.Schema.Types.ObjectId, 
+                    ref: "Content" 
+                }
+            }
+        ], 
+        default: [] 
     },
-
-    Liked_Content_IDs:
-    {
-        type: [mongoose.Schema.Types.ObjectId],
-        default: []
+ 
+    // Content liked by this profile
+    liked_content_ids: 
+    { 
+        type: [mongoose.Schema.Types.ObjectId], 
+        ref: "Content", 
+        default: [] 
     },
-
-    User_ID:
-    {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-        index: true,
-        required: true
+ 
+    // Reference to the owning User account
+    user_id: 
+    { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "User", 
+        required: true, 
+        index: true 
     }
 },
 {
     timestamps: true
 });
-profileSchema.statics.DefaultProfile = function(user_id, profileName = "New Profile")
+ 
+/**
+ * Builds an unsaved Profile document with default values for a new user.
+ */
+profileSchema.statics.defaultProfile = function(userId, profileName = "New Profile")
 {
-    const objectId = new mongoose.Types.ObjectId(user_id);
-
     return new this({
-        profileName: profileName,
+        profile_name: profileName,
         age: DEFAULT_AGE,
-        ImageName: DEFAULT_IMAGE_NAME,
-        User_ID: objectId
+        image_name: DEFAULT_IMAGE_NAME,
+        user_id: new mongoose.Types.ObjectId(userId)
     });
 };
-
-module.exports = mongoose.model("Profile", profileSchema);
