@@ -94,3 +94,5 @@ profileSchema.statics.defaultProfile = function(userId, profileName = "New Profi
         user_id: new mongoose.Types.ObjectId(userId)
     });
 };
+
+module.exports = mongoose.model("Profile", profileSchema);

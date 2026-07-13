@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const reviewController = require('../controllers/review_controller');
 const { tokenVerification } = require('../middlewares/token_manager');
-const { adminAuthorization } = require('../middlewares/permission_manager');
 const { authorizeProfileAccess } = require('../middlewares/profile_authorization');
 const { contentAuthorization } = require('../middlewares/content_authorization');
 
@@ -16,14 +15,6 @@ router.put('/:profileId/:contentId/:episodeId', tokenVerification, authorizeProf
 
 // Remove the profile's own review for a specific episode
 router.delete('/:profileId/:contentId/:episodeId', tokenVerification, authorizeProfileAccess, contentAuthorization, reviewController.removeReview);
-
-// --- Administrative routes: act on any review directly by its ID ---
-
-// Edit any review (admin only)
-router.put('/admin/:reviewId', tokenVerification, adminAuthorization, reviewController.adminUpdateReview);
-
-// Delete any review (admin only)
-router.delete('/admin/:reviewId', tokenVerification, adminAuthorization, reviewController.adminRemoveReview);
 
 // --- Public routes ---
 

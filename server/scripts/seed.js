@@ -6,6 +6,8 @@ const contentController = require('../controllers/content_controller');
 const User = require('../models/user');
 const Profile = require('../models/profile');
 const Content = require('../models/content');
+const Episode = require('../models/episode');
+const Review = require('../models/review');
 const { permissionManagerInstance, Permmision_Level } = require('../middlewares/permission_manager');
 const {tokenManagerInstance } = require('../middlewares/token_manager');
 
@@ -68,10 +70,10 @@ const seedUsersData =
 // Courtroom Queens only has a confirmed year (2024) on its official Netflix
 // page, with no specific day published - Jan 1 is used as a placeholder for
 // that one entry; all others have fully confirmed dates.
-// No videoUrl is set here - falls back to the schema default ("UNDEFINED_VIDEO.mp4").
+// videoUrl here is NOT sent to createContent (Content no longer has that field) -
+// it is used afterward to create each series' season 1 / episode 1 (see seedContent).
 
-
-//controller req.body = { title, description, cover_image_name, type, categories, release_date, age_limit, videoUrl }
+//controller req.body = { title, description, cover_image_name, type, categories, release_date, age_limit }
 const seedContentData =
 [
     {
@@ -170,15 +172,16 @@ const seedContentData =
 
 async function clearExistingData()
 {
-    console.log('Clearing existing users, profiles, and content...');
+    console.log('Clearing existing users, profiles, content, episodes, and reviews...');
 
     await User.deleteMany({});
     await Profile.deleteMany({});
     await Content.deleteMany({});
+    await Episode.deleteMany({});
+    await Review.deleteMany({});
     tokenManagerInstance.deleteAllTokens();
     permissionManagerInstance.authorized_list = {};
     permissionManagerInstance.save();
-
 
     console.log('Existing data cleared.');
 }
@@ -272,12 +275,17 @@ async function seedUsers()
     return successCount;
 }
 
-// Calls the real contentController.createContent for each seed content item.
+// Calls the real contentController.createContent for each seed content item,
+// then (since every seed item is a "series") adds a single season 1 / episode 1
+// via contentController.addEpisode, carrying over that item's videoUrl - otherwise
+// the videoUrl in seedContentData would go completely unused, since Content no
+// longer has a videoUrl field of its own.
 async function seedContent(adminUserId)
 {
     console.log('Creating ' + seedContentData.length + ' initial content item(s) via contentController.createContent...');
 
     let successCount = 0;
+    let episodeSuccessCount = 0;
 
     for (let i = 0; i < seedContentData.length; i++)
     {
@@ -288,18 +296,39 @@ async function seedContent(adminUserId)
 
         await contentController.createContent(req, res);
 
-        if (res.result && res.result.success)
+        if (!res.result || !res.result.success)
         {
-            successCount++;
-            console.log('Created content: ' + contentData.title);
+            console.log('FAILED to create content "' + contentData.title + '": ' + (res.result ? res.result.message : 'no response'));
+            continue;
+        }
+
+        successCount++;
+        console.log('Created content: ' + contentData.title);
+
+        const newContentId = res.result.content.id;
+
+        const episodeReq = buildFakeReq({
+            params: { contentId: newContentId },
+            body: { season_number: 1, episode_number: 1, videoUrl: contentData.videoUrl },
+            admin_user_id: adminUserId,
+            content: await Content.findById(newContentId)
+        });
+        const episodeRes = buildFakeRes();
+
+        await contentController.addEpisode(episodeReq, episodeRes);
+
+        if (episodeRes.result && episodeRes.result.success)
+        {
+            episodeSuccessCount++;
         }
         else
         {
-            console.log('FAILED to create content "' + contentData.title + '": ' + (res.result ? res.result.message : 'no response'));
+            console.log('FAILED to create episode for "' + contentData.title + '": ' + (episodeRes.result ? episodeRes.result.message : 'no response'));
         }
     }
 
     console.log(successCount + '/' + seedContentData.length + ' content items created successfully.');
+    console.log(episodeSuccessCount + '/' + successCount + ' season 1 / episode 1 entries created successfully.');
 
     return successCount;
 }

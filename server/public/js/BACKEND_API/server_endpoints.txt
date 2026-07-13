@@ -1,5 +1,3 @@
-** NOT UPDATED!!
-
 API ENDPOINTS - SIMPLE OVERVIEW
 ================================
 Base URL: /api
@@ -116,313 +114,87 @@ USER ENDPOINTS (/api/user)
      }
    }
 
-6) GET /api/user/  (admin only)
-   Purpose: Lets an admin search/browse through the list of all users.
-
-   req.headers =
-   {
-     Authorization: "Bearer <token>"
-   }
-
-   req.query =
-   {
-     email_contains?: string,
-     phone_contains?: string,
-     fullname_contains?: string,
-     born_after?: string,
-     born_before?: string,
-     joined_after?: string,
-     joined_before?: string,
-     limit?: number,
-     skip?: number,
-     sort?: string,
-     sortOrder?: "greater_to_smaller" | "smaller_to_greater"
-   }
-
-   res =
-   {
-     success: boolean,
-     message: string,
-     users:
-     [
-       { id: string, email: string, phone: string, fullName: string, birthday: string, createdAt: string, permission_level: number },
-       ...
-     ]
-   }
-
-7) GET /api/user/:user_id  (admin only)
-   Purpose: Lets an admin view the details of one specific user.
-
-   req.headers =
-   {
-     Authorization: "Bearer <token>"
-   }
-
-   req.params =
-   {
-     user_id: string
-   }
-
-   res =
-   {
-     success: boolean,
-     message: string,
-     user:
-     {
-       id: string,
-       email: string,
-       phone: string,
-       fullName: string,
-       birthday: string,
-       createdAt: string,
-       permission_level: number
-     }
-   }
-
-8) PUT /api/user/:user_id  (admin only)
-   Purpose: Lets an admin update the account details of a specific user.
-
-   req.headers =
-   {
-     Authorization: "Bearer <token>"
-   }
-
-   req.params =
-   {
-     user_id: string
-   }
-
-   req.body =
-   {
-     password?: string,
-     email?: string,
-     phone?: string,
-     fullName?: string,
-     birthday?: string
-   }
-
-   res =
-   {
-     success: boolean,
-     message: string,
-     user:
-     {
-       id: string,
-       email: string,
-       phone: string,
-       fullName: string,
-       birthday: string,
-       createdAt: string,
-       permission_level: number
-     }
-   }
-
-9) DELETE /api/user/:user_id  (super admin only)
-   Purpose: Permanently deletes a user account, and cascades the deletion to that
-   user's profiles and reviews (content average ratings are recalculated afterward).
-
-   req.headers =
-   {
-     Authorization: "Bearer <token>"
-   }
-
-   req.params =
-   {
-     user_id: string
-   }
-
-   res =
-   {
-     success: boolean,
-     message: string
-   }
-
-10) PUT /api/user/:user_id/permission  (admin only)
-    Purpose: Promotes or demotes a user's permission level. An admin cannot assign
-    a level higher than their own, and cannot act on a user who is already at or
-    above their own level. Permission levels: USER = 0, ADMIN = 1, SUPER_ADMIN = 2.
-
-    req.headers =
-    {
-      Authorization: "Bearer <token>"
-    }
-
-    req.params =
-    {
-      user_id: string
-    }
-
-    req.body =
-    {
-      permission_level: number
-    }
-
-    res =
-    {
-      success: boolean,
-      message: string
-    }
-
-11) GET /api/user/:user_id/tokens_count  (admin only)
-    Purpose: Gets how many active login tokens (sessions) a user currently has.
-
-    req.headers =
-    {
-      Authorization: "Bearer <token>"
-    }
-
-    req.params =
-    {
-      user_id: string
-    }
-
-    res =
-    {
-      success: boolean,
-      tokens_count: number
-    }
-
-12) POST /api/user/:user_id/kick  (admin only)
-    Purpose: Invalidates all of a user's active tokens, forcing them to log in again everywhere.
-
-    req.headers =
-    {
-      Authorization: "Bearer <token>"
-    }
-
-    req.params =
-    {
-      user_id: string
-    }
-
-    res =
-    {
-      success: boolean
-    }
-
-13) POST /api/user/:user_id/ban  (admin only)
-    Purpose: Bans a user for a given number of hours (does not kick existing sessions).
-
-    req.headers =
-    {
-      Authorization: "Bearer <token>"
-    }
-
-    req.params =
-    {
-      user_id: string
-    }
-
-    req.body =
-    {
-      hours_to_ban: number
-    }
-
-    res =
-    {
-      success: boolean
-    }
-
-14) GET /api/user/:user_id/ban  (admin only)
-    Purpose: Checks whether a user is currently banned.
-
-    req.headers =
-    {
-      Authorization: "Bearer <token>"
-    }
-
-    req.params =
-    {
-      user_id: string
-    }
-
-    res =
-    {
-      success: boolean,
-      is_banned: boolean
-    }
-
 --------------------------------------------------
 PROFILE ENDPOINTS (/api/profile)
 --------------------------------------------------
 (All profile endpoints need: req.headers = { Authorization: "Bearer <token>" })
 (A "profile" is like a Netflix-style profile - one user account can have several profiles, max 4)
 
-15) POST /api/profile/
-    Purpose: Creates a new profile under the logged-in user's account (max 4 profiles).
+6) POST /api/profile/
+   Purpose: Creates a new profile under the logged-in user's account (max 4 profiles).
 
-    req.body = {}   (nothing needed)
+   req.body = {}   (nothing needed)
 
-    res =
-    {
-      success: boolean,
-      message: string,
-      profiles:
-      [
-        { id: string, profileName: string, age: number, ImageName: string },
-        ...
-      ]
-    }
+   res =
+   {
+     success: boolean,
+     message: string,
+     profiles:
+     [
+       { id: string, profileName: string, age: number, ImageName: string },
+       ...
+     ]
+   }
 
-16) PUT /api/profile/
-    Purpose: Updates several profiles belonging to the user in one request.
+7) PUT /api/profile/
+   Purpose: Updates several profiles belonging to the user in one request.
 
-    req.body =
-    {
-      updates:
-      [
-        { profileId: string, profileName?: string, age?: number, ImageName?: string },
-        ...
-      ]
-    }
+   req.body =
+   {
+     updates:
+     [
+       { profileId: string, profileName?: string, age?: number, ImageName?: string },
+       ...
+     ]
+   }
 
-    res =
-    {
-      success: boolean,
-      message: string,
-      profiles:
-      [
-        { id: string, profileName: string, age: number, ImageName: string },
-        ...
-      ]
-    }
+   res =
+   {
+     success: boolean,
+     message: string,
+     profiles:
+     [
+       { id: string, profileName: string, age: number, ImageName: string },
+       ...
+     ]
+   }
 
-17) GET /api/profile/
-    Purpose: Gets the full list of all profiles that belong to the logged-in user.
+8) GET /api/profile/
+   Purpose: Gets the full list of all profiles that belong to the logged-in user.
 
-    req.body = {}   (nothing needed)
+   req.body = {}   (nothing needed)
 
-    res =
-    {
-      success: boolean,
-      message: string,
-      profiles:
-      [
-        { id: string, profileName: string, age: number, ImageName: string },
-        ...
-      ]
-    }
+   res =
+   {
+     success: boolean,
+     message: string,
+     profiles:
+     [
+       { id: string, profileName: string, age: number, ImageName: string },
+       ...
+     ]
+   }
 
-18) DELETE /api/profile/:profileId
-    Purpose: Deletes one of the user's profiles (must always keep at least one).
+9) DELETE /api/profile/:profileId
+   Purpose: Deletes one of the user's profiles (must always keep at least one).
 
-    req.params =
-    {
-      profileId: string
-    }
+   req.params =
+   {
+     profileId: string
+   }
 
-    res =
-    {
-      success: boolean,
-      message: string,
-      profiles:
-      [
-        { id: string, profileName: string, age: number, ImageName: string },
-        ...
-      ]
-    }
+   res =
+   {
+     success: boolean,
+     message: string,
+     profiles:
+     [
+       { id: string, profileName: string, age: number, ImageName: string },
+       ...
+     ]
+   }
 
-19) PUT /api/profile/:profileId
+10) PUT /api/profile/:profileId
     Purpose: Updates the details of one profile (name, age, or picture).
 
     req.params =
@@ -448,7 +220,7 @@ PROFILE ENDPOINTS (/api/profile)
       ]
     }
 
-20) GET /api/profile/:profileId
+11) GET /api/profile/:profileId
     Purpose: Gets the basic details of one specific profile.
 
     req.params =
@@ -469,7 +241,7 @@ PROFILE ENDPOINTS (/api/profile)
       }
     }
 
-21) GET /api/profile/:profileId/details
+12) GET /api/profile/:profileId/details
     Purpose: Gets the complete details of one profile, including watch history and liked content.
 
     req.params =
@@ -498,7 +270,7 @@ PROFILE ENDPOINTS (/api/profile)
     Note: lastWatched has one entry per content the profile has ever watched (not one per episode) -
     each entry holds the specific episode last watched within that content.
 
-22) POST /api/profile/:profileId/likes/:contentId
+13) POST /api/profile/:profileId/likes/:contentId
     Purpose: Adds or removes a "like" on a specific movie/show for a specific profile (toggle).
 
     req.params =
@@ -517,7 +289,7 @@ PROFILE ENDPOINTS (/api/profile)
       likedContentIds: [ contentId, ... ]
     }
 
-23) POST /api/profile/:profileId/watch/:contentId
+14) POST /api/profile/:profileId/watch/:contentId
     Purpose: Records that a profile just watched a movie/show, with no specific episode given.
     Behavior: if this content already has a saved entry in the profile's watch history, resumes
     from that saved episode; otherwise starts from season 1, episode 1.
@@ -550,7 +322,7 @@ PROFILE ENDPOINTS (/api/profile)
       ]
     }
 
-24) POST /api/profile/:profileId/watch/:contentId/:episodeId
+15) POST /api/profile/:profileId/watch/:contentId/:episodeId
     Purpose: Same as above, but records a specific episode as watched instead of resuming/defaulting.
 
     req.params =
@@ -582,7 +354,7 @@ PROFILE ENDPOINTS (/api/profile)
       ]
     }
 
-25) GET /api/profile/:profileId/other_profiles_recommendations
+16) GET /api/profile/:profileId/other_profiles_recommendations
     Purpose: Suggests content that the user's OTHER profiles (on the same account) have watched or
     liked, excluding anything the requesting profile has already watched or liked itself.
 
@@ -619,167 +391,10 @@ CONTENT ENDPOINTS (/api/content)
 --------------------------------------------------
 ("Content" means the movies/series in the system. Video files live on episodes, not on content
 itself - every watchable item is an Episode, including a movie's single episode.)
+(All content endpoints are public - no login needed.)
 
-26) POST /api/content/  (admin only)
-    Purpose: Adds a brand new movie or series to the catalog.
-
-    req.headers =
-    {
-      Authorization: "Bearer <token>"
-    }
-
-    req.body =
-    {
-      title: string,
-      type: "movie" | "series",
-      release_date: string,
-      description?: string,
-      cover_image_name?: string,
-      categories?: string[],
-      age_limit?: number
-    }
-
-    res =
-    {
-      success: boolean,
-      message: string,
-      content:
-      {
-        id: string,
-        title: string,
-        description: string,
-        cover_image_name: string,
-        type: "movie" | "series",
-        categories: string[],
-        release_date: string,
-        age_limit: number,
-        likes: number,
-        createdAt: string,
-        imdb_rating: number
-      }
-    }
-
-27) DELETE /api/content/:contentId  (admin only)
-    Purpose: Removes a movie/series from the catalog completely.
-
-    req.headers =
-    {
-      Authorization: "Bearer <token>"
-    }
-
-    req.params =
-    {
-      contentId: string
-    }
-
-    res =
-    {
-      success: boolean,
-      message: string
-    }
-
-28) PUT /api/content/:contentId  (admin only)
-    Purpose: Edits the details of an existing movie/series.
-
-    req.headers =
-    {
-      Authorization: "Bearer <token>"
-    }
-
-    req.params =
-    {
-      contentId: string
-    }
-
-    req.body =
-    {
-      title?: string,
-      type?: "movie" | "series",
-      release_date?: string,
-      description?: string,
-      cover_image_name?: string,
-      categories?: string[],
-      age_limit?: number
-    }
-
-    res =
-    {
-      success: boolean,
-      message: string,
-      content:
-      {
-        id: string,
-        title: string,
-        description: string,
-        cover_image_name: string,
-        type: "movie" | "series",
-        categories: string[],
-        release_date: string,
-        age_limit: number,
-        likes: number,
-        createdAt: string,
-        imdb_rating: number
-      }
-    }
-
-29) POST /api/content/:contentId/episodes  (admin only)
-    Purpose: Adds a new episode to a series (movies cannot have episodes added this way).
-
-    req.headers =
-    {
-      Authorization: "Bearer <token>"
-    }
-
-    req.params =
-    {
-      contentId: string
-    }
-
-    req.body =
-    {
-      season_number: number,
-      episode_number: number,
-      title?: string,
-      videoUrl?: string
-    }
-
-    res =
-    {
-      success: boolean,
-      message: string,
-      episode:
-      {
-        id: string,
-        contentId: string,
-        seasonNumber: number,
-        episodeNumber: number,
-        title: string,
-        videoUrl: string
-      }
-    }
-
-30) DELETE /api/content/:contentId/episodes/:episodeId  (admin only)
-    Purpose: Removes a specific episode from a series.
-
-    req.headers =
-    {
-      Authorization: "Bearer <token>"
-    }
-
-    req.params =
-    {
-      contentId: string,
-      episodeId: string
-    }
-
-    res =
-    {
-      success: boolean,
-      message: string
-    }
-
-31) GET /api/content/:contentId
-    Purpose: Gets the details of one specific movie/series. Public, no login needed.
+17) GET /api/content/:contentId
+    Purpose: Gets the details of one specific movie/series.
 
     req.params =
     {
@@ -806,8 +421,8 @@ itself - every watchable item is an Episode, including a movie's single episode.
       }
     }
 
-32) GET /api/content/
-    Purpose: Searches/browses the whole catalog using filters like title, category, or type. Public, no login needed.
+18) GET /api/content/
+    Purpose: Searches/browses the whole catalog using filters like title, category, or type.
 
     req.query =
     {
@@ -850,9 +465,8 @@ itself - every watchable item is an Episode, including a movie's single episode.
       ]
     }
 
-33) GET /api/content/:contentId/episodes
+19) GET /api/content/:contentId/episodes
     Purpose: Gets every episode of a series, grouped by season. Only works for type "series".
-    Public, no login needed.
 
     req.params =
     {
@@ -875,8 +489,8 @@ itself - every watchable item is an Episode, including a movie's single episode.
 
     Note: seasons[0] is season 1's episode list, seasons[1] is season 2's, etc.
 
-34) GET /api/content/:contentId/episodes/:episodeId
-    Purpose: Gets the details of one specific episode. Public, no login needed.
+20) GET /api/content/:contentId/episodes/:episodeId
+    Purpose: Gets the details of one specific episode.
 
     req.params =
     {
@@ -899,9 +513,9 @@ itself - every watchable item is an Episode, including a movie's single episode.
       }
     }
 
-35) GET /api/content/:contentId/episodes/:episodeId/next
+21) GET /api/content/:contentId/episodes/:episodeId/next
     Purpose: Gets the episode that comes right after the given one (crosses into the next
-    season if this was the last episode of its season). Public, no login needed.
+    season if this was the last episode of its season).
 
     req.params =
     {
@@ -924,9 +538,9 @@ itself - every watchable item is an Episode, including a movie's single episode.
       }
     }
 
-36) GET /api/content/:contentId/episodes/:episodeId/prev
+22) GET /api/content/:contentId/episodes/:episodeId/prev
     Purpose: Gets the episode that comes right before the given one (crosses back into the
-    previous season if this was the first episode of its season). Public, no login needed.
+    previous season if this was the first episode of its season).
 
     req.params =
     {
@@ -947,6 +561,576 @@ itself - every watchable item is an Episode, including a movie's single episode.
         title: string,
         videoUrl: string
       }
+    }
+
+--------------------------------------------------
+REVIEW ENDPOINTS (/api/reviews)
+--------------------------------------------------
+(A review is one profile's rating (1-10) plus an optional comment, for one specific episode.
+A profile can have at most one review per episode.)
+
+23) POST /api/reviews/:profileId/:contentId/:episodeId
+    Purpose: Adds a review (rating + optional comment) for a specific episode, written by this
+    profile. A profile can only review a given episode once. Adding a review automatically
+    recalculates that content's average_rating and review_count.
+
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      profileId: string,
+      contentId: string,
+      episodeId: string
+    }
+
+    req.body =
+    {
+      rating: number,
+      comment?: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      review?:
+      {
+        id: string,
+        contentId: string,
+        episodeId: string,
+        profileId: string,
+        rating: number,
+        comment: string
+      }
+    }
+
+    Note: rating must be a number between 1 and 10. comment has a 500 character limit.
+
+24) PUT /api/reviews/:profileId/:contentId/:episodeId
+    Purpose: Edits this profile's own review for a specific episode (rating and/or comment).
+    Editing the rating automatically recalculates that content's average_rating.
+
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      profileId: string,
+      contentId: string,
+      episodeId: string
+    }
+
+    req.body =
+    {
+      rating?: number,
+      comment?: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      review?:
+      {
+        id: string,
+        contentId: string,
+        episodeId: string,
+        profileId: string,
+        rating: number,
+        comment: string
+      }
+    }
+
+25) DELETE /api/reviews/:profileId/:contentId/:episodeId
+    Purpose: Removes this profile's own review for a specific episode. Removing the review
+    automatically recalculates that content's average_rating and review_count.
+
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      profileId: string,
+      contentId: string,
+      episodeId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string
+    }
+
+26) GET /api/reviews/
+    Purpose: Searches/browses all reviews using query filters. Public, no login needed.
+
+    req.query =
+    {
+      content_id?: string,
+      episode_id?: string,
+      profile_id?: string,
+      user_id?: string,
+      rating?: number,
+      min_rating?: number,
+      max_rating?: number,
+      comment_starts?: string,
+      comment_ends?: string,
+      comment_contains?: string,
+      limit?: number,
+      skip?: number,
+      sort?: string,
+      sortOrder?: "greater_to_smaller" | "smaller_to_greater"
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      reviews:
+      [
+        { id: string, contentId: string, episodeId: string, profileId: string, rating: number, comment: string },
+        ...
+      ]
+    }
+
+    Note: filter by episode_id to see all reviews of one episode, or by profile_id (together
+    with episode_id) to find one profile's review of one episode.
+
+--------------------------------------------------
+ADMIN ENDPOINTS (/api/admin)
+--------------------------------------------------
+(Every admin endpoint requires: req.headers = { Authorization: "Bearer <token>" }, and the
+logged-in user must have admin permission level, unless noted as super-admin-only.)
+(This section consolidates every admin-only action across users, content, and reviews.)
+
+27) GET /api/admin/users
+    Purpose: Lets an admin search/browse through the list of all users.
+
+    req.query =
+    {
+      email_contains?: string,
+      phone_contains?: string,
+      fullname_contains?: string,
+      born_after?: string,
+      born_before?: string,
+      joined_after?: string,
+      joined_before?: string,
+      limit?: number,
+      skip?: number,
+      sort?: string,
+      sortOrder?: "greater_to_smaller" | "smaller_to_greater"
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      users:
+      [
+        { id: string, email: string, phone: string, fullName: string, birthday: string, createdAt: string, permission_level: number },
+        ...
+      ]
+    }
+
+28) GET /api/admin/users/:user_id
+    Purpose: Lets an admin view the details of one specific user.
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      user:
+      {
+        id: string,
+        email: string,
+        phone: string,
+        fullName: string,
+        birthday: string,
+        createdAt: string,
+        permission_level: number
+      }
+    }
+
+29) PUT /api/admin/users/:user_id
+    Purpose: Lets an admin update the account details of a specific user.
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    req.body =
+    {
+      password?: string,
+      email?: string,
+      phone?: string,
+      fullName?: string,
+      birthday?: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      user:
+      {
+        id: string,
+        email: string,
+        phone: string,
+        fullName: string,
+        birthday: string,
+        createdAt: string,
+        permission_level: number
+      }
+    }
+
+30) DELETE /api/admin/users/:user_id  (super admin only)
+    Purpose: Permanently deletes a user account, and cascades the deletion to that
+    user's profiles and reviews (content average ratings are recalculated afterward).
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string
+    }
+
+31) PUT /api/admin/users/:user_id/permission
+    Purpose: Promotes or demotes a user's permission level. An admin cannot assign
+    a level higher than their own, and cannot act on a user who is already at or
+    above their own level. Permission levels: USER = 0, ADMIN = 1, SUPER_ADMIN = 2.
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    req.body =
+    {
+      permission_level: number
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string
+    }
+
+32) GET /api/admin/users/:user_id/tokens_count
+    Purpose: Gets how many active login tokens (sessions) a user currently has.
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    res =
+    {
+      success: boolean,
+      tokens_count: number
+    }
+
+33) POST /api/admin/users/:user_id/kick
+    Purpose: Invalidates all of a user's active tokens, forcing them to log in again everywhere.
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    res =
+    {
+      success: boolean
+    }
+
+34) POST /api/admin/users/:user_id/ban
+    Purpose: Bans a user for a given number of hours (does not kick existing sessions).
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    req.body =
+    {
+      hours_to_ban: number
+    }
+
+    res =
+    {
+      success: boolean
+    }
+
+35) GET /api/admin/users/:user_id/ban
+    Purpose: Checks whether a user is currently banned.
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    res =
+    {
+      success: boolean,
+      is_banned: boolean
+    }
+
+36) POST /api/admin/content
+    Purpose: Adds a brand new movie or series to the catalog.
+
+    req.body =
+    {
+      title: string,
+      type: "movie" | "series",
+      release_date: string,
+      description?: string,
+      cover_image_name?: string,
+      categories?: string[],
+      age_limit?: number
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      content:
+      {
+        id: string,
+        title: string,
+        description: string,
+        cover_image_name: string,
+        type: "movie" | "series",
+        categories: string[],
+        release_date: string,
+        age_limit: number,
+        likes: number,
+        createdAt: string,
+        imdb_rating: number
+      }
+    }
+
+37) DELETE /api/admin/content/:contentId
+    Purpose: Removes a movie/series from the catalog completely.
+
+    req.params =
+    {
+      contentId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string
+    }
+
+38) PUT /api/admin/content/:contentId
+    Purpose: Edits the details of an existing movie/series.
+
+    req.params =
+    {
+      contentId: string
+    }
+
+    req.body =
+    {
+      title?: string,
+      type?: "movie" | "series",
+      release_date?: string,
+      description?: string,
+      cover_image_name?: string,
+      categories?: string[],
+      age_limit?: number
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      content:
+      {
+        id: string,
+        title: string,
+        description: string,
+        cover_image_name: string,
+        type: "movie" | "series",
+        categories: string[],
+        release_date: string,
+        age_limit: number,
+        likes: number,
+        createdAt: string,
+        imdb_rating: number
+      }
+    }
+
+39) POST /api/admin/content/:contentId/episodes
+    Purpose: Adds a new episode to a series (movies cannot have episodes added this way).
+
+    req.params =
+    {
+      contentId: string
+    }
+
+    req.body =
+    {
+      season_number: number,
+      episode_number: number,
+      title?: string,
+      videoUrl?: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      episode:
+      {
+        id: string,
+        contentId: string,
+        seasonNumber: number,
+        episodeNumber: number,
+        title: string,
+        videoUrl: string
+      }
+    }
+
+40) PUT /api/admin/content/:contentId/movie-video
+    Purpose: Creates or updates the single video for a movie (movies only - use the
+    episode endpoints above for series). Internally this is still backed by a single
+    Episode entry (season 1, episode 1), but the caller never needs to know that.
+
+    req.params =
+    {
+      contentId: string
+    }
+
+    req.body =
+    {
+      videoUrl: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      episode:
+      {
+        id: string,
+        contentId: string,
+        seasonNumber: number,
+        episodeNumber: number,
+        title: string,
+        videoUrl: string
+      }
+    }
+
+41) PUT /api/admin/content/:contentId/episodes/:episodeId
+    Purpose: Edits the details of an existing episode. Not restricted by content type -
+    a movie's single episode can be edited too.
+
+    req.params =
+    {
+      contentId: string,
+      episodeId: string
+    }
+
+    req.body =
+    {
+      season_number?: number,
+      episode_number?: number,
+      title?: string,
+      videoUrl?: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      episode:
+      {
+        id: string,
+        contentId: string,
+        seasonNumber: number,
+        episodeNumber: number,
+        title: string,
+        videoUrl: string
+      }
+    }
+
+42) DELETE /api/admin/content/:contentId/episodes/:episodeId
+    Purpose: Removes a specific episode from a series.
+
+    req.params =
+    {
+      contentId: string,
+      episodeId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string
+    }
+
+43) PUT /api/admin/reviews/:reviewId
+    Purpose: Edits any review directly by its ID, regardless of who wrote it - e.g. to fix a
+    rating or clean up a comment. Editing the rating automatically recalculates that
+    content's average_rating.
+
+    req.params =
+    {
+      reviewId: string
+    }
+
+    req.body =
+    {
+      rating?: number,
+      comment?: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      review?:
+      {
+        id: string,
+        contentId: string,
+        episodeId: string,
+        profileId: string,
+        rating: number,
+        comment: string
+      }
+    }
+
+44) DELETE /api/admin/reviews/:reviewId
+    Purpose: Deletes any review directly by its ID, regardless of who wrote it - e.g. to remove
+    an abusive comment. Recalculates that content's average_rating and review_count.
+
+    req.params =
+    {
+      reviewId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string
     }
 
 --------------------------------------------------
@@ -956,9 +1140,13 @@ GENERAL NOTES
   except a handful of simple admin actions (tokens_count, kick, ban, ban-check) which only
   return "success" plus their specific data field.
 - "?" after a field name means it is optional.
+- All admin-only actions now live under /api/admin, consolidated by resource type
+  (users, content, reviews) rather than scattered across each resource's own base path.
 - req.headers = the request headers (used for the auth token).
 - req.params = values that are part of the URL path (like :user_id).
 - req.query = values after the "?" in the URL (like ?limit=10).
 - req.body = the JSON object sent in the request body.
 - sortOrder uses the same two values everywhere: "greater_to_smaller" (descending, default) or "smaller_to_greater" (ascending). Any other value returns an error.
 - videoUrl now lives only on episodes, never on content itself.
+- Reviews: rating is 1-10, comment is optional with a 500 character limit. A profile can only
+  have one review per episode - adding a second is rejected, not merged or overwritten.

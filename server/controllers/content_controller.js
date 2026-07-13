@@ -326,6 +326,56 @@ const addEpisode = async (req, res) =>
     }
 }
 
+
+//req.body: { videoUrl: String }
+//res.json: { success: boolean, message: string, episode: Object }
+const setMovieVideo = async (req, res) =>
+{
+    try
+    {
+        const content = req.content;
+
+        if (content.type !== 'movie')
+        {
+            return res.json({ success: false, message: 'This endpoint is only for movies - use the episode endpoints for series' });
+        }
+
+        const { videoUrl } = req.body;
+
+        if (!videoUrl)
+        {
+            return res.json({ success: false, message: 'videoUrl is required' });
+        }
+
+        let episode = await Episode.findOne({ content_id: content._id, season_number: 1, episode_number: 1 });
+
+        if (episode)
+        {
+            episode.videoUrl = videoUrl;
+            await episode.save();
+        }
+        else
+        {
+            episode = await Episode.create({
+                content_id: content._id,
+                season_number: 1,
+                episode_number: 1,
+                videoUrl: videoUrl
+            });
+        }
+
+        res.json({ success: true, message: 'Movie video set successfully', episode: toEpisodeSummary(episode) });
+        my_logger.ConsoleLog(`Movie video set successfully. [content_id: ${content._id}, episode_id: ${episode._id}]`, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('setMovieVideo', 'Movie video set successfully.', { "admin_user_id": req.admin_user_id, "content_id": content._id, "episode": toEpisodeSummary(episode) }, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error setting movie video: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('setMovieVideo', 'Error setting movie video.', { "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: 'Internal server error' });
+    }
+}
+
 /**
  * Update an existing episode's details (admin only).
  * Relies on contentAuthorization having attached req.content and req.episode
@@ -606,6 +656,7 @@ module.exports =
     deleteContent,
     searchContent,
     addEpisode,
+    setMovieVideo,
     updateEpisode,
     removeEpisode,
     getEpisodeRequest,
