@@ -11,8 +11,8 @@ const safe_user = (user , user_permission_level = null) =>
         id: user._id.toString(),
         email: user.email,
         phone: user.phone,
-        fullName: user.fullName,
-        birthday: user.birthDate.toISOString(),
+        fullName: user.full_name,
+        birthday: user.birth_date.toISOString(),
         createdAt: user.createdAt.toISOString(),
         permission_level: user_permission_level
     };
@@ -53,7 +53,7 @@ const register = async (req, res) =>
         if(await User.findOne({ email }))return res.json({ success: false, message: 'Email already exists' });
         if(await User.findOne({ phone }))return res.json({ success: false, message: 'Phone number already exists' });
 
-        const user = await User.AddDefaultUser(email, hashedPassword, fullName, phone, birthdayDate);
+        const user = await User.addDefaultUser(email, hashedPassword, fullName, phone, birthdayDate);
         if(!user)return res.json({ success: false, message: 'Failed to register user' });
         res.json({ success: true, message: 'User registered successfully' });
         my_logger.ConsoleLog(`User registered successfully.`, my_logger.Log_Level.INFO);
@@ -191,18 +191,18 @@ const updateUser = async (req, res) =>
             old_data.phone = current_user.phone;
         }
 
-        if (req.body.fullName && req.body.fullName !== current_user.fullName)
+        if (req.body.fullName && req.body.fullName !== current_user.full_name)
         {
             const firstName = req.body.fullName.split(' ')[0];
             const lastName = req.body.fullName.split(' ')[1];
             if(!firstName || !lastName)return res.json({ success: false, message: 'Invalid full name' , "user": current_safe_user });
             if(!Is_Valid_Name(firstName))return res.json({ success: false, message: 'Invalid first name' , "user": current_safe_user });
             if(!Is_Valid_Name(lastName))return res.json({ success: false, message: 'Invalid last name' , "user": current_safe_user });
-            changes.fullName = req.body.fullName;
-            old_data.fullName = current_user.fullName;
+            changes.full_name = req.body.fullName;
+            old_data.full_name = current_user.full_name;
         }
 
-        if (req.body.birthday && req.body.birthday !== current_user.birthDate)
+        if (req.body.birthday && req.body.birthday !== current_user.birth_date)
         {
             const birthdayDate = new Date(req.body.birthday);
             if(birthdayDate > new Date())return res.json({ success: false, message: 'Invalid birthday' , "user": current_safe_user });   
@@ -211,8 +211,8 @@ const updateUser = async (req, res) =>
                 const age = get_age_from_birthday(birthdayDate);
                 if(age < 18)return res.json({ success: false, message: 'User must be at least 18 years old' , "user": current_safe_user });
             }
-            changes.birthDate = birthdayDate;
-            old_data.birthDate = current_user.birthDate;
+            changes.birth_date = birthdayDate;
+            old_data.birth_date = current_user.birth_date;
         }
 
         if (Object.keys(changes).length === 0)

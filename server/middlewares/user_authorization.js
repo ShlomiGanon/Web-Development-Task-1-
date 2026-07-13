@@ -5,7 +5,7 @@ const User = require('../models/user');
  * Middleware used on admin routes that act on a target user by ID
  * (e.g. GET /:user_id, PUT /:user_id).
  * Validates the user_id route param, confirms the user exists, and
- * overwrites req.user_id with it — so the shared userController
+ * overwrites req.target_user_id with it — so the shared userController
  * functions (getUser/updateUser), which always read from req.user_id,
  * operate on the target user instead of the requesting admin.
  * Must run after tokenVerification and adminAuthorization.
@@ -26,7 +26,7 @@ const userAuthorization = async (req, res, next) =>
             return res.json({ success: false, message: "Invalid user ID format" });
         }
 
-        const user = await User.findOne({ _id: targetUserId });
+        const user = await User.findById(targetUserId);
 
         if (!user)
         {

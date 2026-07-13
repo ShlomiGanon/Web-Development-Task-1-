@@ -29,9 +29,9 @@ const authorizeProfileAccess = async (req, res, next) =>
             return res.json({ success: false, message: "Invalid profile ID format" });
         }
 
-        const profile = await Profile.findOne({ _id: profileId });
+        const profile = await Profile.findById(profileId);
 
-        if (!profile || profile.User_ID.toString() !== userId.toString())
+        if (!profile || profile.user_id.toString() !== userId.toString())
         {
             return res.json({ success: false, message: "Profile not found or access denied" });
         }

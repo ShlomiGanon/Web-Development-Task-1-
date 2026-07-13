@@ -1,3 +1,5 @@
+** NOT UPDATED!!
+
 API ENDPOINTS - SIMPLE OVERVIEW
 ================================
 Base URL: /api
@@ -9,157 +11,954 @@ USER ENDPOINTS (/api/user)
 
 1) POST /api/user/register
    Purpose: Creates a brand new user account.
-   req.body = { email: string, phone: string, password: string, fullName: string, birthday: string }
-   res = { success: boolean, message: string }
+
+   req.body =
+   {
+     email: string,
+     phone: string,
+     password: string,
+     fullName: string,
+     birthday: string
+   }
+
+   res =
+   {
+     success: boolean,
+     message: string
+   }
 
 2) POST /api/user/login
    Purpose: Logs a user in and gives them a token to use for future requests.
-   req.body = { email_or_phone: string, password: string }
-   res = { success: boolean, message: string, token: string }
+
+   req.body =
+   {
+     email_or_phone: string,
+     password: string
+   }
+
+   res =
+   {
+     success: boolean,
+     message: string,
+     token: string
+   }
 
 3) POST /api/user/logout
    Purpose: Logs the user out by cancelling their current token.
-   req.headers = { Authorization: "Bearer <token>" }
+
+   req.headers =
+   {
+     Authorization: "Bearer <token>"
+   }
+
    req.body = {}   (nothing needed)
-   res = { success: boolean, message: string }
+
+   res =
+   {
+     success: boolean,
+     message: string
+   }
 
 4) GET /api/user/me
    Purpose: Gets the profile info of the user who is currently logged in.
-   req.headers = { Authorization: "Bearer <token>" }
-   res = { success: boolean, message: string, user: { id, email, phone, fullName, birthday, createdAt } }
+
+   req.headers =
+   {
+     Authorization: "Bearer <token>"
+   }
+
+   res =
+   {
+     success: boolean,
+     message: string,
+     user:
+     {
+       id: string,
+       email: string,
+       phone: string,
+       fullName: string,
+       birthday: string,
+       createdAt: string,
+       permission_level: number
+     }
+   }
 
 5) PUT /api/user/me
    Purpose: Lets the logged-in user update their own account details.
-   req.headers = { Authorization: "Bearer <token>" }
-   req.body = { password?: string, email?: string, phone?: string, fullName?: string, birthday?: string }
-   res = { success: boolean, message: string, user: { id, email, phone, fullName, birthday, createdAt } }
+
+   req.headers =
+   {
+     Authorization: "Bearer <token>"
+   }
+
+   req.body =
+   {
+     password?: string,
+     email?: string,
+     phone?: string,
+     fullName?: string,
+     birthday?: string
+   }
+
+   res =
+   {
+     success: boolean,
+     message: string,
+     user:
+     {
+       id: string,
+       email: string,
+       phone: string,
+       fullName: string,
+       birthday: string,
+       createdAt: string,
+       permission_level: number
+     }
+   }
 
 6) GET /api/user/  (admin only)
    Purpose: Lets an admin search/browse through the list of all users.
-   req.headers = { Authorization: "Bearer <token>" }
-   req.query = { email_contains?, phone_contains?, fullname_contains?, born_after?, born_before?, joined_after?, joined_before?, limit?, skip?, sort?, sortOrder?: "greater_to_smaller"|"smaller_to_greater" }
-   res = { success: boolean, message: string, users: [ {id, email, phone, fullName, birthday, createdAt}, ... ] }
+
+   req.headers =
+   {
+     Authorization: "Bearer <token>"
+   }
+
+   req.query =
+   {
+     email_contains?: string,
+     phone_contains?: string,
+     fullname_contains?: string,
+     born_after?: string,
+     born_before?: string,
+     joined_after?: string,
+     joined_before?: string,
+     limit?: number,
+     skip?: number,
+     sort?: string,
+     sortOrder?: "greater_to_smaller" | "smaller_to_greater"
+   }
+
+   res =
+   {
+     success: boolean,
+     message: string,
+     users:
+     [
+       { id: string, email: string, phone: string, fullName: string, birthday: string, createdAt: string, permission_level: number },
+       ...
+     ]
+   }
 
 7) GET /api/user/:user_id  (admin only)
    Purpose: Lets an admin view the details of one specific user.
-   req.headers = { Authorization: "Bearer <token>" }
-   req.params = { user_id: string }
-   res = { success: boolean, message: string, user: { id, email, phone, fullName, birthday, createdAt } }
+
+   req.headers =
+   {
+     Authorization: "Bearer <token>"
+   }
+
+   req.params =
+   {
+     user_id: string
+   }
+
+   res =
+   {
+     success: boolean,
+     message: string,
+     user:
+     {
+       id: string,
+       email: string,
+       phone: string,
+       fullName: string,
+       birthday: string,
+       createdAt: string,
+       permission_level: number
+     }
+   }
 
 8) PUT /api/user/:user_id  (admin only)
    Purpose: Lets an admin update the account details of a specific user.
-   req.headers = { Authorization: "Bearer <token>" }
-   req.params = { user_id: string }
-   req.body = { password?: string, email?: string, phone?: string, fullName?: string, birthday?: string }
-   res = { success: boolean, message: string, user: { id, email, phone, fullName, birthday, createdAt } }
+
+   req.headers =
+   {
+     Authorization: "Bearer <token>"
+   }
+
+   req.params =
+   {
+     user_id: string
+   }
+
+   req.body =
+   {
+     password?: string,
+     email?: string,
+     phone?: string,
+     fullName?: string,
+     birthday?: string
+   }
+
+   res =
+   {
+     success: boolean,
+     message: string,
+     user:
+     {
+       id: string,
+       email: string,
+       phone: string,
+       fullName: string,
+       birthday: string,
+       createdAt: string,
+       permission_level: number
+     }
+   }
 
 9) DELETE /api/user/:user_id  (super admin only)
-   Purpose: Permanently deletes a user account.
-   req.headers = { Authorization: "Bearer <token>" }
-   req.params = { user_id: string }
-   res = { success: boolean, message: string }
+   Purpose: Permanently deletes a user account, and cascades the deletion to that
+   user's profiles and reviews (content average ratings are recalculated afterward).
+
+   req.headers =
+   {
+     Authorization: "Bearer <token>"
+   }
+
+   req.params =
+   {
+     user_id: string
+   }
+
+   res =
+   {
+     success: boolean,
+     message: string
+   }
 
 10) PUT /api/user/:user_id/permission  (admin only)
-    Purpose: Promotes or demotes a user's permission level.
-    req.headers = { Authorization: "Bearer <token>" }
-    req.params = { user_id: string }
-    req.body = { permission_level: number }
-    res = { success: boolean, message: string }
+    Purpose: Promotes or demotes a user's permission level. An admin cannot assign
+    a level higher than their own, and cannot act on a user who is already at or
+    above their own level. Permission levels: USER = 0, ADMIN = 1, SUPER_ADMIN = 2.
+
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    req.body =
+    {
+      permission_level: number
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string
+    }
+
+11) GET /api/user/:user_id/tokens_count  (admin only)
+    Purpose: Gets how many active login tokens (sessions) a user currently has.
+
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    res =
+    {
+      success: boolean,
+      tokens_count: number
+    }
+
+12) POST /api/user/:user_id/kick  (admin only)
+    Purpose: Invalidates all of a user's active tokens, forcing them to log in again everywhere.
+
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    res =
+    {
+      success: boolean
+    }
+
+13) POST /api/user/:user_id/ban  (admin only)
+    Purpose: Bans a user for a given number of hours (does not kick existing sessions).
+
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    req.body =
+    {
+      hours_to_ban: number
+    }
+
+    res =
+    {
+      success: boolean
+    }
+
+14) GET /api/user/:user_id/ban  (admin only)
+    Purpose: Checks whether a user is currently banned.
+
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      user_id: string
+    }
+
+    res =
+    {
+      success: boolean,
+      is_banned: boolean
+    }
 
 --------------------------------------------------
 PROFILE ENDPOINTS (/api/profile)
 --------------------------------------------------
 (All profile endpoints need: req.headers = { Authorization: "Bearer <token>" })
-(A "profile" is like a Netflix-style profile - one user account can have several profiles)
+(A "profile" is like a Netflix-style profile - one user account can have several profiles, max 4)
 
-11) POST /api/profile/
+15) POST /api/profile/
     Purpose: Creates a new profile under the logged-in user's account (max 4 profiles).
+
     req.body = {}   (nothing needed)
-    res = { success: boolean, message: string, profiles: [ {id, profileName, age, ImageName}, ... ] }
 
-12) DELETE /api/profile/:profileId
-    Purpose: Deletes one of the user's profiles (must always keep at least one).
-    req.params = { profileId: string }
-    res = { success: boolean, message: string, profiles: [ {id, profileName, age, ImageName}, ... ] }
+    res =
+    {
+      success: boolean,
+      message: string,
+      profiles:
+      [
+        { id: string, profileName: string, age: number, ImageName: string },
+        ...
+      ]
+    }
 
-13) PUT /api/profile/:profileId
-    Purpose: Updates the details of one profile (name, age, or picture).
-    req.params = { profileId: string }
-    req.body = { profileName?: string, age?: number, ImageName?: string }
-    res = { success: boolean, message: string, profiles: [ {id, profileName, age, ImageName}, ... ] }
-
-14) PUT /api/profile/
+16) PUT /api/profile/
     Purpose: Updates several profiles belonging to the user in one request.
-    req.body = { updates: [ { profileId: string, profileName?: string, age?: number, ImageName?: string }, ... ] }
-    res = { success: boolean, message: string, profiles: [ {id, profileName, age, ImageName}, ... ] }
 
-15) GET /api/profile/
+    req.body =
+    {
+      updates:
+      [
+        { profileId: string, profileName?: string, age?: number, ImageName?: string },
+        ...
+      ]
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      profiles:
+      [
+        { id: string, profileName: string, age: number, ImageName: string },
+        ...
+      ]
+    }
+
+17) GET /api/profile/
     Purpose: Gets the full list of all profiles that belong to the logged-in user.
-    res = { success: boolean, message: string, profiles: [ {id, profileName, age, ImageName}, ... ] }
 
-16) GET /api/profile/:profileId
+    req.body = {}   (nothing needed)
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      profiles:
+      [
+        { id: string, profileName: string, age: number, ImageName: string },
+        ...
+      ]
+    }
+
+18) DELETE /api/profile/:profileId
+    Purpose: Deletes one of the user's profiles (must always keep at least one).
+
+    req.params =
+    {
+      profileId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      profiles:
+      [
+        { id: string, profileName: string, age: number, ImageName: string },
+        ...
+      ]
+    }
+
+19) PUT /api/profile/:profileId
+    Purpose: Updates the details of one profile (name, age, or picture).
+
+    req.params =
+    {
+      profileId: string
+    }
+
+    req.body =
+    {
+      profileName?: string,
+      age?: number,
+      ImageName?: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      profiles:
+      [
+        { id: string, profileName: string, age: number, ImageName: string },
+        ...
+      ]
+    }
+
+20) GET /api/profile/:profileId
     Purpose: Gets the basic details of one specific profile.
-    req.params = { profileId: string }
-    res = { success: boolean, message: string, profile: {id, profileName, age, ImageName} }
 
-17) GET /api/profile/:profileId/details
+    req.params =
+    {
+      profileId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      profile:
+      {
+        id: string,
+        profileName: string,
+        age: number,
+        ImageName: string
+      }
+    }
+
+21) GET /api/profile/:profileId/details
     Purpose: Gets the complete details of one profile, including watch history and liked content.
-    req.params = { profileId: string }
-    res = { success: boolean, profile: { id, profileName, age, ImageName, Liked_Media_IDs, LastWatched_Media_IDs, User_ID, createdAt, updatedAt } }
 
-18) POST /api/profile/:profileId/likes/:contentId
+    req.params =
+    {
+      profileId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      profile:
+      {
+        id: string,
+        profileName: string,
+        age: number,
+        ImageName: string,
+        likedContentIds: [ contentId, ... ],
+        lastWatched:
+        [
+          { _id: string, episode_id: string, content_id: string },
+          ...
+        ]
+      }
+    }
+
+    Note: lastWatched has one entry per content the profile has ever watched (not one per episode) -
+    each entry holds the specific episode last watched within that content.
+
+22) POST /api/profile/:profileId/likes/:contentId
     Purpose: Adds or removes a "like" on a specific movie/show for a specific profile (toggle).
-    req.params = { profileId: string, contentId: string }
-    req.body = {}   (nothing needed)
-    res = { success: boolean, message: string, liked: boolean, likedMediaIds: [ contentId, ... ] }
 
-19) POST /api/profile/:profileId/watch/:contentId
-    Purpose: Records that a profile just watched a specific movie/show.
-    req.params = { profileId: string, contentId: string }
+    req.params =
+    {
+      profileId: string,
+      contentId: string
+    }
+
     req.body = {}   (nothing needed)
-    res = { success: boolean, message: string, watchHistory: [ contentId, ... ] }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      liked: boolean,
+      likedContentIds: [ contentId, ... ]
+    }
+
+23) POST /api/profile/:profileId/watch/:contentId
+    Purpose: Records that a profile just watched a movie/show, with no specific episode given.
+    Behavior: if this content already has a saved entry in the profile's watch history, resumes
+    from that saved episode; otherwise starts from season 1, episode 1.
+
+    req.params =
+    {
+      profileId: string,
+      contentId: string
+    }
+
+    req.body = {}   (nothing needed)
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      episode:
+      {
+        id: string,
+        contentId: string,
+        seasonNumber: number,
+        episodeNumber: number,
+        title: string,
+        videoUrl: string
+      },
+      lastWatched:
+      [
+        { _id: string, episode_id: string, content_id: string },
+        ...
+      ]
+    }
+
+24) POST /api/profile/:profileId/watch/:contentId/:episodeId
+    Purpose: Same as above, but records a specific episode as watched instead of resuming/defaulting.
+
+    req.params =
+    {
+      profileId: string,
+      contentId: string,
+      episodeId: string
+    }
+
+    req.body = {}   (nothing needed)
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      episode:
+      {
+        id: string,
+        contentId: string,
+        seasonNumber: number,
+        episodeNumber: number,
+        title: string,
+        videoUrl: string
+      },
+      lastWatched:
+      [
+        { _id: string, episode_id: string, content_id: string },
+        ...
+      ]
+    }
+
+25) GET /api/profile/:profileId/other_profiles_recommendations
+    Purpose: Suggests content that the user's OTHER profiles (on the same account) have watched or
+    liked, excluding anything the requesting profile has already watched or liked itself.
+
+    req.params =
+    {
+      profileId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      content:
+      [
+        {
+          id: string,
+          title: string,
+          description: string,
+          cover_image_name: string,
+          type: "movie" | "series",
+          categories: string[],
+          release_date: string,
+          age_limit: number,
+          likes: number,
+          createdAt: string,
+          imdb_rating: number
+        },
+        ...
+      ]
+    }
 
 --------------------------------------------------
 CONTENT ENDPOINTS (/api/content)
 --------------------------------------------------
-("Content" means the movies/series in the system)
+("Content" means the movies/series in the system. Video files live on episodes, not on content
+itself - every watchable item is an Episode, including a movie's single episode.)
 
-20) POST /api/content/  (admin only)
+26) POST /api/content/  (admin only)
     Purpose: Adds a brand new movie or series to the catalog.
-    req.headers = { Authorization: "Bearer <token>" }
-    req.body = { title: string, type: "movie"|"series", release_date: string, description?: string, cover_image_name?: string, categories?: string[], age_limit?: number, videoUrl?: string }
-    res = { success: boolean, message: string, content: { id, title, description, cover_image_name, type, categories, release_date, age_limit, likes, videoUrl, createdAt } }
 
-21) DELETE /api/content/:contentId  (admin only)
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.body =
+    {
+      title: string,
+      type: "movie" | "series",
+      release_date: string,
+      description?: string,
+      cover_image_name?: string,
+      categories?: string[],
+      age_limit?: number
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      content:
+      {
+        id: string,
+        title: string,
+        description: string,
+        cover_image_name: string,
+        type: "movie" | "series",
+        categories: string[],
+        release_date: string,
+        age_limit: number,
+        likes: number,
+        createdAt: string,
+        imdb_rating: number
+      }
+    }
+
+27) DELETE /api/content/:contentId  (admin only)
     Purpose: Removes a movie/series from the catalog completely.
-    req.headers = { Authorization: "Bearer <token>" }
-    req.params = { contentId: string }
-    res = { success: boolean, message: string }
 
-22) PUT /api/content/:contentId  (admin only)
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      contentId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string
+    }
+
+28) PUT /api/content/:contentId  (admin only)
     Purpose: Edits the details of an existing movie/series.
-    req.headers = { Authorization: "Bearer <token>" }
-    req.params = { contentId: string }
-    req.body = { title?: string, type?: "movie"|"series", release_date?: string, description?: string, cover_image_name?: string, categories?: string[], age_limit?: number, videoUrl?: string }
-    res = { success: boolean, message: string, content: { id, title, description, cover_image_name, type, categories, release_date, age_limit, likes, videoUrl, createdAt } }
 
-23) GET /api/content/:contentId
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      contentId: string
+    }
+
+    req.body =
+    {
+      title?: string,
+      type?: "movie" | "series",
+      release_date?: string,
+      description?: string,
+      cover_image_name?: string,
+      categories?: string[],
+      age_limit?: number
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      content:
+      {
+        id: string,
+        title: string,
+        description: string,
+        cover_image_name: string,
+        type: "movie" | "series",
+        categories: string[],
+        release_date: string,
+        age_limit: number,
+        likes: number,
+        createdAt: string,
+        imdb_rating: number
+      }
+    }
+
+29) POST /api/content/:contentId/episodes  (admin only)
+    Purpose: Adds a new episode to a series (movies cannot have episodes added this way).
+
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      contentId: string
+    }
+
+    req.body =
+    {
+      season_number: number,
+      episode_number: number,
+      title?: string,
+      videoUrl?: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      episode:
+      {
+        id: string,
+        contentId: string,
+        seasonNumber: number,
+        episodeNumber: number,
+        title: string,
+        videoUrl: string
+      }
+    }
+
+30) DELETE /api/content/:contentId/episodes/:episodeId  (admin only)
+    Purpose: Removes a specific episode from a series.
+
+    req.headers =
+    {
+      Authorization: "Bearer <token>"
+    }
+
+    req.params =
+    {
+      contentId: string,
+      episodeId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string
+    }
+
+31) GET /api/content/:contentId
     Purpose: Gets the details of one specific movie/series. Public, no login needed.
-    req.params = { contentId: string }
-    res = { success: boolean, message: string, content: { id, title, description, cover_image_name, type, categories, release_date, age_limit, likes, videoUrl, createdAt } }
 
-24) GET /api/content/
+    req.params =
+    {
+      contentId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      content:
+      {
+        id: string,
+        title: string,
+        description: string,
+        cover_image_name: string,
+        type: "movie" | "series",
+        categories: string[],
+        release_date: string,
+        age_limit: number,
+        likes: number,
+        createdAt: string,
+        imdb_rating: number
+      }
+    }
+
+32) GET /api/content/
     Purpose: Searches/browses the whole catalog using filters like title, category, or type. Public, no login needed.
-    req.query = { title_contains?, exact_category?, contain_category?, exclude_category?, type?, released_after?, released_before?, min_age_limit?, max_age_limit?, min_likes?, limit?, skip?, sort?, sortOrder?: "greater_to_smaller"|"smaller_to_greater" }
-    res = { success: boolean, message: string, content: [ {id, title, description, cover_image_name, type, categories, release_date, age_limit, likes, videoUrl, createdAt}, ... ] }
+
+    req.query =
+    {
+      title_contains?: string,
+      exact_category?: string,
+      contain_category?: string,
+      exclude_category?: string,
+      type?: "movie" | "series",
+      released_after?: string,
+      released_before?: string,
+      min_age_limit?: number,
+      max_age_limit?: number,
+      min_likes?: number,
+      limit?: number,
+      skip?: number,
+      sort?: string,
+      sortOrder?: "greater_to_smaller" | "smaller_to_greater"
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      content:
+      [
+        {
+          id: string,
+          title: string,
+          description: string,
+          cover_image_name: string,
+          type: "movie" | "series",
+          categories: string[],
+          release_date: string,
+          age_limit: number,
+          likes: number,
+          createdAt: string,
+          imdb_rating: number
+        },
+        ...
+      ]
+    }
+
+33) GET /api/content/:contentId/episodes
+    Purpose: Gets every episode of a series, grouped by season. Only works for type "series".
+    Public, no login needed.
+
+    req.params =
+    {
+      contentId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      seasons:
+      [
+        [
+          { id: string, contentId: string, seasonNumber: number, episodeNumber: number, title: string, videoUrl: string },
+          ...
+        ],
+        ...
+      ]
+    }
+
+    Note: seasons[0] is season 1's episode list, seasons[1] is season 2's, etc.
+
+34) GET /api/content/:contentId/episodes/:episodeId
+    Purpose: Gets the details of one specific episode. Public, no login needed.
+
+    req.params =
+    {
+      contentId: string,
+      episodeId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      episode:
+      {
+        id: string,
+        contentId: string,
+        seasonNumber: number,
+        episodeNumber: number,
+        title: string,
+        videoUrl: string
+      }
+    }
+
+35) GET /api/content/:contentId/episodes/:episodeId/next
+    Purpose: Gets the episode that comes right after the given one (crosses into the next
+    season if this was the last episode of its season). Public, no login needed.
+
+    req.params =
+    {
+      contentId: string,
+      episodeId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      episode?:
+      {
+        id: string,
+        contentId: string,
+        seasonNumber: number,
+        episodeNumber: number,
+        title: string,
+        videoUrl: string
+      }
+    }
+
+36) GET /api/content/:contentId/episodes/:episodeId/prev
+    Purpose: Gets the episode that comes right before the given one (crosses back into the
+    previous season if this was the first episode of its season). Public, no login needed.
+
+    req.params =
+    {
+      contentId: string,
+      episodeId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      episode?:
+      {
+        id: string,
+        contentId: string,
+        seasonNumber: number,
+        episodeNumber: number,
+        title: string,
+        videoUrl: string
+      }
+    }
 
 --------------------------------------------------
 GENERAL NOTES
 --------------------------------------------------
-- Every res always has a "success" field (true or false) and a "message" field.
+- Every res always has a "success" field (true or false). Most also have a "message" field,
+  except a handful of simple admin actions (tokens_count, kick, ban, ban-check) which only
+  return "success" plus their specific data field.
 - "?" after a field name means it is optional.
 - req.headers = the request headers (used for the auth token).
 - req.params = values that are part of the URL path (like :user_id).
 - req.query = values after the "?" in the URL (like ?limit=10).
 - req.body = the JSON object sent in the request body.
-- sortOrder now uses the same two values everywhere: "greater_to_smaller" (descending, default) or "smaller_to_greater" (ascending). Any other value returns an error.
+- sortOrder uses the same two values everywhere: "greater_to_smaller" (descending, default) or "smaller_to_greater" (ascending). Any other value returns an error.
+- videoUrl now lives only on episodes, never on content itself.

@@ -1,6 +1,8 @@
 const my_logger = require('../scripts/my_logger');
 const { permissionManagerInstance, Permmision_Level } = require('../middlewares/permission_manager');
 const User = require('../models/user');
+const Review = require('../models/review');
+const Profile = require('../models/profile');
 const { safe_user } = require('./user_controller');
 /**
  * Set permission level for a user
@@ -14,23 +16,23 @@ const setPermissionLevel = async (req, res) =>
 {
     try
     {
-        if(!req.admin_user_id)return res.json({ success: false, data: null, message: 'setPermissionLevel: request object is missing admin_user_id' });
+        if(!req.admin_user_id)return res.json({ success: false, message: 'setPermissionLevel: request object is missing admin_user_id' });
         const selected_user_id = req.target_user_id;
         const admin_user_id = req.admin_user_id;
-        if(!selected_user_id)return res.json({ success: false, data: null, message: 'setPermissionLevel: request params is missing target_user_id' });
-        if(req.body.permission_level === undefined)return res.json({ success: false, data: null, message: 'setPermissionLevel: request body is missing permission_level' });
+        if(!selected_user_id)return res.json({ success: false, message: 'setPermissionLevel: request params is missing target_user_id' });
+        if(req.body.permission_level === undefined)return res.json({ success: false, message: 'setPermissionLevel: request body is missing permission_level' });
         const permission_level = parseInt(req.body.permission_level);
         if (permission_level > permissionManagerInstance.getPermissionLevel(admin_user_id))
         {
-            return res.json({ success: false, data: null, message: 'cannot assign a permission level higher than your own!' });
+            return res.json({ success: false, message: 'cannot assign a permission level higher than your own!' });
         }
         else if(!permissionManagerInstance.isHavingPermissionLevel(admin_user_id, permissionManagerInstance.getPermissionLevel(selected_user_id)))
         {
-            return res.json({ success: false, data: null, message: 'not having permission to set permission level for this user!' });
+            return res.json({ success: false, message: 'not having permission to set permission level for this user!' });
         }
         else if(permission_level == permissionManagerInstance.getPermissionLevel(selected_user_id))
         {
-            return res.json({ success: false, data: null, message: 'target user already have the same permission level!' });
+            return res.json({ success: false, message: 'target user already have the same permission level!' });
         }
         if(permission_level == Permmision_Level.USER)
         {
@@ -92,15 +94,32 @@ const deleteUser = async (req, res) =>
     {
         const target_user_id = req.target_user_id;
         const admin_user_id = req.admin_user_id;
-        if(!target_user_id)return res.json({ success: false, data: null, message: 'deleteUser: request params is missing target_user_id' });
-        if(!admin_user_id)return res.json({ success: false, data: null, message: 'deleteUser: request object is missing admin_user_id' });
+        if(!target_user_id)return res.json({ success: false, message: 'deleteUser: request params is missing target_user_id' });
+        if(!admin_user_id)return res.json({ success: false, message: 'deleteUser: request object is missing admin_user_id' });
+
         const user = await User.findByIdAndDelete(target_user_id);
         if(!user)return res.json({ success: false, message: 'User not found!' });
+
+        // Find all reviews written by this user, so we know which content ratings need recalculation
+        const userReviews = await Review.find({ user_id: target_user_id }, 'content_id');
+        const affectedContentIds = [...new Set(userReviews.map(r => r.content_id.toString()))];
+
+        // Remove all reviews written by this user
+        await Review.deleteMany({ user_id: target_user_id });
+
+        // Remove all profiles owned by this user
+        await Profile.deleteMany({ user_id: target_user_id });
+
+        // Recalculate average_rating/review_count on content affected by the deleted reviews
+        for(const contentId of affectedContentIds)
+        {
+            await Review.updateContentAverageRating(contentId);
+        }
+
         res.json({ success: true, message: 'User deleted successfully' });
         my_logger.ConsoleLog(`User deleted successfully. [user_id: ${target_user_id}]`, my_logger.Log_Level.INFO);
         my_logger.OperationLog('deleteUser', 'User deleted successfully.', { "deleted_user": safe_user(user), "activated_by_user_id": admin_user_id }, my_logger.Log_Level.INFO);
     }
-
     catch (error)
     {
         my_logger.ConsoleLog(`Error deleting user: ${error}`, my_logger.Log_Level.ERROR);

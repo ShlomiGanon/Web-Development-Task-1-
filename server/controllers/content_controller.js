@@ -1,5 +1,6 @@
 const { ADD_IMDB_RATING_TO_CONTENT } = require('../scripts/constants');
 const Content = require('../models/content');
+const Episode = require('../models/episode');
 const my_logger = require('../scripts/my_logger');
 const { getImdbRating } = require('../scripts/imdb_ranking');
 /**
@@ -7,7 +8,7 @@ const { getImdbRating } = require('../scripts/imdb_ranking');
  * Kept as a single choke point so fields like an average rating or review count
  * can be attached here later (once Reviews are implemented) without touching every caller.
  */
-const to_content_summary = (content) =>
+const toContentSummary = (content) =>
 {
     return {
         id: content._id.toString(),
@@ -19,9 +20,26 @@ const to_content_summary = (content) =>
         release_date: content.release_date.toISOString(),
         age_limit: content.age_limit,
         likes: content.likes,
-        videoUrl: content.videoUrl,
         createdAt: content.createdAt.toISOString(),
         imdb_rating: content.imdb_rating
+    };
+}
+
+/**
+ * Helper to convert a full Episode document into a lightweight object
+ * containing only the fields exposed to the client. Video lives here,
+ * not on Content - every piece of watchable media is an Episode
+ * (including a movie's single season 1 / episode 1 entry).
+ */
+const toEpisodeSummary = (episode) =>
+{
+    return {
+        id: episode._id,
+        contentId: episode.content_id,
+        seasonNumber: episode.season_number,
+        episodeNumber: episode.episode_number,
+        title: episode.title,
+        videoUrl: episode.videoUrl
     };
 }
 
@@ -33,13 +51,13 @@ const to_content_summary = (content) =>
  * @param {Object} res - The response object
  * @returns {Promise<Object>} - The response object
  */
-//req.body: { title: String, type: String, release_date: Date, description?: String, cover_image_name?: String, categories?: [String], age_limit?: Number, videoUrl?: String }
+//req.body: { title: String, type: String, release_date: Date, description?: String, cover_image_name?: String, categories?: [String], age_limit?: Number }
 //res.json: { success: boolean, message: string, content: Object }
 const createContent = async (req, res) =>
 {
     try
     {
-        const { title, description, cover_image_name, type, categories, release_date, age_limit, videoUrl } = req.body;
+        const { title, description, cover_image_name, type, categories, release_date, age_limit } = req.body;
 
         if (!title) return res.json({ success: false, message: 'Title is required' });
         if (!type) return res.json({ success: false, message: 'Type is required' });
@@ -55,15 +73,14 @@ const createContent = async (req, res) =>
             categories,
             release_date,
             age_limit,
-            likes: 0,
-            videoUrl
+            likes: 0
         });
 
         await content.save();
 
-        res.json({ success: true, message: 'Content created successfully', content: to_content_summary(content) });
+        res.json({ success: true, message: 'Content created successfully', content: toContentSummary(content) });
         my_logger.ConsoleLog(`Content created successfully. [content_id: ${content._id}]`, my_logger.Log_Level.INFO);
-        my_logger.OperationLog('createContent', 'Content created successfully.', { "admin_user_id": req.admin_user_id, "content": to_content_summary(content) }, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('createContent', 'Content created successfully.', { "admin_user_id": req.admin_user_id, "content": toContentSummary(content) }, my_logger.Log_Level.INFO);
     }
     catch (error)
     {
@@ -107,7 +124,7 @@ const getContent = async (req, res) =>
                 my_logger.OperationLog('getContent', 'Error getting IMDB rating.', { "error": error }, my_logger.Log_Level.ERROR);
             }
         }
-        res.json({ success: true, message: 'Content retrieved successfully' + (content.imdb_rating ? ' with IMDB rating: ' + content.imdb_rating : ''), content: to_content_summary(content)});
+        res.json({ success: true, message: 'Content retrieved successfully' + (content.imdb_rating ? ' with IMDB rating: ' + content.imdb_rating : ''), content: toContentSummary(content)});
         my_logger.ConsoleLog(`Content retrieved successfully. [content_id: ${content._id}]` + (content.imdb_rating ? ' with IMDB rating: ' + content.imdb_rating : ''), my_logger.Log_Level.INFO);
         my_logger.OperationLog('getContent', 'Content retrieved successfully.', { "content_id": content._id, "imdb_rating": content.imdb_rating }, my_logger.Log_Level.INFO);
     }
@@ -128,21 +145,21 @@ const getContent = async (req, res) =>
  * @param {Object} res - The response object
  * @returns {Promise<Object>} - The response object
  */
-//req.body: { title?: String, description?: String, cover_image_name?: String, type?: String, categories?: [String], release_date?: Date, age_limit?: Number, videoUrl?: String }
+//req.body: { title?: String, description?: String, cover_image_name?: String, type?: String, categories?: [String], release_date?: Date, age_limit?: Number }
 //res.json: { success: boolean, message: string, content: Object }
 const updateContent = async (req, res) =>
 {
     try
     {
         const content = req.content;
-        const { title, description, cover_image_name, type, categories, release_date, age_limit, videoUrl } = req.body;
+        const { title, description, cover_image_name, type, categories, release_date, age_limit } = req.body;
 
         if (type !== undefined && type !== 'movie' && type !== 'series')
         {
             return res.json({ success: false, message: 'Type must be either "movie" or "series"' });
         }
 
-        const old_data = to_content_summary(content);
+        const old_data = toContentSummary(content);
         const changes = {};
 
         if (title !== undefined) { content.title = title; changes.title = title; }
@@ -152,7 +169,6 @@ const updateContent = async (req, res) =>
         if (categories !== undefined) { content.categories = categories; changes.categories = categories; }
         if (release_date !== undefined) { content.release_date = release_date; changes.release_date = release_date; }
         if (age_limit !== undefined) { content.age_limit = age_limit; changes.age_limit = age_limit; }
-        if (videoUrl !== undefined) { content.videoUrl = videoUrl; changes.videoUrl = videoUrl; }
 
         if (Object.keys(changes).length === 0)
         {
@@ -161,7 +177,7 @@ const updateContent = async (req, res) =>
 
         await content.save();
 
-        res.json({ success: true, message: 'Content updated successfully', content: to_content_summary(content) });
+        res.json({ success: true, message: 'Content updated successfully', content: toContentSummary(content) });
         my_logger.ConsoleLog(`Content updated successfully. [content_id: ${content._id}]`, my_logger.Log_Level.INFO);
         my_logger.OperationLog('updateContent', 'Content updated successfully.', { "admin_user_id": req.admin_user_id, "content_id": content._id, "old_data": old_data, "changes": changes }, my_logger.Log_Level.INFO);
     }
@@ -192,7 +208,7 @@ const deleteContent = async (req, res) =>
 
         res.json({ success: true, message: 'Content deleted successfully' });
         my_logger.ConsoleLog(`Content deleted successfully. [content_id: ${content._id}]`, my_logger.Log_Level.INFO);
-        my_logger.OperationLog('deleteContent', 'Content deleted successfully.', { "admin_user_id": req.admin_user_id, "deleted_content": to_content_summary(content) }, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('deleteContent', 'Content deleted successfully.', { "admin_user_id": req.admin_user_id, "deleted_content": toContentSummary(content) }, my_logger.Log_Level.INFO);
     }
     catch (error)
     {
@@ -237,7 +253,7 @@ const searchContent = async (req, res) =>
 
         const contents = await Content.find(query).limit(limit).skip(skip).sort({ [sort]: sortOrder });
 
-        res.json({ success: true, message: 'Content searched successfully', content: contents.map(content => to_content_summary(content))});
+        res.json({ success: true, message: 'Content searched successfully', content: contents.map(content => toContentSummary(content))});
     }
     catch (error)
     {
@@ -246,4 +262,356 @@ const searchContent = async (req, res) =>
     }
 }
 
-module.exports = { createContent, getContent, updateContent, deleteContent, searchContent , to_content_summary };
+/**
+ * Add a new episode to a series (admin only).
+ * Relies on contentAuthorization having already fetched and attached req.content.
+ * Rejected outright for content of type "movie" - only series have episodes.
+ * The schema enforces a unique (content_id, season_number, episode_number) triple,
+ * so a duplicate is reported as a clear message instead of a raw duplicate-key error.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//req.body: { season_number: Number, episode_number: Number, title?: String, videoUrl?: String }
+//res.json: { success: boolean, message: string, episode: Object }
+const addEpisode = async (req, res) =>
+{
+    try
+    {
+        const content = req.content;
+
+        if (content.type !== 'series')
+        {
+            return res.json({ success: false, message: 'Episodes can only be added to series' });
+        }
+
+        const { season_number, episode_number, title, videoUrl } = req.body;
+
+        if (season_number === undefined || episode_number === undefined)
+        {
+            return res.json({ success: false, message: 'season_number and episode_number are required' });
+        }
+
+        let episode;
+
+        try
+        {
+            episode = await Episode.create({
+                content_id: content._id,
+                season_number,
+                episode_number,
+                title,
+                videoUrl
+            });
+        }
+        catch (dbError)
+        {
+            if (dbError.code === 11000)
+            {
+                return res.json({ success: false, message: 'This season/episode number already exists for this content' });
+            }
+
+            throw dbError;
+        }
+
+        res.json({ success: true, message: 'Episode added successfully', episode: toEpisodeSummary(episode) });
+        my_logger.ConsoleLog(`Episode added successfully. [content_id: ${content._id}, episode_id: ${episode._id}]`, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('addEpisode', 'Episode added successfully.', { "admin_user_id": req.admin_user_id, "content_id": content._id, "episode": toEpisodeSummary(episode) }, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error adding episode: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('addEpisode', 'Error adding episode.', { "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: 'Internal server error' });
+    }
+}
+
+/**
+ * Update an existing episode's details (admin only).
+ * Relies on contentAuthorization having attached req.content and req.episode
+ * (i.e. the route must carry both contentId and episodeId).
+ * Not restricted by content type - a movie's single episode can be edited too.
+ * The schema enforces a unique (content_id, season_number, episode_number) triple,
+ * so changing season_number/episode_number into a colliding pair is reported as
+ * a clear message instead of a raw duplicate-key error.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//req.body: { season_number?: Number, episode_number?: Number, title?: String, videoUrl?: String }
+//res.json: { success: boolean, message: string, episode: Object }
+const updateEpisode = async (req, res) =>
+{
+    try
+    {
+        const content = req.content;
+        const episode = req.episode;
+
+        if (!episode)
+        {
+            return res.json({ success: false, message: 'Episode ID is required' });
+        }
+
+        const { season_number, episode_number, title, videoUrl } = req.body;
+
+        const old_data = toEpisodeSummary(episode);
+        const changes = {};
+
+        if (season_number !== undefined) { episode.season_number = season_number; changes.season_number = season_number; }
+        if (episode_number !== undefined) { episode.episode_number = episode_number; changes.episode_number = episode_number; }
+        if (title !== undefined) { episode.title = title; changes.title = title; }
+        if (videoUrl !== undefined) { episode.videoUrl = videoUrl; changes.videoUrl = videoUrl; }
+
+        if (Object.keys(changes).length === 0)
+        {
+            return res.json({ success: false, message: 'No changes to update' });
+        }
+
+        try
+        {
+            await episode.save();
+        }
+        catch (dbError)
+        {
+            if (dbError.code === 11000)
+            {
+                return res.json({ success: false, message: 'This season/episode number already exists for this content' });
+            }
+
+            throw dbError;
+        }
+
+        res.json({ success: true, message: 'Episode updated successfully', episode: toEpisodeSummary(episode) });
+        my_logger.ConsoleLog(`Episode updated successfully. [content_id: ${content._id}, episode_id: ${episode._id}]`, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('updateEpisode', 'Episode updated successfully.', { "admin_user_id": req.admin_user_id, "content_id": content._id, "episode_id": episode._id, "old_data": old_data, "changes": changes }, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error updating episode: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('updateEpisode', 'Error updating episode.', { "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: 'Internal server error' });
+    }
+}
+
+/**
+ * Remove an episode from a series (admin only).
+ * Relies on contentAuthorization having attached req.content and req.episode
+ * (i.e. the route must carry both contentId and episodeId).
+ * TODO: this does not clean up references to the deleted episode in profiles'
+ * last_watched entries or in Reviews - both will keep a dangling episode_id.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//res.json: { success: boolean, message: string }
+const removeEpisode = async (req, res) =>
+{
+    try
+    {
+        const content = req.content;
+        const episode = req.episode;
+
+        if (!episode)
+        {
+            return res.json({ success: false, message: 'Episode ID is required' });
+        }
+
+        await Episode.findByIdAndDelete(episode._id);
+
+        res.json({ success: true, message: 'Episode removed successfully' });
+        my_logger.ConsoleLog(`Episode removed successfully. [content_id: ${content._id}, episode_id: ${episode._id}]`, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('removeEpisode', 'Episode removed successfully.', { "admin_user_id": req.admin_user_id, "content_id": content._id, "removed_episode": toEpisodeSummary(episode) }, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error removing episode: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('removeEpisode', 'Error removing episode.', { "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: 'Internal server error' });
+    }
+}
+
+/**
+ * Get the next episode after req.episode, within the same content.
+ * Relies on contentAuthorization having attached req.content and req.episode
+ * (i.e. the route must carry both contentId and episodeId).
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//res.json: { success: boolean, message: string, episode?: Object }
+const getNextEpisodeRequest = async (req, res) =>
+{
+    const content = req.content;
+    const episode = req.episode;
+
+    try
+    {
+        if (!episode)
+        {
+            return res.json({ success: false, message: "Episode ID is required" });
+        }
+
+        const nextEpisode = await Episode.getNextEpisode(content._id, episode.season_number, episode.episode_number);
+
+        if (!nextEpisode)
+        {
+            return res.json({ success: false, message: "No next episode found" });
+        }
+
+        res.json({ success: true, message: "Next episode found", episode: toEpisodeSummary(nextEpisode) });
+        my_logger.ConsoleLog(`Next episode found successfully. [content_id: ${content._id}, from_episode_id: ${episode._id}, next_episode_id: ${nextEpisode._id}]`, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error getting next episode: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('getNextEpisode', 'Error getting next episode.', { "content_id": content && content._id, "episode_id": episode && episode._id, "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: "Internal server error" });
+    }
+}
+
+/**
+ * Get the previous episode before req.episode, within the same content.
+ * Relies on contentAuthorization having attached req.content and req.episode
+ * (i.e. the route must carry both contentId and episodeId).
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//res.json: { success: boolean, message: string, episode?: Object }
+const getPrevEpisodeRequest = async (req, res) =>
+{
+    const content = req.content;
+    const episode = req.episode;
+
+    try
+    {
+        if (!episode)
+        {
+            return res.json({ success: false, message: "Episode ID is required" });
+        }
+
+        const prevEpisode = await Episode.getPrevEpisode(content._id, episode.season_number, episode.episode_number);
+
+        if (!prevEpisode)
+        {
+            return res.json({ success: false, message: "No previous episode found" });
+        }
+
+        res.json({ success: true, message: "Previous episode found", episode: toEpisodeSummary(prevEpisode) });
+        my_logger.ConsoleLog(`Previous episode found successfully. [content_id: ${content._id}, from_episode_id: ${episode._id}, prev_episode_id: ${prevEpisode._id}]`, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error getting previous episode: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('getPrevEpisode', 'Error getting previous episode.', { "content_id": content && content._id, "episode_id": episode && episode._id, "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: "Internal server error" });
+    }
+}
+
+/**
+ * Get all episodes of a series, grouped by season.
+ * Returns an array of arrays: index 0 is season 1's episodes, index 1 is
+ * season 2's, etc. Only valid for content of type "series" - movies have
+ * no episodes and are rejected outright.
+ * Relies on contentAuthorization having attached req.content.
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//res.json: { success: boolean, message: string, seasons?: Array<Array<Object>> }
+const getAllEpisodesRequest = async (req, res) =>
+{
+    const content = req.content;
+
+    try
+    {
+        if (content.type !== 'series')
+        {
+            return res.json({ success: false, message: "This content is not a series" });
+        }
+
+        const episodes = await Episode.find({ content_id: content._id }).sort({ season_number: 1, episode_number: 1 });
+
+        const seasons = [];
+
+        for (const episode of episodes)
+        {
+            const seasonIndex = episode.season_number - 1;
+
+            if (!seasons[seasonIndex])
+            {
+                seasons[seasonIndex] = [];
+            }
+
+            seasons[seasonIndex].push(toEpisodeSummary(episode));
+        }
+
+        // Fill any gaps (e.g. a season with zero episodes stored) so the array has no holes
+        for (let i = 0; i < seasons.length; i++)
+        {
+            if (!seasons[i])
+            {
+                seasons[i] = [];
+            }
+        }
+
+        res.json({ success: true, message: "Episodes retrieved successfully", seasons: seasons });
+        my_logger.ConsoleLog(`All episodes retrieved successfully. [content_id: ${content._id}, season_count: ${seasons.length}]`, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error getting all episodes: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('getAllEpisodes', 'Error getting all episodes.', { "content_id": content && content._id, "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: "Internal server error" });
+    }
+}
+
+/**
+ * Get a single episode by ID.
+ * Relies on contentAuthorization having attached req.content and req.episode
+ * (i.e. the route must carry both contentId and episodeId).
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//res.json: { success: boolean, message: string, episode?: Object }
+const getEpisodeRequest = async (req, res) =>
+{
+    const content = req.content;
+    const episode = req.episode;
+
+    try
+    {
+        if (!episode)
+        {
+            return res.json({ success: false, message: "Episode ID is required" });
+        }
+
+        res.json({ success: true, message: "Episode retrieved successfully", episode: toEpisodeSummary(episode) });
+        my_logger.ConsoleLog(`Episode retrieved successfully. [content_id: ${content._id}, episode_id: ${episode._id}]`, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error getting episode: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('getEpisode', 'Error getting episode.', { "content_id": content && content._id, "episode_id": episode && episode._id, "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: "Internal server error" });
+    }
+}
+
+module.exports =
+{
+    createContent,
+    getContent,
+    updateContent,
+    deleteContent,
+    searchContent,
+    addEpisode,
+    updateEpisode,
+    removeEpisode,
+    getEpisodeRequest,
+    getNextEpisodeRequest,
+    getPrevEpisodeRequest,
+    getAllEpisodesRequest,
+    toContentSummary,
+    toEpisodeSummary
+};

@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/user_controller');
 const adminController = require('../controllers/admin_controller');
-const suggestionsController = require('../controllers/suggestions_controller.js');
 const tokenManager = require('../middlewares/token_manager');
 const { adminAuthorization, adminAuthorizationPermissionLevel, Permmision_Level } = require('../middlewares/permission_manager');
 const { userAuthorization } = require('../middlewares/user_authorization');

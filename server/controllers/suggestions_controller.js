@@ -2,7 +2,7 @@ const my_logger = require('../scripts/my_logger');
 const User = require('../models/user');
 const Profile = require('../models/profile');
 const Content = require('../models/content');
-const { to_content_summary } = require('./content_controller');
+const { toContentSummary } = require('./content_controller');
 const getContentOthersEngagedWith = async (req, res) =>
     {
         try
@@ -19,24 +19,29 @@ const getContentOthersEngagedWith = async (req, res) =>
             // Content the requesting profile already watched or liked - used later to
             // exclude it from the group-by result, so we don't recommend it back to them
             const own_interacted_ids = new Set();
-            for(const content_id of current_profile.LastWatched_Content_IDs)
+            for(const entry of current_profile.last_watched)
             {
-                own_interacted_ids.add(String(content_id));
+                own_interacted_ids.add(String(entry.content_id));
             }
-            for(const content_id of current_profile.Liked_Content_IDs)
+            for(const content_id of current_profile.liked_content_ids)
             {
                 own_interacted_ids.add(String(content_id));
             }
      
             // GROUP BY content_id across all OTHER profiles of this user.
             // Step 1: $match     - only profiles of this user, excluding the requesting profile
-            // Step 2: $project   - merge LastWatched_Content_IDs + Liked_Content_IDs into one array field
+            // Step 2: $project   - extract just content_id out of last_watched (which stores
+            //                      {episode_id, content_id} entries), then merge with liked_content_ids
+            //                      into one flat array field of content_ids only
             // Step 3: $unwind    - turn that array into one row per content_id (like a SQL JOIN unnest)
             // Step 4: $group     - GROUP BY content_id, counting how many profile rows contributed each id
             const grouped_results = await Profile.aggregate(
             [
-                { $match: { User_ID: current_user._id, _id: { $ne: current_profile._id } } },
-                { $project: { all_content_ids: { $concatArrays: ['$LastWatched_Content_IDs', '$Liked_Content_IDs'] } } },
+                { $match: { user_id: current_user._id, _id: { $ne: current_profile._id } } },
+                { $project: { all_content_ids: { $concatArrays: [
+                    { $map: { input: '$last_watched', as: 'entry', in: '$$entry.content_id' } },
+                    '$liked_content_ids'
+                ] } } },
                 { $unwind: '$all_content_ids' },
                 { $group: { _id: '$all_content_ids', profile_count: { $sum: 1 } } }
             ]);
@@ -55,7 +60,7 @@ const getContentOthersEngagedWith = async (req, res) =>
             return res.json({
                 success: true,
                 message: 'Content others engaged with retrieved successfully',
-                content: contents.map(content => to_content_summary(content))
+                content: contents.map(content => toContentSummary(content))
             });
         }
         catch (error)
