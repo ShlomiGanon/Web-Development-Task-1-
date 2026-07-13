@@ -5,7 +5,6 @@ const { tokenVerification } = require('../middlewares/token_manager');
 const { authorizeProfileAccess } = require('../middlewares/profile_authorization');
 const { contentAuthorization } = require('../middlewares/content_authorization');
 const suggestionsController = require('../controllers/suggestions_controller.js');
-const reviewController = require('../controllers/review_controller');
 
 // Apply token authentication to all routes defined in this file
 router.use(tokenVerification);
@@ -40,12 +39,6 @@ router.post('/:profileId/watch/:contentId', authorizeProfileAccess, contentAutho
 
 // Same, but with an explicit episode to watch
 router.post('/:profileId/watch/:contentId/:episodeId', authorizeProfileAccess, contentAuthorization, profileController.watchMedia);
-
-// Route to add a review (rating + optional comment) for a specific episode
-router.post('/:profileId/reviews/:contentId/:episodeId', authorizeProfileAccess, contentAuthorization, reviewController.addReview);
-
-// Route to remove the profile's own review for a specific episode
-router.delete('/:profileId/reviews/:contentId/:episodeId', authorizeProfileAccess, contentAuthorization, reviewController.removeReview);
 
 // Route to get other profiles activity for a specific profile
 router.get('/:profileId/other_profiles_recommendations', authorizeProfileAccess, suggestionsController.getContentOthersEngagedWith);
