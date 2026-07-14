@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profiles</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/profiles_styles.css">
+    <link rel="stylesheet" href="../css/nav_styles.css">
+    <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="min-vh-100 d-flex align-items-center justify-content-center">
+
+    
+    <div class="menu-container bg-black bg-opacity-50 p-5 shadow-lg text-center position-relative">
+
+        <!-- Log-Out button -->
+        <div class="position-absolute top-0 end-0">
+
+            <!--admin dashboard button-->
+            <button 
+            id = "admin-dashboard-button"
+            type="button"
+            class="btn btn-outline-primary m-2">
+            Admin Dashboard
+            </button>
+             
+            <!--Update user button-->
+            <button 
+            id = "update-user-button"
+            type="button"
+            class="btn btn-outline-secondary m-2">
+            Change info
+            </button>
+
+            <button 
+             id = "logout-button"
+             type="button"
+             class="btn btn-outline-danger m-2">
+             Log-Out
+            </button>
+        </div>
+        
+        <!-- Cancel button -->
+        <button 
+            id = "cancel-button"
+            type="button"
+            class="btn btn-outline-secondary top-0 end-0 m-2">
+            Cancel changes
+        </button>
+
+        <div class="menu">
+
+
+            <h1 class="menu_title display-3 fw-bold text-white mb-5">
+                Who's watching?
+            </h1>
+            
+
+            <div id = "profiles" class="d-flex flex-wrap justify-content-center gap-4">
+
+            </div>
+
+            <div id="msg_box" class="mx-auto d-flex align-items-center justify-content-center">
+            </div>
+
+            <div class="mt-5">
+                <button type="button" id="remove-profile-button" class="profiles_menu_buttons btn btn-outline-secondary rounded-0 px-5 text-uppercase fw-bold mb-3 mb-md-0">
+                    remove profile
+                </button>
+                <button type="button" id="manage-profile-button" class="profiles_menu_buttons btn btn-outline-secondary rounded-0 px-5 text-uppercase fw-bold mb-3 mb-md-0">
+                    Manage Profiles
+                </button>
+                <button type="button" id="add-profile-button" class="profiles_menu_buttons btn btn-outline-secondary rounded-0 px-5 text-uppercase fw-bold mb-3 mb-md-0">
+                    Add new profile
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="module" src="../js/profiles_script.js"></script>
+</body>
+</html>
