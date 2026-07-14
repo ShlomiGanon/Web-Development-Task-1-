@@ -29,6 +29,14 @@ const toProfileSummary = (profile) =>
     };
 }
 
+const toLastWatchedSummary = (lastWatched) =>
+{
+    return lastWatched.map((entry) => ({
+        episode_id: entry.episode_id,
+        content_id: entry.content_id
+    }));
+}
+
 /**
  * Helper to convert an array of full Profile documents into an array of lightweight summaries.
  */
@@ -431,7 +439,7 @@ const watchMedia = async (req, res) =>
 
             if (!episode)
             {
-                return res.json({ success: false, message: "This content has no episodes yet", lastWatched: profile.last_watched });
+                return res.json({ success: false, message: "This content has no episodes yet", lastWatched: toLastWatchedSummary(profile.last_watched) });
             }
         }
 
@@ -456,7 +464,7 @@ const watchMedia = async (req, res) =>
             success: true,
             message: "Watch progress updated",
             episode: toEpisodeSummary(episode),
-            lastWatched: profile.last_watched
+            lastWatched: toLastWatchedSummary(profile.last_watched)
         });
         my_logger.ConsoleLog(`Watch progress updated successfully. [user_id: ${userId}, profile_id: ${profile._id}, content_id: ${content._id}, episode_id: ${episode._id}]`, my_logger.Log_Level.INFO);
         my_logger.OperationLog('watchMedia', 'Watch progress updated successfully.', { "user_id": userId, "profile_id": profile._id, "content_id": content._id, "episode_id": episode._id }, my_logger.Log_Level.INFO);
@@ -491,7 +499,7 @@ const getProfileDetails = async (req, res) =>
         {
             ...(toProfileSummary(profile)),
             likedContentIds: profile.liked_content_ids,
-            lastWatched: profile.last_watched
+            lastWatched: toLastWatchedSummary(profile.last_watched)
         };
         res.json({ success: true, profile: responseProfile });
         my_logger.ConsoleLog(`Profile details retrieved successfully. [user_id: ${userId}, profile_id: ${profile._id}]`, my_logger.Log_Level.INFO);

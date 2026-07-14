@@ -11,16 +11,19 @@ export class Profile
      * @param {string} profileName - Profile display name.
      * @param {number} [age=0] - Used for content age-gating.
      * @param {string} [ImageName] - Profile image filename.
-     * @param {Array<string>} [lastWatchedContentIds=[]]
-     * @param {Set<string>|Array<string>} [likedContentIds=[]]      
+     * @param {Array<{episode_id: string, content_id: string}>} [lastWatched=[]] - One entry per
+     *        content this profile has ever watched, holding the specific episode last watched
+     *        within that content (NOT a list of content ids). No `_id` field - the backend
+     *        deliberately strips the underlying record id before sending this over the wire.
+     * @param {Set<string>|Array<string>} [likedContentIds=[]]
      */
-    constructor(id, profileName, age = 0, ImageName, lastWatchedContentIds = [], likedContentIds = [])
+    constructor(id, profileName, age = 0, ImageName, lastWatched = [], likedContentIds = [])
     {
         this.id = id;
         this.profileName = profileName;
         this.age = age;
         this.ImageName = ImageName;
-        this.lastWatchedContentIds = Array.isArray(lastWatchedContentIds) ? lastWatchedContentIds : [];
+        this.lastWatched = Array.isArray(lastWatched) ? lastWatched : [];
 
         if (likedContentIds instanceof Set)
         {
@@ -36,16 +39,20 @@ export class Profile
     /**
      * Builds a Profile from a raw backend response object.
      *
-     * FIXED (verified against the real Profile mongoose schema and profileController.js -
-     * the previous version of this method assumed field names that don't actually exist
-     * on the backend):
-     * - The lightweight profile summary (createProfile / deleteProfile / updateProfile /
-     *   getProfile / updateAllProfiles) is built via toProfileSummary() and returns
-     *   { id, profileName, age, ImageName } only - no watch history / likes fields at all.
-     * - The full profile document (GET /profile/:profileId/details, getProfileDetails)
-     *   returns the raw Mongoose document AS-IS, with NO field renaming - so it has
-     *   `_id` (not `id`), `LastWatched_Content_IDs`, and `Liked_Content_IDs`, matching the
-     *   schema exactly. There is no "..._Media_IDs" naming anywhere on the backend.
+     * UPDATED for the current API:
+     * - The lightweight profile summary - returned by createProfile, deleteProfile,
+     *   updateProfile, saveProfiles, fetchAllProfiles, and fetchProfileById - is just
+     *   { id, profileName, age, ImageName }. No watch history / likes fields at all.
+     * - The full profile document (GET /profile/:profileId/details, fetchProfileDetails)
+     *   additionally returns:
+     *     - likedContentIds: array of content id strings
+     *     - lastWatched: array of { episode_id, content_id } - one entry per content ever
+     *       watched, holding the last episode watched within that content. The backend
+     *       explicitly strips the underlying record's own `_id` before sending this (see
+     *       toLastWatchedSummary() on the backend) - do not rely on an `_id` being present
+     *       on these entries, in this response or in the POST/watch responses below.
+     *   Both fields are already plain/renamed on the wire - there is no raw Mongoose
+     *   `LastWatched_Content_IDs`/`Liked_Content_IDs` naming to account for anymore.
      * @param {Object} rawObject
      * @returns {Profile|null}
      */
@@ -54,58 +61,65 @@ export class Profile
         if (!rawObject) return null;
         if (rawObject instanceof Profile) return rawObject;
 
-        // id: lightweight summaries already expose `id`; the full profile document
-        // (getProfileDetails) is a raw Mongoose doc and only has `_id`.
-        const id = rawObject.id ?? rawObject._id;
-        const lastWatchedIds = rawObject.lastWatchedContentIds ?? [];
+        const lastWatched = rawObject.lastWatched ?? [];
         const likedIds = rawObject.likedContentIds ?? [];
 
         return new Profile(
-            id,
+            rawObject.id,
             rawObject.profileName,
             rawObject.age,
             rawObject.ImageName,
-            lastWatchedIds,
+            lastWatched,
             likedIds
         );
     }
 
     /**
-     * Converts back to the shape the backend expects on write (PUT /profile/:profileId body).
+     * Converts back to the shape the backend expects on write - either the body of
+     * PUT /profile/:profileId, or one entry inside the `updates` array of PUT /profile/.
      *
-     * FIXED: the backend's updateProfile controller only reads profileName / age / ImageName
-     * from req.body - everything else (id, watch history, likes) is ignored if sent, since:
-     *   - the profile id belongs in the URL path (:profileId), not the body.
-     *   - watch history is only ever changed via POST /profile/:profileId/watch/:contentId.
+     * The backend only ever reads profileName / age / ImageName from these bodies:
+     *   - the profile id belongs in the URL path (or the `profileId` key of a bulk update
+     *     entry - see toBulkUpdateEntry() below), not in this payload.
+     *   - watch history is only ever changed via POST /profile/:profileId/watch/:contentId
+     *     (or its .../:episodeId variant).
      *   - likes are only ever changed via POST /profile/:profileId/likes/:contentId.
-     * Sending the extra fields used to be harmless (silently ignored) but is misleading and
-     * has been removed so this payload is an exact match for what the endpoint accepts.
      */
     toJSON()
     {
         return {
-            id: this.id,
             profileName: this.profileName,
             age: this.age,
             ImageName: this.ImageName
         };
     }
 
-    update_LastWatched_Content_IDs(New_LastWatched_Content_IDs)
+    /**
+     * Shape for one entry inside PUT /profile/'s `updates: [...]` array, which needs the
+     * profileId alongside the fields being changed.
+     */
+    toBulkUpdateEntry()
     {
-        const New_Array = Array.isArray(New_LastWatched_Content_IDs) ? New_LastWatched_Content_IDs : [];
-        this.lastWatchedContentIds = New_Array;
+        return {
+            profileId: this.id,
+            ...this.toJSON()
+        };
     }
 
-    update_wasLiked_Content_IDs(New_wasLiked_Content_IDs)
+    updateLastWatched(newLastWatched)
     {
-        if (New_wasLiked_Content_IDs instanceof Set)
+        this.lastWatched = Array.isArray(newLastWatched) ? newLastWatched : [];
+    }
+
+    updateLikedContentIds(newLikedContentIds)
+    {
+        if (newLikedContentIds instanceof Set)
         {
-            this.likedContentIds = New_wasLiked_Content_IDs;
+            this.likedContentIds = newLikedContentIds;
         }
         else
         {
-            const rawLikeIDs = Array.isArray(New_wasLiked_Content_IDs) ? New_wasLiked_Content_IDs : [];
+            const rawLikeIDs = Array.isArray(newLikedContentIds) ? newLikedContentIds : [];
             this.likedContentIds = new Set(rawLikeIDs);
         }
     }
@@ -118,17 +132,14 @@ export class Profile
 export class UserInfo
 {
     /**
-     * FIXED: added `id`, `birthday`, and `createdAt` - every user endpoint on the backend
-     * (register aside) returns a "safe_user" object shaped exactly as
-     * { id, email, phone, fullName, birthday, createdAt }. The previous version of this class
-     * silently dropped id/birthday/createdAt, which are needed for things like sending admin
-     * requests (needs id) or displaying the birthday/join-date in a UI.
+     * Every user endpoint (register aside) returns a "safe user" object shaped exactly as
+     * { id, email, phone, fullName, birthday, createdAt, permission_level }.
      *
      * NOTE: no backend endpoint returns a user bundled together with their profiles in one
      * response. GET /user/me and friends return ONLY the fields above - profiles must be
      * fetched separately via the Profile routes (fetchAllProfiles) and merged on the client
-     * if you want a combined view. `rawProfiles` will simply stay empty unless you pass them
-     * in yourself after a separate call.
+     * if a combined view is needed. `rawProfiles` stays empty unless passed in explicitly
+     * after a separate call.
      * @param {string} id
      * @param {string} email
      * @param {string} phone
@@ -138,7 +149,7 @@ export class UserInfo
      * @param {Array<Profile|Object>} [rawProfiles=[]]
      * @param {number} [permission_level]
      */
-    constructor(id, email, phone, fullName, birthday, createdAt, rawProfiles = [] , permission_level = undefined)
+    constructor(id, email, phone, fullName, birthday, createdAt, rawProfiles = [], permission_level = undefined)
     {
         this.id = id;
         this.email = email;
@@ -188,24 +199,25 @@ export class UserInfo
 export class ContentItem
 {
     /**
-     * FIXED: added `release_date` and `createdAt` - both are returned by every content
-     * endpoint on the backend and were previously dropped entirely (release_date is also
-     * what /content search results are sorted by, by default).
-     *  
-        id: content._id.toString(),
-        title: content.title,
-        description: content.description,
-        cover_image_name: content.cover_image_name,
-        type: content.type,
-        categories: content.categories,
-        release_date: content.release_date,
-        age_limit: content.age_limit,
-        likes: content.likes,
-        videoUrl: content.videoUrl,
-        createdAt: content.createdAt,
-        imdb_rating: content.imdb_rating
+     * UPDATED: `videoUrl` has been removed from ContentItem entirely. Video now lives only
+     * on Episodes - every watchable item, including a movie's single episode, is an Episode
+     * (see the Episode class below). Use the content/episode routes to fetch playback info.
+     *
+     * res.content shape (identical across getContentByID / getAllContentItems / admin
+     * createContent / admin updateContent):
+        id: string,
+        title: string,
+        description: string,
+        cover_image_name: string,
+        type: "movie" | "series",
+        categories: string[],
+        release_date: string,
+        age_limit: number,
+        likes: number,
+        createdAt: string,
+        imdb_rating: number
      */
-    constructor(id, title, cover_image_name, likes = 0, type, categories = [], description, age_limit = 0, videoUrl, release_date, createdAt, imdb_rating = null)
+    constructor(id, title, cover_image_name, likes = 0, type, categories = [], description, age_limit = 0, release_date, createdAt, imdb_rating = null)
     {
         this.id = id;
         this.title = title;
@@ -215,7 +227,6 @@ export class ContentItem
         this.categories = Array.isArray(categories) ? categories : [];
         this.description = description;
         this.age_limit = age_limit;
-        this.videoUrl = videoUrl;
         this.release_date = new Date(release_date);
         this.createdAt = new Date(createdAt);
         this.imdb_rating = imdb_rating;
@@ -224,6 +235,7 @@ export class ContentItem
     static fromJSON(rawObject)
     {
         if (!rawObject) return null;
+        if (rawObject instanceof ContentItem) return rawObject;
 
         return new ContentItem(
             rawObject.id,
@@ -234,21 +246,125 @@ export class ContentItem
             rawObject.categories,
             rawObject.description,
             rawObject.age_limit,
-            rawObject.videoUrl,
-            new Date(rawObject.release_date),
-            new Date(rawObject.createdAt),
+            rawObject.release_date,
+            rawObject.createdAt,
             rawObject.imdb_rating
+        );
+    }
+
+    /** Shape for POST /admin/content and PUT /admin/content/:contentId bodies. */
+    toJSON()
+    {
+        return {
+            title: this.title,
+            type: this.type,
+            release_date: this.release_date instanceof Date ? this.release_date.toISOString() : this.release_date,
+            description: this.description,
+            cover_image_name: this.cover_image_name,
+            categories: this.categories,
+            age_limit: this.age_limit
+        };
+    }
+}
+
+// ==========================================
+//                 Episode
+// ==========================================
+
+export class Episode
+{
+    /**
+     * Every watchable item is an Episode - including a movie's single episode. A movie's
+     * episode is still backed by a real Episode entry (season 1, episode 1) under the hood,
+     * but it's created/updated through the dedicated movie-video admin endpoint rather than
+     * the generic add/update episode endpoints, and callers never need to think about it as
+     * "season 1 episode 1" - just as "the movie's video".
+     * @param {string} id
+     * @param {string} contentId
+     * @param {number} seasonNumber
+     * @param {number} episodeNumber
+     * @param {string} title
+     * @param {string} videoUrl
+     */
+    constructor(id, contentId, seasonNumber, episodeNumber, title, videoUrl)
+    {
+        this.id = id;
+        this.contentId = contentId;
+        this.seasonNumber = seasonNumber;
+        this.episodeNumber = episodeNumber;
+        this.title = title;
+        this.videoUrl = videoUrl;
+    }
+
+    static fromJSON(rawObject)
+    {
+        if (!rawObject) return null;
+        if (rawObject instanceof Episode) return rawObject;
+
+        return new Episode(
+            rawObject.id,
+            rawObject.contentId,
+            rawObject.seasonNumber,
+            rawObject.episodeNumber,
+            rawObject.title,
+            rawObject.videoUrl
+        );
+    }
+}
+
+// ==========================================
+//                 Review
+// ==========================================
+
+export class Review
+{
+    /**
+     * One profile's rating (1-10) plus an optional comment (500 char limit), for one
+     * specific episode. A profile can have at most one review per episode - adding a second
+     * is rejected outright by the backend, not merged or overwritten. Adding/editing/deleting
+     * a review automatically recalculates that content's average_rating (and review_count,
+     * on delete).
+     * @param {string} id
+     * @param {string} contentId
+     * @param {string} episodeId
+     * @param {string} profileId
+     * @param {number} rating
+     * @param {string} [comment]
+     */
+    constructor(id, contentId, episodeId, profileId, rating, comment)
+    {
+        this.id = id;
+        this.contentId = contentId;
+        this.episodeId = episodeId;
+        this.profileId = profileId;
+        this.rating = rating;
+        this.comment = comment;
+    }
+
+    static fromJSON(rawObject)
+    {
+        if (!rawObject) return null;
+        if (rawObject instanceof Review) return rawObject;
+
+        return new Review(
+            rawObject.id,
+            rawObject.contentId,
+            rawObject.episodeId,
+            rawObject.profileId,
+            rawObject.rating,
+            rawObject.comment
         );
     }
 }
 
 /**
  * Abstract Class acting as an interface for the Backend API.
- * One method per backend route, grouped by resource (User, Admin, Profile, Content).
- * Defines the required contract for authentication, session management, and data sync.
+ * One method per backend route, grouped by resource (User, Profile, Content, Episode,
+ * Review, Admin). Defines the required contract for authentication, session management,
+ * and data sync.
  *
- * All "Maps to ..." notes below describe the CURRENT, VERIFIED behaviour of the backend
- * (confirmed directly against the route/controller/middleware/model source files).
+ * All admin-only actions now live under /api/admin, consolidated by resource type
+ * (users, content, reviews) rather than scattered across each resource's own base path.
  */
 export class Interface_BackendAPI
 {
@@ -267,14 +383,6 @@ export class Interface_BackendAPI
 
     /**
      * Maps to POST /user/register with { email, phone, password, fullName, birthday }.
-     * NOTE: fullName is split on the first space only - firstName = word 1, lastName = word 2,
-     * any extra words are silently ignored, and both must be letters-only (a-zA-Z).
-     * NOTE: phone must match the Israeli format ^05[0-9]{8}$.
-     * NOTE: password must be 4-16 characters.
-     * NOTE: the 18+ age check on `birthday` is currently ENABLED on the backend
-     * (ENABLE_18_AGE_LIMIT = true in scripts/constants.js).
-     * NOTE: on success, the backend does NOT return a token or user object - call login()
-     * separately right after a successful register().
      * @param {string} email
      * @param {string} phone
      * @param {string} password
@@ -299,8 +407,7 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to POST /user/logout (Authorization: Bearer <sessionToken>).
-     * No body required.
+     * Maps to POST /user/logout (Authorization: Bearer <sessionToken>). No body required.
      * @param {string} sessionToken
      * @returns {Promise<{success: boolean, message?: string}>}
      */
@@ -311,7 +418,6 @@ export class Interface_BackendAPI
 
     /**
      * Maps to GET /user/me (Authorization: Bearer <sessionToken>).
-     * FIXED: the backend's response field is `user`, not `data`.
      * @param {string} sessionToken
      * @returns {Promise<{success: boolean, user?: UserInfo, message?: string}>}
      */
@@ -322,11 +428,6 @@ export class Interface_BackendAPI
 
     /**
      * Maps to PUT /user/me with the fields to change: { password?, email?, phone?, fullName?, birthday? }.
-     * FIXED: the backend now supports all five fields (previously only email/phone worked).
-     * NOTE: birthday updates are also subject to the 18+ check (see register() above) and
-     * must not be a future date.
-     * FIXED: the backend's response field is `user`, not `data` - and it is populated even on
-     * most failure responses (with the pre-change user data), not just on success.
      * @param {string} sessionToken
      * @param {Object} changes
      * @returns {Promise<{success: boolean, message?: string, user?: UserInfo}>}
@@ -337,17 +438,16 @@ export class Interface_BackendAPI
     }
 
     // ==========================================
-    //         User Routes (admin only)
+    //   Admin Routes - Users (/api/admin/users)
     // ==========================================
 
     /**
-     * Maps to GET /user with search/filter query params (admin only).
-     * See User.searchFilterMap on the backend for supported keys
-     * (e.g. email_contains, phone_contains, fullname_contains, born_after, born_before,
-     * joined_after, joined_before, limit, skip, sort, sortOrder).
-     * NOTE: `sortOrder` only accepts the exact strings "greater_to_smaller" (descending,
-     * the default) or "smaller_to_greater" (ascending) - any other value, including "asc"/"desc",
-     * returns an error. getAllContentItems() below uses this same scheme.
+     * Maps to GET /admin/users with search/filter query params (admin only):
+     * email_contains, phone_contains, fullname_contains, born_after, born_before,
+     * joined_after, joined_before, limit, skip, sort, sortOrder.
+     * NOTE: `sortOrder` only accepts "greater_to_smaller" (default) or "smaller_to_greater" -
+     * any other value, including "asc"/"desc", returns an error. Same scheme applies to
+     * getAllContentItems() and searchReviews() below.
      * @param {string} sessionToken
      * @param {Object} [queryParams={}]
      * @returns {Promise<{success: boolean, users?: Array<UserInfo>, message?: string}>}
@@ -358,8 +458,7 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to GET /user/:user_id (admin only).
-     * FIXED: the backend's response field is `user`, not `data`.
+     * Maps to GET /admin/users/:user_id (admin only).
      * @param {string} sessionToken
      * @param {string} userId
      * @returns {Promise<{success: boolean, user?: UserInfo, message?: string}>}
@@ -370,8 +469,7 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to PUT /user/:user_id (admin only), same body/behaviour as updateActiveUserInfo().
-     * FIXED: the backend's response field is `user`, not `data`.
+     * Maps to PUT /admin/users/:user_id (admin only), same body/behaviour as updateActiveUserInfo().
      * @param {string} sessionToken
      * @param {string} userId
      * @param {Object} changes
@@ -383,7 +481,8 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to DELETE /user/:user_id (super admin only).
+     * Maps to DELETE /admin/users/:user_id (super admin only). Cascades to that user's
+     * profiles and reviews (content average ratings are recalculated afterward).
      * @param {string} sessionToken
      * @param {string} userId
      * @returns {Promise<{success: boolean, message?: string}>}
@@ -394,9 +493,10 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to PUT /user/:user_id/permission (admin only) with BODY { permission_level }.
-     * FIXED: permission_level is sent in the request BODY, not as a query string parameter.
+     * Maps to PUT /admin/users/:user_id/permission (admin only) with BODY { permission_level }.
      * permission_level: 0 = USER, 1 = ADMIN, 2 = SUPER_ADMIN.
+     * An admin cannot assign a level higher than their own, and cannot act on a user who is
+     * already at or above their own level.
      * @param {string} sessionToken
      * @param {string} userId
      * @param {number} permissionLevel
@@ -407,12 +507,65 @@ export class Interface_BackendAPI
         throw new Error("Method 'setUserPermissionLevel()' must be implemented.");
     }
 
+    /**
+     * Maps to GET /admin/users/:user_id/tokens_count (admin only) - number of active
+     * login tokens (sessions) a user currently has.
+     * NOTE: on success this response has no `message` field, only `success` + `tokens_count`.
+     * @param {string} sessionToken
+     * @param {string} userId
+     * @returns {Promise<{success: boolean, tokens_count?: number}>}
+     */
+    async getUserTokensCount(sessionToken, userId)
+    {
+        throw new Error("Method 'getUserTokensCount()' must be implemented.");
+    }
+
+    /**
+     * Maps to POST /admin/users/:user_id/kick (admin only) - invalidates all of a user's
+     * active tokens, forcing them to log in again everywhere. No body required.
+     * NOTE: response is only { success }, no `message` field.
+     * @param {string} sessionToken
+     * @param {string} userId
+     * @returns {Promise<{success: boolean}>}
+     */
+    async kickUser(sessionToken, userId)
+    {
+        throw new Error("Method 'kickUser()' must be implemented.");
+    }
+
+    /**
+     * Maps to POST /admin/users/:user_id/ban (admin only) with BODY { hours_to_ban }.
+     * Bans the user for the given number of hours - does NOT kick their existing sessions
+     * (call kickUser() separately if that's also needed).
+     * NOTE: response is only { success }, no `message` field.
+     * @param {string} sessionToken
+     * @param {string} userId
+     * @param {number} hoursToBan
+     * @returns {Promise<{success: boolean}>}
+     */
+    async banUser(sessionToken, userId, hoursToBan)
+    {
+        throw new Error("Method 'banUser()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /admin/users/:user_id/ban (admin only) - whether a user is currently banned.
+     * NOTE: response is only { success, is_banned }, no `message` field.
+     * @param {string} sessionToken
+     * @param {string} userId
+     * @returns {Promise<{success: boolean, is_banned?: boolean}>}
+     */
+    async isUserBanned(sessionToken, userId)
+    {
+        throw new Error("Method 'isUserBanned()' must be implemented.");
+    }
+
     // ==========================================
     //              Profile Routes
     // ==========================================
 
     /**
-     * Maps to POST /profile - creates a new default profile for the logged-in user.
+     * Maps to POST /profile/ - creates a new default profile for the logged-in user.
      * No body required. Limited to 4 profiles per user - if the limit is reached, `success`
      * is false but `profiles` still returns the current (unchanged) profile list.
      * @param {string} sessionToken
@@ -424,7 +577,7 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to GET /profile - all profiles belonging to the logged-in user.
+     * Maps to GET /profile/ - all profiles belonging to the logged-in user.
      * @param {string} sessionToken
      * @returns {Promise<{success: boolean, profiles?: Array<Profile>, message?: string}>}
      */
@@ -447,11 +600,7 @@ export class Interface_BackendAPI
 
     /**
      * Maps to GET /profile/:profileId/details - full profile document, including
-     * LastWatched_Content_IDs and Liked_Content_IDs.
-     * NOTE: on success the backend response has no `message` field, only `success` + `profile`.
-     * NOTE: this returns the raw Mongoose document (via getProfileDetails), so unlike every
-     * other profile endpoint it is NOT passed through toProfileSummary - the raw object has
-     * `_id` rather than `id`. Profile.fromJSON() already accounts for this.
+     * likedContentIds and lastWatched (see Profile.fromJSON for the exact shape).
      * @param {string} sessionToken
      * @param {string} profileId
      * @returns {Promise<{success: boolean, profile?: Profile, message?: string}>}
@@ -475,23 +624,20 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to PUT /profile with { updates: [{ profileId, profileName?, age?, ImageName? }] }.
+     * Maps to PUT /profile/ with { updates: [{ profileId, profileName?, age?, ImageName? }] }.
      * Bulk-updates multiple profiles belonging to the logged-in user in one call.
-     * NOTE: a profileId in the array that does not belong to the logged-in user is silently
-     * skipped (not an error) - check the returned `profiles` list to confirm what changed.
      * @param {string} sessionToken
-     * @param {Array} profiles
+     * @param {Array<{profileId: string, profileName?: string, age?: number, ImageName?: string}>} updates
      * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
      */
-    async saveProfiles(sessionToken, profiles)
+    async saveProfiles(sessionToken, updates)
     {
         throw new Error("Method 'saveProfiles()' must be implemented.");
     }
 
     /**
-     * Maps to DELETE /profile/:profileId.
-     * NOTE: a user's last remaining profile cannot be deleted - the request fails and
-     * `profiles` still returns the current (unchanged) profile list.
+     * Maps to DELETE /profile/:profileId. A user's last remaining profile cannot be deleted -
+     * the request fails and `profiles` still returns the current (unchanged) profile list.
      * @param {string} sessionToken
      * @param {string} profileId
      * @returns {Promise<{success: boolean, message?: string, profiles?: Array<Profile>}>}
@@ -503,34 +649,69 @@ export class Interface_BackendAPI
 
     /**
      * Maps to POST /profile/:profileId/likes/:contentId - toggles a like (add or remove).
-     * FIXED (verified against pressLike() in profileController.js): the backend's response
-     * field on success is `likedContentIds`, not `likedMediaIds`. (Note: the backend's own
-     * catch/error branch inconsistently uses `likedMediaIds: []` instead - harmless for us
-     * since we bail out on `!success` before reading this field either way.)
-     * NOTE: fails with an age-restriction error if the profile's age is below the content's
-     * age_limit.
      * @param {string} sessionToken
-     * @param {string} profileID
-     * @param {string} contentID
+     * @param {string} profileId
+     * @param {string} contentId
      * @returns {Promise<{success: boolean, message?: string, liked?: boolean, likedContentIds?: Array<string>}>}
      */
-    async toggleContentLike(sessionToken, profileID, contentID)
+    async toggleContentLike(sessionToken, profileId, contentId)
     {
         throw new Error("Method 'toggleContentLike()' must be implemented.");
     }
 
     /**
-     * Maps to POST /profile/:profileId/watch/:contentId - records a watch, moves it to the
-     * front of history, and trims history to the 5 most recent items.
-     * NOTE: same age-restriction check as toggleContentLike().
+     * Maps to POST /profile/:profileId/watch/:contentId - records that a profile just
+     * watched a piece of content, no specific episode given. Resumes from the profile's
+     * saved episode for that content if one exists, otherwise starts at season 1 episode 1.
      * @param {string} sessionToken
-     * @param {string} profileID
-     * @param {string} contentID
-     * @returns {Promise<{success: boolean, message?: string, watchHistory?: Array<string>}>}
+     * @param {string} profileId
+     * @param {string} contentId
+     * @returns {Promise<{success: boolean, message?: string, episode?: Episode, lastWatched?: Array<{episode_id: string, content_id: string}>}>}
      */
-    async selectContentItem(sessionToken, profileID, contentID)
+    async recordWatch(sessionToken, profileId, contentId)
     {
-        throw new Error("Method 'selectContentItem()' must be implemented.");
+        throw new Error("Method 'recordWatch()' must be implemented.");
+    }
+
+    /**
+     * Maps to POST /profile/:profileId/watch/:contentId/:episodeId - same as recordWatch(),
+     * but records this specific episode as watched instead of resuming/defaulting.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @param {string} contentId
+     * @param {string} episodeId
+     * @returns {Promise<{success: boolean, message?: string, episode?: Episode, lastWatched?: Array<{episode_id: string, content_id: string}>}>}
+     */
+    async recordWatchEpisode(sessionToken, profileId, contentId, episodeId)
+    {
+        throw new Error("Method 'recordWatchEpisode()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /profile/:profileId/other_profiles_recommendations - content that the
+     * user's OTHER profiles (same account) have watched or liked, excluding anything this
+     * profile has already watched or liked itself.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @returns {Promise<{success: boolean, message?: string, content?: Array<ContentItem>}>}
+     */
+    async getOtherProfilesRecommendations(sessionToken, profileId)
+    {
+        throw new Error("Method 'getOtherProfilesRecommendations()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /profile/:profileId/top_picks - up to 3 top-rated content items based on
+     * this profile's own taste (its top 3 most common categories among watched/liked content,
+     * excluding anything already watched or liked). Returns an empty list (not an error) if
+     * the profile has no watch/like history yet.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @returns {Promise<{success: boolean, message?: string, content?: Array<ContentItem>}>}
+     */
+    async getTopPicks(sessionToken, profileId)
+    {
+        throw new Error("Method 'getTopPicks()' must be implemented.");
     }
 
     // ==========================================
@@ -539,23 +720,19 @@ export class Interface_BackendAPI
 
     /**
      * Maps to GET /content/:contentId (public, no token required).
-     * FIXED: the backend's response field is `content`, not `data`.
-     * @param {string} contentID
+     * @param {string} contentId
      * @returns {Promise<{success: boolean, content?: ContentItem, message?: string}>}
      */
-    async getContentByID(contentID)
+    async getContentByID(contentId)
     {
         throw new Error("Method 'getContentByID()' must be implemented.");
     }
 
     /**
-     * Maps to GET /content (public). Supports optional search/filter query params -
-     * see Content.searchFilterMap on the backend (e.g. title_contains, exact_category,
-     * contain_category, exclude_category, type, released_after/before, min/max_age_limit,
-     * min_likes, limit, skip, sort, sortOrder). Called with no arguments, returns all content.
-     * FIXED: the backend's response field is `content`, not `data`.
-     * NOTE: `sortOrder` uses the same scheme as searchUsers() above: "greater_to_smaller" /
-     * "smaller_to_greater" only (any other value, including "asc"/"desc", is rejected).
+     * Maps to GET /content/ (public). Supports optional search/filter query params:
+     * title_contains, exact_category, contain_category, exclude_category, type,
+     * released_after, released_before, min_age_limit, max_age_limit, min_likes, limit, skip,
+     * sort, sortOrder. Called with no arguments, returns all content.
      * @param {Object} [queryParams={}]
      * @returns {Promise<{success: boolean, content?: Array<ContentItem>, message?: string}>}
      */
@@ -564,15 +741,63 @@ export class Interface_BackendAPI
         throw new Error("Method 'getAllContentItems()' must be implemented.");
     }
 
+    /**
+     * Maps to GET /content/:contentId/episodes (public). Only works for type "series".
+     * Returns episodes grouped by season - seasons[0] is season 1's episode list,
+     * seasons[1] is season 2's, etc.
+     * @param {string} contentId
+     * @returns {Promise<{success: boolean, message?: string, seasons?: Array<Array<Episode>>}>}
+     */
+    async getContentEpisodes(contentId)
+    {
+        throw new Error("Method 'getContentEpisodes()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /content/:contentId/episodes/:episodeId (public).
+     * @param {string} contentId
+     * @param {string} episodeId
+     * @returns {Promise<{success: boolean, message?: string, episode?: Episode}>}
+     */
+    async getEpisodeById(contentId, episodeId)
+    {
+        throw new Error("Method 'getEpisodeById()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /content/:contentId/episodes/:episodeId/next (public). Crosses into the
+     * next season if this was the last episode of its season. `episode` is absent if this
+     * was the final episode of the whole series.
+     * @param {string} contentId
+     * @param {string} episodeId
+     * @returns {Promise<{success: boolean, message?: string, episode?: Episode}>}
+     */
+    async getNextEpisode(contentId, episodeId)
+    {
+        throw new Error("Method 'getNextEpisode()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /content/:contentId/episodes/:episodeId/prev (public). Crosses back into
+     * the previous season if this was the first episode of its season. `episode` is absent
+     * if this was the very first episode of the series.
+     * @param {string} contentId
+     * @param {string} episodeId
+     * @returns {Promise<{success: boolean, message?: string, episode?: Episode}>}
+     */
+    async getPrevEpisode(contentId, episodeId)
+    {
+        throw new Error("Method 'getPrevEpisode()' must be implemented.");
+    }
+
     // ==========================================
-    //         Content Routes (admin only)
+    //  Admin Routes - Content (/api/admin/content)
     // ==========================================
 
     /**
-     * Maps to POST /content (admin only).
-     * Required fields: title, type ("movie"|"series"), release_date.
-     * Optional: description, cover_image_name, categories, age_limit, videoUrl.
-     * FIXED: the backend's response field is `content`, not `data`.
+     * Maps to POST /admin/content (admin only).
+     * Required: title, type ("movie"|"series"), release_date.
+     * Optional: description, cover_image_name, categories, age_limit.
      * @param {string} sessionToken
      * @param {Object} contentData
      * @returns {Promise<{success: boolean, message?: string, content?: ContentItem}>}
@@ -583,51 +808,178 @@ export class Interface_BackendAPI
     }
 
     /**
-     * Maps to PUT /content/:contentId (admin only).
-     * FIXED: the backend's response field is `content`, not `data`.
+     * Maps to PUT /admin/content/:contentId (admin only).
      * @param {string} sessionToken
-     * @param {string} contentID
+     * @param {string} contentId
      * @param {Object} changes
      * @returns {Promise<{success: boolean, message?: string, content?: ContentItem}>}
      */
-    async updateContent(sessionToken, contentID, changes)
+    async updateContent(sessionToken, contentId, changes)
     {
         throw new Error("Method 'updateContent()' must be implemented.");
     }
 
     /**
-     * Maps to DELETE /content/:contentId (admin only).
+     * Maps to DELETE /admin/content/:contentId (admin only).
      * @param {string} sessionToken
-     * @param {string} contentID
+     * @param {string} contentId
      * @returns {Promise<{success: boolean, message?: string}>}
      */
-    async deleteContent(sessionToken, contentID)
+    async deleteContent(sessionToken, contentId)
     {
         throw new Error("Method 'deleteContent()' must be implemented.");
     }
 
-    async getRecommendedCategories(sessionToken)
+    /**
+     * Maps to POST /admin/content/:contentId/episodes (admin only) - adds a new episode to
+     * a series. Movies cannot have episodes added this way - use setMovieVideo() instead.
+     * @param {string} sessionToken
+     * @param {string} contentId
+     * @param {{season_number: number, episode_number: number, title?: string, videoUrl?: string}} episodeData
+     * @returns {Promise<{success: boolean, message?: string, episode?: Episode}>}
+     */
+    async addEpisode(sessionToken, contentId, episodeData)
     {
-        throw new Error("Method 'getRecommendedCategories()' must be implemented.");
+        throw new Error("Method 'addEpisode()' must be implemented.");
     }
 
-    async getRecommendedCategoriesForUser(sessionToken, userId)
+    /**
+     * Maps to PUT /admin/content/:contentId/movie-video (admin only) with { videoUrl }.
+     * Creates or updates the single video for a movie (movies only). Internally this is
+     * still backed by a single Episode entry (season 1, episode 1), but the caller never
+     * needs to know that.
+     * @param {string} sessionToken
+     * @param {string} contentId
+     * @param {string} videoUrl
+     * @returns {Promise<{success: boolean, message?: string, episode?: Episode}>}
+     */
+    async setMovieVideo(sessionToken, contentId, videoUrl)
     {
-        throw new Error("Method 'getRecommendedCategoriesForUser()' must be implemented.");
+        throw new Error("Method 'setMovieVideo()' must be implemented.");
     }
 
-    async kickUser(sessionToken, userId)
+    /**
+     * Maps to PUT /admin/content/:contentId/episodes/:episodeId (admin only). Not restricted
+     * by content type - a movie's single episode can be edited too.
+     * @param {string} sessionToken
+     * @param {string} contentId
+     * @param {string} episodeId
+     * @param {{season_number?: number, episode_number?: number, title?: string, videoUrl?: string}} changes
+     * @returns {Promise<{success: boolean, message?: string, episode?: Episode}>}
+     */
+    async updateEpisode(sessionToken, contentId, episodeId, changes)
     {
-        throw new Error("Method 'kickUser()' must be implemented.");
+        throw new Error("Method 'updateEpisode()' must be implemented.");
     }
 
-    async banUser(sessionToken, userId, hoursToBan)
+    /**
+     * Maps to DELETE /admin/content/:contentId/episodes/:episodeId (admin only).
+     * @param {string} sessionToken
+     * @param {string} contentId
+     * @param {string} episodeId
+     * @returns {Promise<{success: boolean, message?: string}>}
+     */
+    async deleteEpisode(sessionToken, contentId, episodeId)
     {
-        throw new Error("Method 'banUser()' must be implemented.");
+        throw new Error("Method 'deleteEpisode()' must be implemented.");
     }
 
-    async isUserBanned(sessionToken, userId)
+    // ==========================================
+    //           Review Routes (/api/reviews)
+    // ==========================================
+
+    /**
+     * Maps to POST /reviews/:profileId/:contentId/:episodeId with { rating, comment? }.
+     * A profile can only review a given episode once - adding a second is rejected, not
+     * merged or overwritten. rating must be a number between 1 and 10. comment has a 500
+     * character limit. Adding a review automatically recalculates that content's
+     * average_rating and review_count.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @param {string} contentId
+     * @param {string} episodeId
+     * @param {number} rating
+     * @param {string} [comment]
+     * @returns {Promise<{success: boolean, message?: string, review?: Review}>}
+     */
+    async addReview(sessionToken, profileId, contentId, episodeId, rating, comment)
     {
-        throw new Error("Method 'isUserBanned()' must be implemented.");
+        throw new Error("Method 'addReview()' must be implemented.");
+    }
+
+    /**
+     * Maps to PUT /reviews/:profileId/:contentId/:episodeId with { rating?, comment? } -
+     * edits this profile's own review for a specific episode. Editing the rating
+     * automatically recalculates that content's average_rating.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @param {string} contentId
+     * @param {string} episodeId
+     * @param {{rating?: number, comment?: string}} changes
+     * @returns {Promise<{success: boolean, message?: string, review?: Review}>}
+     */
+    async updateReview(sessionToken, profileId, contentId, episodeId, changes)
+    {
+        throw new Error("Method 'updateReview()' must be implemented.");
+    }
+
+    /**
+     * Maps to DELETE /reviews/:profileId/:contentId/:episodeId - removes this profile's own
+     * review for a specific episode. Recalculates that content's average_rating and
+     * review_count.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @param {string} contentId
+     * @param {string} episodeId
+     * @returns {Promise<{success: boolean, message?: string}>}
+     */
+    async deleteReview(sessionToken, profileId, contentId, episodeId)
+    {
+        throw new Error("Method 'deleteReview()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /reviews/ (public, no login needed) with search/filter query params:
+     * content_id, episode_id, profile_id, user_id, rating, min_rating, max_rating,
+     * comment_starts, comment_ends, comment_contains, limit, skip, sort, sortOrder.
+     * Filter by episode_id to see all reviews of one episode, or by profile_id together
+     * with episode_id to find one profile's review of one episode.
+     * @param {Object} [queryParams={}]
+     * @returns {Promise<{success: boolean, message?: string, reviews?: Array<Review>}>}
+     */
+    async searchReviews(queryParams = {})
+    {
+        throw new Error("Method 'searchReviews()' must be implemented.");
+    }
+
+    // ==========================================
+    //  Admin Routes - Reviews (/api/admin/reviews)
+    // ==========================================
+
+    /**
+     * Maps to PUT /admin/reviews/:reviewId (admin only) with { rating?, comment? } - edits
+     * any review directly by its ID, regardless of who wrote it. Editing the rating
+     * automatically recalculates that content's average_rating.
+     * @param {string} sessionToken
+     * @param {string} reviewId
+     * @param {{rating?: number, comment?: string}} changes
+     * @returns {Promise<{success: boolean, message?: string, review?: Review}>}
+     */
+    async adminUpdateReview(sessionToken, reviewId, changes)
+    {
+        throw new Error("Method 'adminUpdateReview()' must be implemented.");
+    }
+
+    /**
+     * Maps to DELETE /admin/reviews/:reviewId (admin only) - deletes any review directly by
+     * its ID, regardless of who wrote it. Recalculates that content's average_rating and
+     * review_count.
+     * @param {string} sessionToken
+     * @param {string} reviewId
+     * @returns {Promise<{success: boolean, message?: string}>}
+     */
+    async adminDeleteReview(sessionToken, reviewId)
+    {
+        throw new Error("Method 'adminDeleteReview()' must be implemented.");
     }
 }
