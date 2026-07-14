@@ -9,13 +9,53 @@ import * as UI from "./ui-utils.js";
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 //=============== Session / Auth Bootstrap ===============
-// Order matters here: each check can redirect away, so later lines assume
-// everything above them already succeeded (token exists, user exists, etc).
-const token = ClientSessionManager.getSessionToken();
-if(!token)redirectToIndex();
-let active_user = (await Backend.fetchActiveUserInfo(token)).user;
-if(!active_user)redirectToIndex();
-if(!active_user.permission_level)redirectToIndex();
+// Order matters here: each check can redirect away. Unlike the original version, every
+// failure now stops the rest of this bootstrap immediately instead of falling through to
+// the next line.
+//
+function redirectToIndex(button_was_pressed = null)
+{
+    UI.LockUI(button_was_pressed);
+    UI.GoToLink("/");
+}
+
+async function initAdminSession()
+{
+    const session_token = ClientSessionManager.getSessionToken();
+    if (!session_token)
+    {
+        redirectToIndex();
+        return null;
+    }
+
+    const user_response = await Backend.fetchActiveUserInfo(session_token);
+    if (!user_response || !user_response.success || !user_response.user)
+    {
+        redirectToIndex();
+        return null;
+    }
+
+    const user = user_response.user;
+    if (!user.permission_level)
+    {
+        redirectToIndex();
+        return null;
+    }
+
+    return { session_token, user };
+}
+
+const admin_session = await initAdminSession();
+if (!admin_session)
+{
+    // We're already navigating away (redirectToIndex() above triggered it). Throwing here
+    // just stops the rest of this module - everything below assumes a valid token and
+    // active_user - from running while that navigation is in flight.
+    throw new Error("Not authorized for the admin dashboard - redirecting.");
+}
+
+const token = admin_session.session_token;
+let active_user = admin_session.user;
 let current_target = null;
 
 //=============== Permission Levels ===============
@@ -76,11 +116,6 @@ const FIELDS_CONTAINER_CLASSES = "col-12 row d-flex justify-content-evenly align
 const HAVE_VALUE_CLASS = "text-success";
 const NEW_VALUE_CLASS = "text-warning";
 
-function redirectToIndex(button_was_pressed = null)
-{
-    UI.LockUI(button_was_pressed);
-    UI.GoToLink("/");
-}
 //=============== Clearing Containers ===============
 function clear_selection_container()
 {
@@ -149,7 +184,22 @@ function create_button_row(buttons)
         const btn = document.createElement('button');
         btn.className = className;
         btn.textContent = text;
-        btn.addEventListener('click', onClick);
+        btn.addEventListener('click', async () =>
+        {
+            if (UI.isUILocked) return;
+            UI.LockUI(btn);
+            try
+            {
+                await onClick();
+            }
+            finally
+            {
+                // Some onClick handlers close the modal (removing `btn` from the DOM)
+                // before this resolves - UnlockUI() only touches global UI state, so it's
+                // always safe to call even if `btn` itself is already gone.
+                UI.UnlockUI();
+            }
+        });
         if (listenForEnter) add_filters_listener(btn);
         row.appendChild(btn);
     });
@@ -365,7 +415,7 @@ async function view_content()
         view_container.innerHTML = `
         <h1>Failed to get content</h1>
         <p>Please try again</p>
-        <p>${response.message}</p>
+        <p>${escapeHtml(response.message)}</p>
         `;
         console.log(response);
         return;
@@ -523,6 +573,7 @@ function rander_mode_selector()
     back_button.textContent = "Back to profiles";
     back_button.addEventListener("click", () => 
     {
+        if (UI.isUILocked) return;
         UI.LockUI(back_button);
         UI.ShowMessage("Redirecting to profiles...");
         setTimeout(() =>
@@ -742,6 +793,12 @@ function close_filters_window()
     }
 }
 
+function open_window(create_fn)
+{
+    if (filters_window) return;
+    filters_window = create_fn();
+}
+
 function add_filters_listener(enter_like_press_button)
 {
     const handler = (event) =>
@@ -794,6 +851,16 @@ async function update_user(user)
     // AND that differ from the user's current value get sent to the backend.
     for (const key in form_data)
     {
+        // 'password' is never present on the `user` object returned from the server (it's
+        // never sent back for security reasons), so the generic `!(key in user)` check
+        // below would always skip it - meaning a newly typed password was silently
+        // dropped and never sent to the backend. Handle it separately: any non-empty
+        // value is treated as a change.
+        if (key === 'password')
+        {
+            if (form_data[key] !== "") changes[key] = form_data[key];
+            continue;
+        }
         if (!(key in user)) continue;
         if (form_data[key] === "") continue; // empty input means "no change"
 
@@ -1025,7 +1092,7 @@ async function render_episodes_section(content)
         const add_episode_btn = document.createElement('button');
         add_episode_btn.className = 'btn btn-primary btn-lg mb-3';
         add_episode_btn.textContent = 'Add Episode';
-        add_episode_btn.addEventListener('click', () => filters_window = create_episode_window(content.id));
+        add_episode_btn.addEventListener('click', () => open_window(() => create_episode_window(content.id)));
         container.appendChild(add_episode_btn);
 
         if (current_target_episodes.length === 0)
@@ -1070,7 +1137,7 @@ async function render_episodes_section(content)
                 const edit_btn = document.createElement('button');
                 edit_btn.className = 'btn btn-secondary mx-1';
                 edit_btn.textContent = 'Edit';
-                edit_btn.addEventListener('click', () => filters_window = create_episode_window(content.id, episode));
+                edit_btn.addEventListener('click', () => open_window(() => create_episode_window(content.id, episode)));
                 btn_row.appendChild(edit_btn);
 
                 const delete_btn = document.createElement('button');
@@ -1119,7 +1186,19 @@ async function render_episodes_section(content)
         const set_btn = document.createElement('button');
         set_btn.className = 'btn btn-primary btn-lg mt-2';
         set_btn.textContent = 'Set Movie Video';
-        set_btn.addEventListener('click', () => set_movie_video_click(content.id, input));
+        set_btn.addEventListener('click', async () =>
+        {
+            if (UI.isUILocked) return;
+            UI.LockUI(set_btn);
+            try
+            {
+                await set_movie_video_click(content.id, input);
+            }
+            finally
+            {
+                UI.UnlockUI();
+            }
+        });
         container.appendChild(set_btn);
     }
 
@@ -1254,7 +1333,7 @@ async function update_episode(contentId, episode)
 
 function delete_episode_click(contentId, episode)
 {
-    filters_window = create_confirmation_window(
+    open_window(() => create_confirmation_window(
         `Are you sure you want to delete episode "S${episode.seasonNumber}E${episode.episodeNumber}"?`,
         async () =>
         {
@@ -1270,7 +1349,7 @@ function delete_episode_click(contentId, episode)
             close_filters_window();
             await view_content();
         }
-    );
+    ));
 }
 
 //=============== Review: Update Window ===============
@@ -1377,7 +1456,7 @@ function create_users_filters_window(filters)
         build_search_input_field(filters, 'joined_before', 'Before', 'date'),
     ];
     const sort_filters = [
-        build_search_select_field(filters, 'sort', 'Sort', ['createdAt', 'birthDate', 'fullName', 'email']),
+        build_search_select_field(filters, 'sort', 'Sort', ['createdAt', 'birthday', 'fullName', 'email']),
         build_search_select_field(filters, 'sortOrder', 'Sort Order', ['greater_to_smaller', 'smaller_to_greater']),
     ];
     const pagination_filters = [
@@ -1919,7 +1998,12 @@ async function ban_user_confirm(user, hours_to_ban)
     // A banned user shouldn't stay in the visible list, same as kick/delete below.
     users = users.filter(u => u.id !== user.id);
     if (current_target === user) current_target = null;
-    if(user.id === active_user.id)redirectToIndex();
+    if (user.id === active_user.id)
+    {
+        close_filters_window();
+        redirectToIndex();
+        return;
+    }
     main_renderer();
     close_filters_window();
 }
@@ -1981,8 +2065,7 @@ async function select_user_by_id(id)
     }
     current_target = response.user;
     close_filters_window();
-    await view_user();
-    rander_mode_selector();
+    await view_user(); // view_user() already calls rander_mode_selector() internally
 }
 
 async function select_content_by_id(id)
@@ -1996,8 +2079,7 @@ async function select_content_by_id(id)
     }
     current_target = response.content;
     close_filters_window();
-    await view_content();
-    rander_mode_selector();
+    await view_content(); // view_content() already calls rander_mode_selector() internally
 }
 
 // See the note above create_select_by_id_window() - this can only find a match among
@@ -2013,8 +2095,7 @@ async function select_review_by_id(id)
     }
     current_target = found;
     close_filters_window();
-    view_review();
-    rander_mode_selector();
+    view_review(); // view_review() already calls rander_mode_selector() internally
 }
 
 // NOTE: relies on Backend.findUserByProfileId(), which maps to a new admin endpoint
@@ -2031,12 +2112,12 @@ async function select_user_by_profile_id(profileId)
     }
     current_target = response.user;
     close_filters_window();
-    await view_user();
-    rander_mode_selector();
+    await view_user(); // view_user() already calls rander_mode_selector() internally
 }
 
 //=============== Confirmation / Delete ===============
-function create_confirmation_window(message, onConfirm)
+
+function create_confirmation_window(message, onConfirm, confirmText = 'Delete')
 {
     const { overlay, content } = create_modal_shell('Are you sure?', {
         widthClass: 'col-10 col-md-6',
@@ -2055,7 +2136,7 @@ function create_confirmation_window(message, onConfirm)
 
     content.appendChild(create_button_row([
         { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
-        { text: 'Delete', className: 'btn btn-danger btn-lg', onClick: async () => { await onConfirm(); }, listenForEnter: true },
+        { text: confirmText, className: 'btn btn-danger btn-lg', onClick: async () => { await onConfirm(); }, listenForEnter: true },
     ]));
 
     document.body.appendChild(overlay);
@@ -2070,7 +2151,7 @@ function delete_content_click(content)
         return;
     }
 
-    filters_window = create_confirmation_window(
+    open_window(() => create_confirmation_window(
         `Are you sure you want to delete "${content.title}"?`,
         async () =>
         {
@@ -2088,7 +2169,7 @@ function delete_content_click(content)
             main_renderer();
             close_filters_window();
         }
-    );
+    ));
 }
 
 function delete_user_click(user)
@@ -2099,7 +2180,7 @@ function delete_user_click(user)
         return;
     }
 
-    filters_window = create_confirmation_window(
+    open_window(() => create_confirmation_window(
         `Are you sure you want to delete "${user.fullName}"?`,
         async () =>
         {
@@ -2117,7 +2198,7 @@ function delete_user_click(user)
             main_renderer();
             close_filters_window();
         }
-    );
+    ));
 }
 
 function delete_review_click(review)
@@ -2128,7 +2209,7 @@ function delete_review_click(review)
         return;
     }
 
-    filters_window = create_confirmation_window(
+    open_window(() => create_confirmation_window(
         `Are you sure you want to delete this review (Rating: ${review.rating}/10)?`,
         async () =>
         {
@@ -2146,7 +2227,7 @@ function delete_review_click(review)
             main_renderer();
             close_filters_window();
         }
-    );
+    ));
 }
 
 function kick_user_click(user)
@@ -2156,7 +2237,7 @@ function kick_user_click(user)
         UI.ShowErrorMessage("No user selected");
         return;
     }
-    filters_window = create_confirmation_window(
+    open_window(() => create_confirmation_window(
         `Are you sure you want to kick "${user.fullName}"?`,
         async () =>
         {
@@ -2169,11 +2250,17 @@ function kick_user_click(user)
             }
             UI.ShowMessage("User kicked successfully");
             users = users.filter(u => u.id !== user.id);
-            if(user.id === active_user.id)redirectToIndex();
+            if (user.id === active_user.id)
+            {
+                close_filters_window();
+                redirectToIndex();
+                return;
+            }
             main_renderer();
             close_filters_window();
-        }
-    );
+        },
+        'Kick' 
+    ));
 }
 
 //=============== Main Renderer ===============
@@ -2203,15 +2290,15 @@ function main_renderer()
             });
             render_controll_container([
                 {name: "Kick", primary: true, function: () => kick_user_click(current_target)},
-                {name: "Search", function: () => filters_window = create_users_filters_window(users_filters)},
-                {name: "Select by ID", function: () => filters_window = create_select_by_id_window('User', select_user_by_id)},
-                {name: "Select by Profile ID", function: () => filters_window = create_select_by_id_window('Profile', select_user_by_profile_id)},
-                {name: "Update", function: () => filters_window = create_update_user_window(current_target)},
+                {name: "Search", function: () => open_window(() => create_users_filters_window(users_filters))},
+                {name: "Select by ID", function: () => open_window(() => create_select_by_id_window('User', select_user_by_id))},
+                {name: "Select by Profile ID", function: () => open_window(() => create_select_by_id_window('Profile', select_user_by_profile_id))},
+                {name: "Update", function: () => open_window(() => create_update_user_window(current_target))},
                 {name: "Delete", function: () => delete_user_click(current_target)},
                 {name: "My User", function: () => {current_target = active_user; view_user()}},
-                {name: "Set Permission", function: () => filters_window = create_set_permission_window(current_target)},
-                {name: "Ban", primary: true, function: () => filters_window = create_ban_user_window(current_target)},
-                {name: "Statistics", function: () => filters_window = create_users_statistics_window()},
+                {name: "Set Permission", function: () => open_window(() => create_set_permission_window(current_target))},
+                {name: "Ban", primary: true, function: () => open_window(() => create_ban_user_window(current_target))},
+                {name: "Statistics", function: () => open_window(() => create_users_statistics_window())},
             ]);
             rander_selection_container_to_users();
             view_user();
@@ -2232,12 +2319,12 @@ function main_renderer()
                 selection_counter.style.opacity = "1";
             });
             render_controll_container([
-                {name: "Add", primary: true, function: () => filters_window = create_update_content_window()},
-                {name: "Search", function: () => filters_window = create_contents_filters_window(contents_filters)},
-                {name: "Select by ID", function: () => filters_window = create_select_by_id_window('Content', select_content_by_id)},
-                {name: "Update", primary: true, function: () => filters_window = create_update_content_window(current_target)},
+                {name: "Add", primary: true, function: () => open_window(() => create_update_content_window())},
+                {name: "Search", function: () => open_window(() => create_contents_filters_window(contents_filters))},
+                {name: "Select by ID", function: () => open_window(() => create_select_by_id_window('Content', select_content_by_id))},
+                {name: "Update", primary: true, function: () => open_window(() => create_update_content_window(current_target))},
                 {name: "Delete", function: () => delete_content_click(current_target)},
-                {name: "Statistics", function: () => filters_window = create_content_statistics_window()},
+                {name: "Statistics", function: () => open_window(() => create_content_statistics_window())},
             ]);
             rander_selection_container_to_contents();
             view_content();
@@ -2258,11 +2345,11 @@ function main_renderer()
                 selection_counter.style.opacity = "1";
             });
             render_controll_container([
-                {name: "Search", function: () => filters_window = create_reviews_filters_window(reviews_filters)},
-                {name: "Select by ID", function: () => filters_window = create_select_by_id_window('Review', select_review_by_id)},
-                {name: "Update", primary: true, function: () => filters_window = create_update_review_window(current_target)},
+                {name: "Search", function: () => open_window(() => create_reviews_filters_window(reviews_filters))},
+                {name: "Select by ID", function: () => open_window(() => create_select_by_id_window('Review', select_review_by_id))},
+                {name: "Update", primary: true, function: () => open_window(() => create_update_review_window(current_target))},
                 {name: "Delete", function: () => delete_review_click(current_target)},
-                {name: "Statistics", function: () => filters_window = create_reviews_statistics_window()},
+                {name: "Statistics", function: () => open_window(() => create_reviews_statistics_window())},
             ]);
             rander_selection_container_to_reviews();
             view_review();

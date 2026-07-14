@@ -57,6 +57,17 @@ function currentRenderMode()
     return isEditing ? RENDER_MODE.EDIT : RENDER_MODE.VIEW;
 }
 
+function escapeHtml(value)
+{
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function ShowCancelButton()
 {
     elements.cancelButton.style.visibility = "visible";
@@ -231,16 +242,19 @@ async function changeProfileImage(profile)
  */
 function renderProfileComponent(profile, tagName = RENDER_MODE.VIEW)
 {
+    const safeName = escapeHtml(profile.profileName);
+    const safeImage = escapeHtml(profile.ImageName);
+
     if (tagName === RENDER_MODE.EDIT && (changeType === CHANGE_TYPE.TEXT || changeType === CHANGE_TYPE.NONE))
     {
         return `
             <div>
                 <div class="profile" id="profile${profile.id}" style="cursor: pointer;">
                     <div class="profile_image">
-                        <img src="../assets/profiles_images/${profile.ImageName}" alt="${profile.profileName}" class="img-fluid border border-3 border-dark">
+                        <img src="../assets/profiles_images/${safeImage}" alt="${safeName}" class="img-fluid border border-3 border-dark">
                     </div>
                 </div>
-                <input id="profile_input_${profile.id}" autocomplete="off" type="text" class="profile_input mt-3 text-secondary text-center" value="${profile.profileName}">
+                <input id="profile_input_${profile.id}" autocomplete="off" type="text" class="profile_input mt-3 text-secondary text-center" value="${safeName}">
             </div>
         `;
     }
@@ -249,10 +263,10 @@ function renderProfileComponent(profile, tagName = RENDER_MODE.VIEW)
         return `
             <div class="profile" id="profile${profile.id}" style="cursor: pointer;">
                 <div class="profile_image">
-                    <img src="../assets/profiles_images/${profile.ImageName}" alt="${profile.profileName}" class="img-fluid border border-3 border-dark">
+                    <img src="../assets/profiles_images/${safeImage}" alt="${safeName}" class="img-fluid border border-3 border-dark">
                 </div>
                 <div class="profile_name mt-3 text-secondary text-center" id="profile_name_${profile.id}">
-                    ${profile.profileName}
+                    ${safeName}
                 </div>
             </div>
         `;
@@ -328,6 +342,8 @@ function unlockUIAndProfiles()
 
 async function ManageProfiles_Click()
 {
+    if (UI.isUILocked) return;
+
     if(!isEditing)
     {
         UI.ShowMessage("לחץ על התמונה כדי לשנות אותה");
@@ -343,7 +359,24 @@ async function ManageProfiles_Click()
 
     if (isEditing && changeType)
     {
-        await saveEditedProfiles();
+        // lock the UI during the save request, and only leave edit mode if the
+        // save actually succeeded.
+        UI.LockUI(elements.manageProfileButton);
+        let saved = false;
+        try
+        {
+            saved = await saveEditedProfiles();
+        }
+        finally
+        {
+            UI.UnlockUI();
+        }
+
+        if (!saved)
+        {
+            renderProfiles(RENDER_MODE.EDIT);
+            return; // stay in edit mode so the user can retry or cancel
+        }
     }
 
     isEditing = !isEditing;
@@ -356,19 +389,35 @@ async function AddProfile_Click()
 {
     if (UI.isUILocked) return;
 
-    const response = await Backend.createProfile(sessionToken);
-    if (!response.success)
+    // lock the UI while the request is in flight, so a fast double-click can't
+    // fire two create-profile requests.
+    UI.LockUI(elements.addProfileButton);
+    try
     {
-        UI.ShowErrorMessage(response.message);
+        const response = await Backend.createProfile(sessionToken);
+        if (!response.success)
+        {
+            UI.ShowErrorMessage(response.message);
+        }
+        else
+        {
+            UI.ShowMessage("הפרופיל נוסף בהצלחה");
+        }
+        // createProfile() returns the current profiles list whether it succeeded or not
+        // (e.g. when the 4-profile limit is hit), so no separate fallback fetch is needed.
+        profiles = response.profiles;
     }
-    else
+    catch (error)
     {
-        UI.ShowMessage("הפרופיל נוסף בהצלחה");
+        console.error("createProfile request failed:", error);
+        UI.ShowErrorMessage("שגיאה בהוספת פרופיל, נסה שוב");
+        // profiles is left as-is here - we don't know what the server actually did.
     }
-    // createProfile() returns the current profiles list whether it succeeded or not
-    // (e.g. when the 4-profile limit is hit), so no separate fallback fetch is needed.
-    profiles = response.profiles;
-    renderProfiles(currentRenderMode());
+    finally
+    {
+        UI.UnlockUI();
+        renderProfiles(currentRenderMode());
+    }
 }
 
 function RemoveProfile_Click()
@@ -388,7 +437,7 @@ function RemoveProfile_Click()
     UI.ShowMessage("לחץ על פרופיל כדי למחוק אותו");
 }
 
-// Validates and persists the currently edited profile names (called when leaving edit mode).
+
 async function saveEditedProfiles()
 {
     for (const profile of profiles)
@@ -397,26 +446,41 @@ async function saveEditedProfiles()
         if (input && input.value.trim() === "")
         {
             UI.ShowErrorMessage(`שם הפרופיל לא יכול להיות ריק`);
-            return;
+            return false;
         }
     }
 
-    profiles.forEach(profile =>
+    // Build the payload to send without touching the live `profiles` array yet.
+    const updatedProfiles = profiles.map(profile =>
     {
         const input = document.getElementById(`profile_input_${profile.id}`);
-        if (input) profile.profileName = input.value;
+        if (!input) return profile;
+        const clone = Profile.fromJSON(JSON.parse(JSON.stringify(profile)));
+        clone.profileName = input.value;
+        return clone;
     });
 
-    const response = await Backend.saveProfiles(sessionToken, profiles);
-    if (!response.success)
+    try
     {
-        UI.ShowErrorMessage(response.message);
-        console.error("Error: " + response.message);
-    }
-    else
-    {
+        const response = await Backend.saveProfiles(sessionToken, updatedProfiles);
+        if (!response.success)
+        {
+            UI.ShowErrorMessage(response.message);
+            console.error("Error: " + response.message);
+            return false;
+        }
+
+        // Only now, after server confirmation, do we commit the new names locally.
+        profiles = updatedProfiles;
         UI.ShowMessage("הפרופילים נשמרו בהצלחה");
         markAsUnchanged();
+        return true;
+    }
+    catch (error)
+    {
+        console.error("saveProfiles request failed:", error);
+        UI.ShowErrorMessage("שגיאה בשמירת הפרופילים, נסה שוב");
+        return false;
     }
 }
 
@@ -433,7 +497,11 @@ async function confirmAndDeleteProfile(profile)
         return;
     }
     const confirmed = confirm(`Are you sure you want to delete profile "${profile.profileName}"?`);
-    if (confirmed)
+    if (!confirmed) return;
+
+    if (UI.isUILocked) return;
+    UI.LockUI(null);
+    try
     {
         const response = await Backend.deleteProfile(sessionToken, profile.id);
 
@@ -450,7 +518,16 @@ async function confirmAndDeleteProfile(profile)
         // (e.g. when trying to delete the last remaining profile), so no separate
         // fallback fetch is needed.
         profiles = response.profiles;
-
+    }
+    catch (error)
+    {
+        console.error("deleteProfile request failed:", error);
+        UI.ShowErrorMessage("שגיאה במחיקת הפרופיל, נסה שוב");
+        // profiles is left as-is here - we don't know what the server actually did.
+    }
+    finally
+    {
+        UI.UnlockUI();
         renderProfiles(RENDER_MODE.VIEW);
     }
 }
@@ -469,6 +546,12 @@ async function update_user(user)
 
     for (const key in form_data)
     {
+        if (key === 'password')
+        {
+            if (form_data[key] !== "") changes[key] = form_data[key];
+            continue;
+        }
+
         if (!(key in user)) continue;
         if (form_data[key] === "") continue;
 
@@ -563,21 +646,33 @@ async function Profile_Click(profile)
 
 async function Logout_Click()
 {
+    if (UI.isUILocked) return;
+
     lockUIAndProfiles(elements.logoutButton);
-    const response = await Backend.logout(sessionToken);
-    if (response && response.success)
+    try
     {
-        ClientSessionManager.deleteSessionToken();
-        ClientSessionManager.deleteActiveProfileId();
-        UI.ShowMessage("התנתקות בוצעה בהצלחה , מתבצעת העברה...");
-        setTimeout(() =>
+        const response = await Backend.logout(sessionToken);
+        if (response && response.success)
         {
-            UI.GoToLink('../html/login_menu.html');
-        }, 2000);
+            ClientSessionManager.deleteSessionToken();
+            ClientSessionManager.deleteActiveProfileId();
+            UI.ShowMessage("התנתקות בוצעה בהצלחה , מתבצעת העברה...");
+            setTimeout(() =>
+            {
+                UI.GoToLink('../html/login_menu.html');
+            }, 2000);
+            // Intentionally left locked here - we're already navigating away.
+        }
+        else
+        {
+            UI.ShowErrorMessage(response?.message || "שגיאה בהתנתקות, נסה שוב");
+            unlockUIAndProfiles();
+        }
     }
-    else
+    catch (error)
     {
-        UI.ShowErrorMessage(response.message);
+        console.error("Logout request failed:", error);
+        UI.ShowErrorMessage("שגיאה בהתנתקות, נסה שוב");
         unlockUIAndProfiles();
     }
 }
@@ -694,7 +789,19 @@ function create_button_row(buttons)
         const btn = document.createElement('button');
         btn.className = className;
         btn.textContent = text;
-        btn.addEventListener('click', onClick);
+        btn.addEventListener('click', async () =>
+        {
+            if (UI.isUILocked) return;
+            UI.LockUI(btn);
+            try
+            {
+                await onClick();
+            }
+            finally
+            {
+                UI.UnlockUI();
+            }
+        });
         if (listenForEnter) add_filters_listener(btn);
         row.appendChild(btn);
     });

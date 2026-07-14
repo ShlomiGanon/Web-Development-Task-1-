@@ -4,6 +4,25 @@ const User = require('../models/user');
 const Review = require('../models/review');
 const Profile = require('../models/profile');
 const { safe_user } = require('./user_controller');
+
+// FIX: maps the public-facing sort keys (as sent by the frontend) to the actual
+// Mongoose schema field names on User. Previously `req.query.sort` was passed straight
+// into `.sort({ [sort]: sortOrder })` with no translation - so sorting by "fullName" or
+// "birthday" (the frontend's field names) silently did nothing, since the actual schema
+// fields are `full_name` and `birth_date`. MongoDB doesn't error when sorting by a
+// nonexistent field - it just treats every document as equal for that key, so the sort
+// had no visible effect. Only "createdAt" and "email" happened to work, since those
+// names matched the real schema field names by coincidence.
+// This also acts as a whitelist, so an arbitrary/unexpected `sort` value (e.g. an
+// internal-only field like "password") can never be used to sort on.
+const USER_SORT_FIELD_MAP =
+{
+    createdAt: 'createdAt',
+    birthday: 'birth_date',
+    fullName: 'full_name',
+    email: 'email'
+};
+
 /**
  * Set permission level for a user
  * @param {Object} req - The request object
@@ -64,7 +83,13 @@ const searchUsers = async (req, res) =>
             const query = User.buildQuery(req.query);
             const limit = req.query.limit || 10;
             const skip = req.query.skip || 0;
-            const sort = req.query.sort || 'createdAt';
+            const requestedSort = req.query.sort || 'createdAt';
+            const sort = USER_SORT_FIELD_MAP[requestedSort];
+            if (!sort)
+            {
+                return res.json({ success: false, message: `Invalid sort field! [use one of: ${Object.keys(USER_SORT_FIELD_MAP).join(', ')}]` });
+            }
+
             let sortOrder = 'desc';
             if(req.query.sortOrder == 'greater_to_smaller')
             {
