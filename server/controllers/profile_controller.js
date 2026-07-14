@@ -5,6 +5,7 @@ const Content = require('../models/content');
 const Episode = require('../models/episode');
 const { MAX_LAST_WATCHED_CONTENT_LIMIT } = require('../scripts/constants');
 const my_logger = require('../scripts/my_logger');
+const { safe_user } = require('./user_controller');
 const { toEpisodeSummary } = require('./content_controller');
 
 /**
@@ -512,6 +513,54 @@ const getProfileDetails = async (req, res) =>
         res.json({ success: false, message: "Internal server error" });
     }
 }
+ 
+/**
+ * Given a profile ID, finds and returns the User document that owns it (admin only).
+ * @param {Object} req - The request object
+ * @param {Object} res - The response object
+ * @returns {Promise<Object>} - The response object
+ */
+//req.params: { profileId: string }
+//res.json: { success: boolean, message: string, user?: Object }
+const findUserByProfileId = async (req, res) =>
+{
+    try
+    {
+        const { profileId } = req.params;
+        if (!profileId)
+        {
+            return res.json({ success: false, message: 'Profile ID is missing' });
+        }
+        const profile = await Profile.findById(profileId);
+        if (!profile)
+        {
+            return res.json({ success: false, message: 'Profile not found' });
+        }
+ 
+        // ASSUMPTION - see file header: adjust `profile.user_id` if your schema names the
+        // owning-user reference field differently.
+        const user = await User.findById(profile.user_id);
+        if (!user)
+        {
+            return res.json({ success: false, message: 'Owning user not found (dangling profile reference)' });
+        }
+ 
+        // Mirrors the "safe user" shape returned everywhere else - swap for your existing
+        // toUserSummary()-style helper if one already exists, for consistency.
+        const userSummary = safe_user(user);
+ 
+        res.json({ success: true, message: 'User found successfully', user: userSummary });
+        my_logger.ConsoleLog(`User found by profile id successfully. [profile_id: ${profileId}, user_id: ${user._id}]`, my_logger.Log_Level.INFO);
+        my_logger.OperationLog('findUserByProfileId', 'User found by profile id.', { "admin_user_id": req.admin_user_id, "profile_id": profileId, "user_id": user._id }, my_logger.Log_Level.INFO);
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error finding user by profile id: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('findUserByProfileId', 'Error finding user by profile id.', { "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: 'Internal server error' });
+    }
+}
+ 
 
 module.exports =
 {
@@ -522,5 +571,6 @@ module.exports =
     updateAllProfiles,
     pressLike,
     watchMedia,
-    getProfileDetails
+    getProfileDetails,
+    findUserByProfileId
 };

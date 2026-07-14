@@ -42,7 +42,7 @@
     <!-- CONTENT -->
      
     <div class="container pt-5 mt-5">
-        <section class="position-relative d-flex flex-column text-center bg-dark rounded border border-secondary mb-2 text-white justify-content-center align-items-center">
+        <section id="video_player_section" class="position-relative d-flex flex-column text-center bg-dark rounded border border-secondary mb-2 text-white justify-content-center align-items-center d-none">
             <h1 id="screen_title" class="display-4 p-3 text-light position-absolute top-0 z-2"></h1>
             <div class="ratio ratio-16x9">
                 <video id="screen_video" controls>
@@ -51,6 +51,15 @@
             </div>
         </section>
 
+
+        <!-- Reviews for whichever episode is currently playing (movie's single episode, or
+             whichever series episode was just selected). Sits above the content details /
+             episode-picker area. -->
+        <section id="reviews_section" class="reviews_section p-5 rounded border border-secondary mb-4 d-none">
+            <h2 id="reviews_text" class="display-4 me-5">Reviews</h2>
+            <div id="review_form_container" class="mb-3"></div>
+            <div id="reviews_list_container" class="row g-3"></div>
+        </section>
 
         <section class="last_watched p-5 rounded border border-secondary mb-4">
             <h2 id = "last_watched_text" class="display-4 me-5"></h2>

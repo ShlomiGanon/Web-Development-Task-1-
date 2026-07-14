@@ -1,5 +1,5 @@
 import * as Constants from '../constances.js';
-import { Interface_BackendAPI, UserInfo, Profile, ContentItem } from './backend-interface.js';
+import { Interface_BackendAPI, UserInfo, Profile, ContentItem, Episode, Review } from './backend-interface.js';
 
 export class HttpClient extends Interface_BackendAPI
 {
@@ -41,42 +41,77 @@ export class HttpClient extends Interface_BackendAPI
     async updateActiveUserInfo(sessionToken, changes)
     {
         const result = await this._request('PUT', '/user/me', { token: sessionToken, body: changes });
-        // backend returns `user` on most failures too (pre-change data), not just on success
         return { ...result, user: result.user ? UserInfo.fromJSON(result.user) : undefined };
     }
 
     // ==========================================
-    //         User Routes (admin only)
+    //   Admin Routes - Users (/api/admin/users)
     // ==========================================
 
-    // sortOrder is "greater_to_smaller" / "smaller_to_greater" only (same scheme as content search below)
+    // sortOrder is "greater_to_smaller" / "smaller_to_greater" only (same scheme as content/review search)
     async searchUsers(sessionToken, queryParams = {})
     {
-        const result = await this._request('GET', '/user/', { token: sessionToken, query: queryParams });
+        const result = await this._request('GET', '/admin/users', { token: sessionToken, query: queryParams });
         return { ...result, users: (result.users ?? []).map(u => UserInfo.fromJSON(u)) };
     }
 
     async fetchUserById(sessionToken, userId)
     {
-        const result = await this._request('GET', `/user/${userId}`, { token: sessionToken });
+        const result = await this._request('GET', `/admin/users/${userId}`, { token: sessionToken });
         return { ...result, user: result.user ? UserInfo.fromJSON(result.user) : undefined };
     }
 
     async updateUserById(sessionToken, userId, changes)
     {
-        const result = await this._request('PUT', `/user/${userId}`, { token: sessionToken, body: changes });
+        const result = await this._request('PUT', `/admin/users/${userId}`, { token: sessionToken, body: changes });
         return { ...result, user: result.user ? UserInfo.fromJSON(result.user) : undefined };
     }
 
+    // super admin only - cascades to that user's profiles and reviews
     async deleteUser(sessionToken, userId)
     {
-        return await this._request('DELETE', `/user/${userId}`, { token: sessionToken });
+        return await this._request('DELETE', `/admin/users/${userId}`, { token: sessionToken });
     }
 
-    // permission_level goes in the request body (not a query param, despite the route name)
+    // permission_level: 0=USER, 1=ADMIN, 2=SUPER_ADMIN - goes in the request body
     async setUserPermissionLevel(sessionToken, userId, permissionLevel)
     {
-        return await this._request('PUT', `/user/${userId}/permission`, { token: sessionToken, body: { permission_level: permissionLevel } });
+        return await this._request('PUT', `/admin/users/${userId}/permission`, { token: sessionToken, body: { permission_level: permissionLevel } });
+    }
+
+    // response is only { success, tokens_count } - no `message` field
+    async getUserTokensCount(sessionToken, userId)
+    {
+        return await this._request('GET', `/admin/users/${userId}/tokens_count`, { token: sessionToken });
+    }
+
+    // invalidates all of a user's active tokens. response is only { success }
+    async kickUser(sessionToken, userId)
+    {
+        return await this._request('POST', `/admin/users/${userId}/kick`, { token: sessionToken });
+    }
+
+    // does NOT kick existing sessions - call kickUser() separately if needed. response is only { success }
+    async banUser(sessionToken, userId, hoursToBan)
+    {
+        return await this._request('POST', `/admin/users/${userId}/ban`, { token: sessionToken, body: { hours_to_ban: hoursToBan } });
+    }
+
+    // response is only { success, is_banned }
+    async isUserBanned(sessionToken, userId)
+    {
+        return await this._request('GET', `/admin/users/${userId}/ban`, { token: sessionToken });
+    }
+
+    // NOTE: not yet implemented on the server - see admin-find-user-by-profile.js for the
+    // controller code to integrate, plus a route to add in the admin routes file.
+    // Finds the user that owns a given profile ID (admin only) - there is no regular
+    // /api/profile/* route for this since those are scoped to the logged-in user's own
+    // profiles only.
+    async findUserByProfileId(sessionToken, profileId)
+    {
+        const result = await this._request('GET', `/admin/profiles/${profileId}/owner`, { token: sessionToken });
+        return { ...result, user: result.user ? UserInfo.fromJSON(result.user) : undefined };
     }
 
     // ==========================================
@@ -95,60 +130,90 @@ export class HttpClient extends Interface_BackendAPI
         return { ...result, profiles: (result.profiles ?? []).map(p => Profile.fromJSON(p)) };
     }
 
+    // lightweight summary only: { id, profileName, age, ImageName } - no watch history / likes
     async fetchProfileById(sessionToken, profileId)
     {
         const result = await this._request('GET', `/profile/${profileId}`, { token: sessionToken });
         return { ...result, profile: result.profile ? Profile.fromJSON(result.profile) : undefined };
     }
 
+    // full profile document, including likedContentIds and lastWatched
     async fetchProfileDetails(sessionToken, profileId)
     {
         const result = await this._request('GET', `/profile/${profileId}/details`, { token: sessionToken });
         return { ...result, profile: result.profile ? Profile.fromJSON(result.profile) : undefined };
     }
 
+    // returns the caller's FULL updated profile list, not just the one changed profile
     async updateProfile(sessionToken, profileId, changes)
     {
         const result = await this._request('PUT', `/profile/${profileId}`, { token: sessionToken, body: changes });
         return { ...result, profiles: (result.profiles ?? []).map(p => Profile.fromJSON(p)) };
     }
 
-    // Profile.toJSON() no longer includes `id` (removed to match PUT /profile/:profileId body),
-    // so it has to be re-attached here for the bulk "updates" array which needs profileId per item
-    async saveProfiles(sessionToken, profiles)
+    /**
+     * Bulk-updates several profiles at once.
+     * Accepts either plain update objects ({ profileId, profileName?, age?, ImageName? }) as
+     * described by the contract, OR Profile instances (uses their toBulkUpdateEntry()) for
+     * convenience/backward-compatibility with older call sites.
+     * @param {string} sessionToken
+     * @param {Array<Object|Profile>} updates
+     */
+    async saveProfiles(sessionToken, updates)
     {
-        const updates = profiles.map(p => ({
-            profileId: p.id,
-            ...(p.toJSON ? p.toJSON() : p)
-        }));
-        const result = await this._request('PUT', '/profile/', { token: sessionToken, body: { updates } });
+        const preparedUpdates = updates.map(p => (p && typeof p.toBulkUpdateEntry === 'function') ? p.toBulkUpdateEntry() : p);
+        const result = await this._request('PUT', '/profile/', { token: sessionToken, body: { updates: preparedUpdates } });
         return { ...result, profiles: (result.profiles ?? []).map(p => Profile.fromJSON(p)) };
     }
 
+    // a user's last remaining profile cannot be deleted
     async deleteProfile(sessionToken, profileId)
     {
         const result = await this._request('DELETE', `/profile/${profileId}`, { token: sessionToken });
         return { ...result, profiles: (result.profiles ?? []).map(p => Profile.fromJSON(p)) };
     }
 
-    async toggleContentLike(sessionToken, profileID, contentID)
+    // toggles a like (add or remove)
+    async toggleContentLike(sessionToken, profileId, contentId)
     {
-        return await this._request('POST', `/profile/${profileID}/likes/${contentID}`, { token: sessionToken });
+        return await this._request('POST', `/profile/${profileId}/likes/${contentId}`, { token: sessionToken });
     }
 
-    async selectContentItem(sessionToken, profileID, contentID)
+    // resumes from the profile's saved episode for this content, or starts at S1E1 otherwise
+    async recordWatch(sessionToken, profileId, contentId)
     {
-        return await this._request('POST', `/profile/${profileID}/watch/${contentID}`, { token: sessionToken });
+        const result = await this._request('POST', `/profile/${profileId}/watch/${contentId}`, { token: sessionToken });
+        return { ...result, episode: result.episode ? Episode.fromJSON(result.episode) : undefined };
+    }
 
+    // records this specific episode as watched instead of resuming/defaulting
+    async recordWatchEpisode(sessionToken, profileId, contentId, episodeId)
+    {
+        const result = await this._request('POST', `/profile/${profileId}/watch/${contentId}/${episodeId}`, { token: sessionToken });
+        return { ...result, episode: result.episode ? Episode.fromJSON(result.episode) : undefined };
+    }
+
+    // content the user's OTHER profiles have watched/liked, excluding this profile's own history
+    async getOtherProfilesRecommendations(sessionToken, profileId)
+    {
+        const result = await this._request('GET', `/profile/${profileId}/other_profiles_recommendations`, { token: sessionToken });
+        return { ...result, content: (result.content ?? []).map(c => ContentItem.fromJSON(c)) };
+    }
+
+    // up to 3 top-rated items matching this profile's own taste. empty list (not an error) if no history yet
+    async getTopPicks(sessionToken, profileId)
+    {
+        const result = await this._request('GET', `/profile/${profileId}/top_picks`, { token: sessionToken });
+        return { ...result, content: (result.content ?? []).map(c => ContentItem.fromJSON(c)) };
     }
 
     // ==========================================
     //         Content Routes (public)
     // ==========================================
 
-    async getContentByID(contentID)
+    async getContentByID(contentId)
     {
-        const result = await this._request('GET', `/content/${contentID}`);
+        const result = await this._request('GET', `/content/${contentId}`);
         return { ...result, content: result.content ? ContentItem.fromJSON(result.content) : undefined };
     }
 
@@ -159,47 +224,147 @@ export class HttpClient extends Interface_BackendAPI
         return { ...result, content: (result.content ?? []).map(c => ContentItem.fromJSON(c)) };
     }
 
+    // only works for type "series". seasons[0] is season 1's episodes, seasons[1] is season 2's, etc.
+    async getContentEpisodes(contentId)
+    {
+        const result = await this._request('GET', `/content/${contentId}/episodes`);
+        return { ...result, seasons: (result.seasons ?? []).map(season => (season ?? []).map(e => Episode.fromJSON(e))) };
+    }
+
+    async getEpisodeById(contentId, episodeId)
+    {
+        const result = await this._request('GET', `/content/${contentId}/episodes/${episodeId}`);
+        return { ...result, episode: result.episode ? Episode.fromJSON(result.episode) : undefined };
+    }
+
+    // crosses into the next season if this was the last episode of its season. `episode` absent if series finale
+    async getNextEpisode(contentId, episodeId)
+    {
+        const result = await this._request('GET', `/content/${contentId}/episodes/${episodeId}/next`);
+        return { ...result, episode: result.episode ? Episode.fromJSON(result.episode) : undefined };
+    }
+
+    // crosses back into the previous season if this was the first episode of its season. `episode` absent if series premiere
+    async getPrevEpisode(contentId, episodeId)
+    {
+        const result = await this._request('GET', `/content/${contentId}/episodes/${episodeId}/prev`);
+        return { ...result, episode: result.episode ? Episode.fromJSON(result.episode) : undefined };
+    }
+
     // ==========================================
-    //         Content Routes (admin only)
+    //  Admin Routes - Content (/api/admin/content)
     // ==========================================
 
     async createContent(sessionToken, contentData)
     {
-        const result = await this._request('POST', '/content/', { token: sessionToken, body: contentData });
+        const result = await this._request('POST', '/admin/content', { token: sessionToken, body: contentData });
         return { ...result, content: result.content ? ContentItem.fromJSON(result.content) : undefined };
     }
 
-    async updateContent(sessionToken, contentID, changes)
+    async updateContent(sessionToken, contentId, changes)
     {
-        const result = await this._request('PUT', `/content/${contentID}`, { token: sessionToken, body: changes });
+        const result = await this._request('PUT', `/admin/content/${contentId}`, { token: sessionToken, body: changes });
         return { ...result, content: result.content ? ContentItem.fromJSON(result.content) : undefined };
     }
 
-    async deleteContent(sessionToken, contentID)
+    async deleteContent(sessionToken, contentId)
     {
-        return await this._request('DELETE', `/content/${contentID}`, { token: sessionToken });
+        return await this._request('DELETE', `/admin/content/${contentId}`, { token: sessionToken });
     }
 
-    async getContentOthersEngagedWith(sessionToken, profileId)
+    // adds a new episode to a series. movies cannot have episodes added this way - use setMovieVideo()
+    async addEpisode(sessionToken, contentId, episodeData)
     {
-        const result = await this._request('GET', `/profile/${profileId}/other_profiles_recommendations`, { token: sessionToken });
-        return { ...result, content: (result.content ?? []).map(c => ContentItem.fromJSON(c)) };
+        const result = await this._request('POST', `/admin/content/${contentId}/episodes`, { token: sessionToken, body: episodeData });
+        return { ...result, episode: result.episode ? Episode.fromJSON(result.episode) : undefined };
     }
 
-    async kickUser(sessionToken, userId)
+    // creates/updates the single video for a movie. internally backed by a season-1/episode-1 Episode,
+    // but the caller never needs to think about it that way
+    async setMovieVideo(sessionToken, contentId, videoUrl)
     {
-        return await this._request('POST', `/user/${userId}/kick`, { token: sessionToken });
+        const result = await this._request('PUT', `/admin/content/${contentId}/movie-video`, { token: sessionToken, body: { videoUrl } });
+        return { ...result, episode: result.episode ? Episode.fromJSON(result.episode) : undefined };
     }
 
-    async banUser(sessionToken, userId, hours_to_ban)
+    // not restricted by content type - a movie's single episode can be edited too
+    async updateEpisode(sessionToken, contentId, episodeId, changes)
     {
-        return await this._request('POST', `/user/${userId}/ban`, { token: sessionToken, body: { hours_to_ban } });
+        const result = await this._request('PUT', `/admin/content/${contentId}/episodes/${episodeId}`, { token: sessionToken, body: changes });
+        return { ...result, episode: result.episode ? Episode.fromJSON(result.episode) : undefined };
     }
 
-    async isUserBanned(sessionToken, userId)
+    async deleteEpisode(sessionToken, contentId, episodeId)
     {
-        const result = await this._request('GET', `/user/${userId}/ban`, { token: sessionToken });
-        return { ...result, is_banned: result.is_banned };
+        return await this._request('DELETE', `/admin/content/${contentId}/episodes/${episodeId}`, { token: sessionToken });
+    }
+
+    // ==========================================
+    //           Review Routes (/api/reviews)
+    // ==========================================
+
+    // a profile can only review a given episode once. rating: 1-10. comment: 500 char limit.
+    // automatically recalculates that content's average_rating and review_count
+    async addReview(sessionToken, profileId, contentId, episodeId, rating, comment)
+    {
+        const result = await this._request('POST', `/reviews/${profileId}/${contentId}/${episodeId}`, { token: sessionToken, body: { rating, comment } });
+        return { ...result, review: result.review ? Review.fromJSON(result.review) : undefined };
+    }
+
+    // edits this profile's OWN review. editing the rating recalculates that content's average_rating
+    async updateReview(sessionToken, profileId, contentId, episodeId, changes)
+    {
+        const result = await this._request('PUT', `/reviews/${profileId}/${contentId}/${episodeId}`, { token: sessionToken, body: changes });
+        return { ...result, review: result.review ? Review.fromJSON(result.review) : undefined };
+    }
+
+    // removes this profile's own review. recalculates average_rating and review_count
+    async deleteReview(sessionToken, profileId, contentId, episodeId)
+    {
+        return await this._request('DELETE', `/reviews/${profileId}/${contentId}/${episodeId}`, { token: sessionToken });
+    }
+
+    // public, no login needed. filter by episode_id for all reviews of an episode,
+    // or by profile_id + episode_id for one profile's review of one episode
+    async searchReviews(queryParams = {})
+    {
+        const result = await this._request('GET', '/reviews/', { query: queryParams });
+        return { ...result, reviews: (result.reviews ?? []).map(r => Review.fromJSON(r)) };
+    }
+
+    // ==========================================
+    //  Admin Routes - Reviews (/api/admin/reviews)
+    // ==========================================
+
+    // edits ANY review directly by id, regardless of who wrote it. recalculates average_rating
+    async adminUpdateReview(sessionToken, reviewId, changes)
+    {
+        const result = await this._request('PUT', `/admin/reviews/${reviewId}`, { token: sessionToken, body: changes });
+        return { ...result, review: result.review ? Review.fromJSON(result.review) : undefined };
+    }
+
+    // deletes ANY review directly by id. recalculates average_rating and review_count
+    async adminDeleteReview(sessionToken, reviewId)
+    {
+        return await this._request('DELETE', `/admin/reviews/${reviewId}`, { token: sessionToken });
+    }
+
+    // ==========================================
+    //   Backward-compatible aliases (old names)
+    // ==========================================
+    // Kept so existing call sites written against the old client don't need to change
+    // immediately. New code should prefer the contract methods above.
+
+    /** @deprecated use toggleContentLike() - kept as an alias, same signature */
+    async toggleLike(sessionToken, profileId, contentId)
+    {
+        return await this.toggleContentLike(sessionToken, profileId, contentId);
+    }
+
+    /** @deprecated use recordWatch() - old name was selectContentItem() */
+    async selectContentItem(sessionToken, profileId, contentId)
+    {
+        return await this.recordWatch(sessionToken, profileId, contentId);
     }
 
     // ==========================================

@@ -380,7 +380,8 @@ PROFILE ENDPOINTS (/api/profile)
           age_limit: number,
           likes: number,
           createdAt: string,
-          imdb_rating: number
+          average_rating: number,
+          review_count: number
         },
         ...
       ]
@@ -414,7 +415,8 @@ PROFILE ENDPOINTS (/api/profile)
           age_limit: number,
           likes: number,
           createdAt: string,
-          imdb_rating: number
+          average_rating: number,
+          review_count: number
         },
         ...
       ]
@@ -453,15 +455,24 @@ itself - every watchable item is an Episode, including a movie's single episode.
         age_limit: number,
         likes: number,
         createdAt: string,
-        imdb_rating: number
+        average_rating: number,
+        review_count: number,
+        imdb_rating?: number
       }
     }
+
+    Note: imdb_rating is only ever populated by THIS endpoint (fetched live from an external
+    IMDB lookup, not stored in the database), and only while that feature is enabled on the
+    server. Every other endpoint that returns a content object (search, create, update,
+    suggestions, top picks) will NOT include imdb_rating.
 
 19) GET /api/content/
     Purpose: Searches/browses the whole catalog using filters like title, category, or type.
 
     req.query =
     {
+      title_starts?: string,
+      title_ends?: string,
       title_contains?: string,
       exact_category?: string,
       contain_category?: string,
@@ -472,6 +483,10 @@ itself - every watchable item is an Episode, including a movie's single episode.
       min_age_limit?: number,
       max_age_limit?: number,
       min_likes?: number,
+      min_average_rating?: number,
+      max_average_rating?: number,
+      min_review_count?: number,
+      max_review_count?: number,
       limit?: number,
       skip?: number,
       sort?: string,
@@ -495,11 +510,19 @@ itself - every watchable item is an Episode, including a movie's single episode.
           age_limit: number,
           likes: number,
           createdAt: string,
-          imdb_rating: number
+          average_rating: number,
+          review_count: number
         },
         ...
       ]
     }
+
+    Note (UPDATED): average_rating and review_count are now included directly on every
+    returned content object, in addition to being usable as sort/filter fields (min/max_
+    average_rating, min/max_review_count, and as the "sort" value). Previously these two
+    fields existed only on the underlying content document and were never sent to the
+    client - that is no longer the case; every content object from every endpoint below
+    (search, single lookup, admin create/update, suggestions, top picks) now carries both.
 
 20) GET /api/content/:contentId/episodes
     Purpose: Gets every episode of a series, grouped by season. Only works for type "series".
@@ -751,8 +774,14 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
 
     req.query =
     {
+      email_starts?: string,
+      email_ends?: string,
       email_contains?: string,
+      phone_starts?: string,
+      phone_ends?: string,
       phone_contains?: string,
+      fullname_starts?: string,
+      fullname_ends?: string,
       fullname_contains?: string,
       born_after?: string,
       born_before?: string,
@@ -849,8 +878,10 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
 
 32) PUT /api/admin/users/:user_id/permission
     Purpose: Promotes or demotes a user's permission level. An admin cannot assign
-    a level higher than their own, and cannot act on a user who is already at or
-    above their own level. Permission levels: USER = 0, ADMIN = 1, SUPER_ADMIN = 2.
+    a level higher than their own, and cannot act on a user whose current level is
+    already above their own (acting on a user at the same level is allowed, as long
+    as the requested new level differs from their current one). Permission levels:
+    USER = 0, ADMIN = 1, SUPER_ADMIN = 2.
 
     req.params =
     {
@@ -867,6 +898,36 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       success: boolean,
       message: string
     }
+
+32b) GET /api/admin/profiles/:profileId/owner   *** NEW - not yet added to the server ***
+    Purpose: Finds and returns the user that owns a given profile (there is no dedicated
+    admin route for profiles otherwise - the regular /api/profile/* routes are scoped to
+    the logged-in user's own profiles only).
+
+    req.params =
+    {
+      profileId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      user?:
+      {
+        id: string,
+        email: string,
+        phone: string,
+        fullName: string,
+        birthday: string,
+        createdAt: string,
+        permission_level: number
+      }
+    }
+
+    Note: this endpoint doesn't exist on the server yet - see admin-find-user-by-profile.js
+    for a controller implementation to integrate, plus a route to add in your admin routes
+    file.
 
 33) GET /api/admin/users/:user_id/tokens_count
     Purpose: Gets how many active login tokens (sessions) a user currently has.
@@ -957,9 +1018,13 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
         age_limit: number,
         likes: number,
         createdAt: string,
-        imdb_rating: number
+        average_rating: number,
+        review_count: number
       }
     }
+
+    Note: a newly created content item has no reviews yet, so average_rating and
+    review_count will be whatever the schema's default is (e.g. 0) at creation time.
 
 38) DELETE /api/admin/content/:contentId
     Purpose: Removes a movie/series from the catalog completely.
@@ -1010,9 +1075,13 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
         age_limit: number,
         likes: number,
         createdAt: string,
-        imdb_rating: number
+        average_rating: number,
+        review_count: number
       }
     }
+
+    Note: average_rating/review_count are not writable through this endpoint's req.body -
+    they are only ever changed indirectly, by adding/editing/deleting reviews.
 
 40) POST /api/admin/content/:contentId/episodes
     Purpose: Adds a new episode to a series (movies cannot have episodes added this way).
@@ -1186,3 +1255,7 @@ GENERAL NOTES
 - videoUrl now lives only on episodes, never on content itself.
 - Reviews: rating is 1-10, comment is optional with a 500 character limit. A profile can only
   have one review per episode - adding a second is rejected, not merged or overwritten.
+- UPDATED: average_rating (number) and review_count (number) are now included directly on
+  every content object returned by every endpoint (search, single lookup, admin create/update,
+  suggestions, top picks) - not just usable as sort/filter query params. They stay in sync
+  automatically whenever a review is added, edited, or deleted (see endpoints 24-26 and 44-45).

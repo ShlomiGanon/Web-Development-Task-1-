@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const userController = require('../controllers/user_controller');
+const profileController = require('../controllers/profile_controller');
 const adminController = require('../controllers/admin_controller');
 const contentController = require('../controllers/content_controller');
 const reviewController = require('../controllers/review_controller');
@@ -43,6 +44,9 @@ router.post('/users/:user_id/ban', adminAuthorization, userAuthorization, tokenM
 
 // Check whether a user is currently banned
 router.get('/users/:user_id/ban', adminAuthorization, userAuthorization, tokenManager.IsBannedRequest);
+
+// Get the user who owns a specific profile
+router.get('/profiles/:profileId/owner', adminAuthorization, profileController.findUserByProfileId);
 
 // --- Content management ---
 

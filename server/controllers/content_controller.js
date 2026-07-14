@@ -21,7 +21,9 @@ const toContentSummary = (content) =>
         age_limit: content.age_limit,
         likes: content.likes,
         createdAt: content.createdAt.toISOString(),
-        imdb_rating: content.imdb_rating
+        imdb_rating: content.imdb_rating,
+        average_rating: content.average_rating,
+        review_count: content.review_count
     };
 }
 

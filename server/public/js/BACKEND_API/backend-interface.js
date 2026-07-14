@@ -200,11 +200,18 @@ export class ContentItem
 {
     /**
      * UPDATED: `videoUrl` has been removed from ContentItem entirely. Video now lives only
-     * on Episodes - every watchable item, including a movie's single episode, is an Episode
-     * (see the Episode class below). Use the content/episode routes to fetch playback info.
+     * on Episodes (see the Episode class below). Use the content/episode routes to fetch
+     * playback info.
+     *
+     * UPDATED: `average_rating` and `review_count` are now included directly on every
+     * content object returned by every endpoint (search, single lookup, admin create/update,
+     * suggestions, top picks) - previously these existed only on the underlying content
+     * document and were never sent to the client. They stay in sync automatically whenever
+     * a review is added, edited, or deleted - they are never set directly by the client
+     * (see toJSON() below, which deliberately omits them from write payloads).
      *
      * res.content shape (identical across getContentByID / getAllContentItems / admin
-     * createContent / admin updateContent):
+     * createContent / admin updateContent / other_profiles_recommendations / top_picks):
         id: string,
         title: string,
         description: string,
@@ -215,9 +222,11 @@ export class ContentItem
         age_limit: number,
         likes: number,
         createdAt: string,
-        imdb_rating: number
+        average_rating: number,
+        review_count: number,
+        imdb_rating: number   // only ever present on getContentByID's response
      */
-    constructor(id, title, cover_image_name, likes = 0, type, categories = [], description, age_limit = 0, release_date, createdAt, imdb_rating = null)
+    constructor(id, title, cover_image_name, likes = 0, type, categories = [], description, age_limit = 0, release_date, createdAt, imdb_rating = null, average_rating = 0, review_count = 0)
     {
         this.id = id;
         this.title = title;
@@ -230,6 +239,8 @@ export class ContentItem
         this.release_date = new Date(release_date);
         this.createdAt = new Date(createdAt);
         this.imdb_rating = imdb_rating;
+        this.average_rating = average_rating;
+        this.review_count = review_count;
     }
 
     static fromJSON(rawObject)
@@ -248,11 +259,18 @@ export class ContentItem
             rawObject.age_limit,
             rawObject.release_date,
             rawObject.createdAt,
-            rawObject.imdb_rating
+            rawObject.imdb_rating,
+            rawObject.average_rating,
+            rawObject.review_count
         );
     }
 
-    /** Shape for POST /admin/content and PUT /admin/content/:contentId bodies. */
+    /**
+     * Shape for POST /admin/content and PUT /admin/content/:contentId bodies.
+     * average_rating/review_count are deliberately NOT included - they are read-only,
+     * server-computed fields (kept in sync via the review endpoints), never something
+     * the client sets when creating/updating content.
+     */
     toJSON()
     {
         return {
@@ -521,6 +539,19 @@ export class Interface_BackendAPI
     }
 
     /**
+     * Maps to GET /admin/profiles/:profileId/owner (admin only) - finds and returns the
+     * user that owns a given profile. NOTE: this endpoint does not exist on the server yet;
+     * see admin-find-user-by-profile.js for a controller implementation to integrate.
+     * @param {string} sessionToken
+     * @param {string} profileId
+     * @returns {Promise<{success: boolean, message?: string, user?: UserInfo}>}
+     */
+    async findUserByProfileId(sessionToken, profileId)
+    {
+        throw new Error("Method 'findUserByProfileId()' must be implemented.");
+    }
+
+    /**
      * Maps to POST /admin/users/:user_id/kick (admin only) - invalidates all of a user's
      * active tokens, forcing them to log in again everywhere. No body required.
      * NOTE: response is only { success }, no `message` field.
@@ -731,8 +762,9 @@ export class Interface_BackendAPI
     /**
      * Maps to GET /content/ (public). Supports optional search/filter query params:
      * title_contains, exact_category, contain_category, exclude_category, type,
-     * released_after, released_before, min_age_limit, max_age_limit, min_likes, limit, skip,
-     * sort, sortOrder. Called with no arguments, returns all content.
+     * released_after, released_before, min_age_limit, max_age_limit, min_likes,
+     * min_average_rating, max_average_rating, min_review_count, max_review_count,
+     * limit, skip, sort, sortOrder. Called with no arguments, returns all content.
      * @param {Object} [queryParams={}]
      * @returns {Promise<{success: boolean, content?: Array<ContentItem>, message?: string}>}
      */

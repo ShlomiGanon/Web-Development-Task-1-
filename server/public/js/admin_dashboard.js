@@ -1,6 +1,6 @@
 //i know this code is can be reused for other pages but i dont have time to refactor it , sorry for that.
 
-import { UserInfo, ContentItem } from "./BACKEND_API/backend-interface.js";
+import { UserInfo, ContentItem, Review } from "./BACKEND_API/backend-interface.js";
 import { Backend } from "./config.js";
 import {ClientSessionManager} from "./client-session-manager.js";
 import * as UI from "./ui-utils.js";
@@ -40,9 +40,9 @@ let filters_window = null;
 let filters_listener = null;
 
 const mode = Object.freeze({
-    "empty": 0,
-    "users": 1,
-    "contents": 2
+    "users": 0,
+    "contents": 1,
+    "reviews": 2
 });
 // Reverse lookup (1 -> "users") - used by the mode-selector buttons to display names.
 const numbers_to_modes = Object.fromEntries(Object.entries(mode).map(([key, value]) => [value, key]));
@@ -50,8 +50,16 @@ let current_mode = mode.users;
 
 let users = [];
 let contents = [];
+let reviews = [];
 let users_filters = {};
 let contents_filters = {};
+let reviews_filters = {};
+
+// Cache of the currently-viewed series' episodes, grouped by season (same shape as
+// Backend.getContentEpisodes()'s response: seasons[0] = season 1's episodes, etc.) -
+// refreshed every time view_content() renders a series, and after every episode
+// add/update/delete so the list stays in sync.
+let current_target_episodes = null;
 
 //=============== Shared UI Class Constants ===============
 // Used by the modal/field-builder helpers below so every window shares one visual style.
@@ -161,9 +169,10 @@ function build_field_group(field_name, field_elements)
 }
 
 //=============== Shared Field Builders ===============
-// "Edit" fields (used by Update User / Update+Add Content windows) compare their live
-// value against the target object's current value, highlighting the label when changed.
-// `target` may be null (create mode) - handled the same way an empty original value would be.
+// "Edit" fields (used by Update User / Update+Add Content / Add+Update Episode windows)
+// compare their live value against the target object's current value, highlighting the
+// label when changed. `target` may be null (create mode) - handled the same way an empty
+// original value would be.
 //
 // NOTE on the comparison logic below: dates and arrays need to be normalized to the same
 // string shape on both sides (input.value vs. the stored value) before they can be
@@ -251,8 +260,8 @@ function build_edit_select_field(target, label, text, options)
     return field;
 }
 
-// "Search" fields (used by the Users/Contents filter windows) just track whether the
-// user has typed/selected a value at all - there's no "original" object to compare to.
+// "Search" fields (used by the Users/Contents/Reviews filter windows) just track whether
+// the user has typed/selected a value at all - there's no "original" object to compare to.
 function build_search_input_field(filters, label, text, type)
 {
     const field = document.createElement('div');
@@ -368,6 +377,10 @@ async function view_content()
     image_element.style.height = '450px';
     image_element.style.objectFit = 'contain';
 
+    // NOTE: videoUrl no longer lives on content - every watchable item is an Episode now
+    // (see the Episode Management section rendered below), so it's not shown here.
+    // average_rating/review_count are new fields the backend now includes on every
+    // content object, kept in sync automatically whenever a review is added/edited/deleted.
     const contentHtml = `
     <div class="w-100 p-4">
         <h1 class="fw-bold mb-4">${escapeHtml(current_target.title)}</h1>
@@ -379,17 +392,19 @@ async function view_content()
         ${renderField("Categories", escapeHtml(current_target.categories.join(", ")))}
         ${renderField("Description", escapeHtml(current_target.description))}
         ${renderField("Age Limit", escapeHtml(current_target.age_limit))}
-        ${renderField("Video URL", escapeHtml(current_target.videoUrl))}
+        ${renderField("Average Rating", escapeHtml(current_target.average_rating))}
+        ${renderField("Review Count", escapeHtml(current_target.review_count))}
         ${renderField("Release Date", escapeHtml(current_target.release_date.toLocaleDateString()))}
         ${renderField("Created At", escapeHtml(current_target.createdAt.toLocaleDateString()))}
         ${renderField("IMDB Rating", escapeHtml(current_target.imdb_rating))}
     </div>
     `;
     view_container.innerHTML = contentHtml;
+    await render_episodes_section(current_target);
     rander_mode_selector();
 }
 
-function view_user()
+async function view_user()
 {
     if (!current_target || !(current_target instanceof UserInfo))
     {
@@ -400,6 +415,23 @@ function view_user()
         return;
     }
 
+    // Ban status and active-session count aren't part of the UserInfo object itself -
+    // they're separate admin-only lookups, fetched fresh every time this user is viewed.
+    const [ban_response, tokens_response] = await Promise.all([
+        Backend.isUserBanned(token, current_target.id),
+        Backend.getUserTokensCount(token, current_target.id)
+    ]);
+
+    const is_banned = ban_response.success ? ban_response.is_banned : undefined;
+    const ban_status_text = ban_response.success
+        ? (is_banned ? "Banned" : "Not banned")
+        : "Unknown (failed to load)";
+    const ban_value_class = is_banned ? "text-danger fw-bold" : "text-white";
+
+    const tokens_count_text = tokens_response.success
+        ? String(tokens_response.tokens_count)
+        : "Unknown (failed to load)";
+
     const userHtml = `
     <div class="w-100 p-4">
         <h1 class="fw-bold mb-4">${escapeHtml(current_target.fullName)}</h1>
@@ -409,9 +441,37 @@ function view_user()
         ${renderField("Birthday", escapeHtml(current_target.birthday.toLocaleDateString()))}
         ${renderField("Created At", escapeHtml(current_target.createdAt.toLocaleDateString()))}
         ${renderField("Permission Level", escapeHtml(current_target.permission_level))}
+        ${renderField("Ban Status", escapeHtml(ban_status_text), ':', 'text-danger', ban_value_class)}
+        ${renderField("Active Sessions", escapeHtml(tokens_count_text))}
     </div>
     `;
     view_container.innerHTML = userHtml;
+    rander_mode_selector();
+}
+
+function view_review()
+{
+    if (!current_target || !(current_target instanceof Review))
+    {
+        view_container.innerHTML = `
+        <h1>No review selected</h1>
+        <p>Please select a review from the list</p>
+        `;
+        return;
+    }
+
+    const reviewHtml = `
+    <div class="w-100 p-4">
+        <h1 class="fw-bold mb-4">Review - ${escapeHtml(current_target.rating)}/10</h1>
+        ${renderField("ID", escapeHtml(current_target.id))}
+        ${renderField("Content ID", escapeHtml(current_target.contentId))}
+        ${renderField("Episode ID", escapeHtml(current_target.episodeId))}
+        ${renderField("Profile ID", escapeHtml(current_target.profileId))}
+        ${renderField("Rating", escapeHtml(current_target.rating))}
+        ${renderField("Comment", escapeHtml(current_target.comment))}
+    </div>
+    `;
+    view_container.innerHTML = reviewHtml;
     rander_mode_selector();
 }
 
@@ -453,6 +513,7 @@ function rander_mode_selector()
     let last_mode;
     if (current_target instanceof UserInfo) last_mode = mode.users;
     else if (current_target instanceof ContentItem) last_mode = mode.contents;
+    else if (current_target instanceof Review) last_mode = mode.reviews;
     else last_mode = undefined;
     const back_button = document.createElement("button");
     back_button.className = "btn btn-group btn-lg btn-outline-light rounded-pill";
@@ -481,7 +542,7 @@ function rander_mode_selector()
 }
 
 //=============== Selection List Renderers ===============
-// Shared by both users and contents: a clickable card with a title + secondary line.
+// Shared by all three resources: a clickable card with a title + secondary line.
 function build_selection_item(id, title, secondary_title, onClick)
 {
     const title_container = document.createElement("div");
@@ -559,6 +620,25 @@ function rander_selection_container_to_contents()
     });
 }
 
+function rander_selection_container_to_reviews()
+{
+    selection_counter.textContent = `Reviews Counter: ${reviews.length}`;
+    clear_selection_container();
+    if (!reviews || reviews.length === 0)
+    {
+        show_empty_selection_message("No Reviews Found");
+        return;
+    }
+
+    const on_click = (id) => { current_target = reviews.find(r => r.id === id); view_review(); };
+
+    reviews.forEach(review =>
+    {
+        const secondary_value = review.comment ? review.comment : "(no comment)";
+        selection_container.appendChild(build_selection_item(review.id, `Rating: ${review.rating}/10`, secondary_value, on_click));
+    });
+}
+
 //=============== Filter / Search Handling ===============
 async function search_users_filters()
 {
@@ -595,9 +675,31 @@ async function search_contents_filters()
     close_filters_window();
 }
 
+// Reviews search is a public route (no admin token required), same as content search above.
+async function search_reviews_filters()
+{
+    reviews_filters = get_search_filters_from_window(filters_window);
+    const response = await Backend.searchReviews(reviews_filters);
+    if (!response.success)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage(response.message);
+        return;
+    }
+    if (!response.reviews)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage("Failed to load reviews, please try again.");
+        return;
+    }
+    reviews = response.reviews;
+    main_renderer();
+    close_filters_window();
+}
+
 // Used by Update/Create windows: reads every input/select in the modal as-is,
-// with no special-casing - the caller (update_user/update_content) does the
-// "did this actually change" comparison against the original object itself.
+// with no special-casing - the caller (update_user/update_content/update_review) does
+// the "did this actually change" comparison against the original object itself.
 function get_filters_from_window(filters_window)
 {
     const filters = {};
@@ -782,6 +884,11 @@ async function create_content()
 }
 
 // contentItem = null -> "Add Content" mode; otherwise "Update Content" mode.
+// NOTE: there is deliberately no "Video URL" field here - video lives only on Episodes now,
+// never on content itself. Use the "Episodes" section in the content detail view (or the
+// "Set Movie Video" control for movies) to manage playback video. average_rating/review_count
+// are also deliberately not editable here - they're read-only, server-computed fields kept
+// in sync via the review endpoints.
 function create_update_content_window(contentItem = null)
 {
     const is_create_mode = !contentItem;
@@ -797,7 +904,7 @@ function create_update_content_window(contentItem = null)
     fields_container.className = FIELDS_CONTAINER_CLASSES;
     content.appendChild(fields_container);
 
-    // maps to: { title, description, cover_image_name, type, categories, release_date, age_limit, videoUrl } on ContentItem
+    // maps to: { title, description, cover_image_name, type, categories, release_date, age_limit } on ContentItem
     fields_container.appendChild(build_edit_input_field(contentItem, 'title', "Title", 'text'));
     fields_container.appendChild(build_edit_input_field(contentItem, 'description', "Description", 'text'));
     fields_container.appendChild(build_edit_input_field(contentItem, 'cover_image_name', "Cover Image Name", 'text'));
@@ -805,7 +912,6 @@ function create_update_content_window(contentItem = null)
     fields_container.appendChild(build_edit_input_field(contentItem, 'categories', "Categories", 'text'));
     fields_container.appendChild(build_edit_input_field(contentItem, 'release_date', "Release Date", 'date'));
     fields_container.appendChild(build_edit_input_field(contentItem, 'age_limit', "Age Limit", 'number'));
-    fields_container.appendChild(build_edit_input_field(contentItem, 'videoUrl', "Video URL", 'text'));
 
     content.appendChild(create_button_row([
         { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
@@ -881,6 +987,361 @@ async function update_content(content)
     UI.ShowMessage("Content updated successfully");
     current_target = response.content;
     view_content();
+    close_filters_window();
+}
+
+//=============== Episode Management ===============
+// Renders either the series' full episode list (grouped by season, with add/edit/delete
+// controls) or, for a movie, a small "set/update video" control - appended below the
+// content details rendered by view_content() above.
+async function render_episodes_section(content)
+{
+    const container = document.createElement('div');
+    container.className = 'w-100 p-4';
+
+    if (content.type === 'series')
+    {
+        const response = await Backend.getContentEpisodes(content.id);
+        if (!response.success)
+        {
+            const error_p = document.createElement('p');
+            error_p.className = 'text-danger fs-5';
+            error_p.textContent = 'Failed to load episodes: ' + response.message;
+            container.appendChild(error_p);
+            view_container.appendChild(container);
+            return;
+        }
+
+        current_target_episodes = response.seasons ?? [];
+
+        const heading = document.createElement('h2');
+        heading.className = 'fw-bold mb-3 text-danger';
+        heading.textContent = 'Episodes';
+        container.appendChild(heading);
+
+        const add_episode_btn = document.createElement('button');
+        add_episode_btn.className = 'btn btn-primary btn-lg mb-3';
+        add_episode_btn.textContent = 'Add Episode';
+        add_episode_btn.addEventListener('click', () => filters_window = create_episode_window(content.id));
+        container.appendChild(add_episode_btn);
+
+        if (current_target_episodes.length === 0)
+        {
+            const empty_p = document.createElement('p');
+            empty_p.className = 'text-light fs-5';
+            empty_p.textContent = 'No episodes yet';
+            container.appendChild(empty_p);
+        }
+
+        current_target_episodes.forEach((season_episodes, season_index) =>
+        {
+            const season_number = season_index + 1;
+
+            const season_heading = document.createElement('h4');
+            season_heading.className = 'text-warning mt-3';
+            season_heading.textContent = `Season ${season_number}`;
+            container.appendChild(season_heading);
+
+            if (season_episodes.length === 0)
+            {
+                const empty_season_p = document.createElement('p');
+                empty_season_p.className = 'text-light';
+                empty_season_p.textContent = 'No episodes in this season';
+                container.appendChild(empty_season_p);
+                return;
+            }
+
+            season_episodes.forEach(episode =>
+            {
+                const row = document.createElement('div');
+                row.className = FIELD_ITEM_CLASSES;
+
+                const label_p = document.createElement('p');
+                label_p.className = LABEL_CLASSES;
+                label_p.textContent = `E${episode.episodeNumber} - ${episode.title || '(no title)'}`;
+                row.appendChild(label_p);
+
+                const btn_row = document.createElement('div');
+                btn_row.className = 'd-flex';
+
+                const edit_btn = document.createElement('button');
+                edit_btn.className = 'btn btn-secondary mx-1';
+                edit_btn.textContent = 'Edit';
+                edit_btn.addEventListener('click', () => filters_window = create_episode_window(content.id, episode));
+                btn_row.appendChild(edit_btn);
+
+                const delete_btn = document.createElement('button');
+                delete_btn.className = 'btn btn-danger mx-1';
+                delete_btn.textContent = 'Delete';
+                delete_btn.addEventListener('click', () => delete_episode_click(content.id, episode));
+                btn_row.appendChild(delete_btn);
+
+                row.appendChild(btn_row);
+                container.appendChild(row);
+            });
+        });
+    }
+    else if (content.type === 'movie')
+    {
+        current_target_episodes = null; // not relevant for movies
+
+        const heading = document.createElement('h2');
+        heading.className = 'fw-bold mb-3 text-danger';
+        heading.textContent = 'Movie Video';
+        container.appendChild(heading);
+
+        // NOTE: there's no endpoint to fetch a movie's current video URL (the only way to
+        // read an episode is by its id, and movies don't expose theirs directly) - so this
+        // can only set/replace it, not display what's currently set.
+        const note_p = document.createElement('p');
+        note_p.className = 'text-light';
+        note_p.textContent = "There's no way to look up this movie's current video URL - enter a new one below to set or replace it.";
+        container.appendChild(note_p);
+
+        const input_row = document.createElement('div');
+        input_row.className = FIELD_ITEM_CLASSES;
+
+        const label_p = document.createElement('p');
+        label_p.className = LABEL_CLASSES;
+        label_p.textContent = 'Video URL';
+        input_row.appendChild(label_p);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'movie_video_url';
+        input.className = INPUT_CLASSES;
+        input_row.appendChild(input);
+        container.appendChild(input_row);
+
+        const set_btn = document.createElement('button');
+        set_btn.className = 'btn btn-primary btn-lg mt-2';
+        set_btn.textContent = 'Set Movie Video';
+        set_btn.addEventListener('click', () => set_movie_video_click(content.id, input));
+        container.appendChild(set_btn);
+    }
+
+    view_container.appendChild(container);
+}
+
+async function set_movie_video_click(contentId, input)
+{
+    const videoUrl = input.value.trim();
+    if (!videoUrl)
+    {
+        UI.ShowErrorMessage('Please enter a video URL');
+        return;
+    }
+
+    const response = await Backend.setMovieVideo(token, contentId, videoUrl);
+    if (!response.success)
+    {
+        UI.ShowErrorMessage('Failed to set movie video: ' + response.message);
+        return;
+    }
+
+    UI.ShowMessage('Movie video set successfully');
+    input.value = '';
+}
+
+// episode = null -> "Add Episode" mode; otherwise "Update Episode" mode.
+// Field ids intentionally match the Episode class's own property names (seasonNumber,
+// episodeNumber, title, videoUrl) so build_edit_input_field's prefill/change-highlight
+// logic (which reads target[label] directly) works against the raw Episode object - they
+// get mapped to the API's season_number/episode_number body keys in the submit handlers.
+function create_episode_window(contentId, episode = null)
+{
+    const is_create_mode = !episode;
+    const { overlay, content } = create_modal_shell(is_create_mode ? 'Add Episode' : 'Update Episode');
+
+    const fields_container = document.createElement('div');
+    fields_container.className = FIELDS_CONTAINER_CLASSES;
+    content.appendChild(fields_container);
+
+    fields_container.appendChild(build_edit_input_field(episode, 'seasonNumber', "Season Number", 'number'));
+    fields_container.appendChild(build_edit_input_field(episode, 'episodeNumber', "Episode Number", 'number'));
+    fields_container.appendChild(build_edit_input_field(episode, 'title', "Title", 'text'));
+    fields_container.appendChild(build_edit_input_field(episode, 'videoUrl', "Video URL", 'text'));
+
+    content.appendChild(create_button_row([
+        { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
+        {
+            text: is_create_mode ? 'Create' : 'Update',
+            className: 'btn btn-primary btn-lg',
+            onClick: () => { is_create_mode ? create_episode(contentId) : update_episode(contentId, episode); },
+            listenForEnter: true
+        },
+    ]));
+
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+async function create_episode(contentId)
+{
+    const form_data = get_filters_from_window(filters_window);
+
+    if (form_data.seasonNumber === '' || form_data.episodeNumber === '')
+    {
+        close_filters_window();
+        UI.ShowErrorMessage('Season number and episode number are required');
+        return;
+    }
+
+    const episodeData = {
+        season_number: Number(form_data.seasonNumber),
+        episode_number: Number(form_data.episodeNumber)
+    };
+    if (form_data.title !== '') episodeData.title = form_data.title;
+    if (form_data.videoUrl !== '') episodeData.videoUrl = form_data.videoUrl;
+
+    const response = await Backend.addEpisode(token, contentId, episodeData);
+    if (!response.success)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage('Failed to add episode: ' + response.message);
+        return;
+    }
+
+    UI.ShowMessage('Episode added successfully');
+    close_filters_window();
+    await view_content(); // refreshes the episodes list too
+}
+
+async function update_episode(contentId, episode)
+{
+    const form_data = get_filters_from_window(filters_window);
+    // Maps the field ids (matching Episode's own camelCase properties) to the snake_case
+    // body keys the update endpoint expects.
+    const key_map = { seasonNumber: 'season_number', episodeNumber: 'episode_number', title: 'title', videoUrl: 'videoUrl' };
+    const changes = {};
+
+    for (const form_key in key_map)
+    {
+        if (form_data[form_key] === "") continue;
+
+        const original_value = String(episode[form_key] ?? '');
+        if (form_data[form_key] !== original_value)
+        {
+            const body_key = key_map[form_key];
+            changes[body_key] = (form_key === 'seasonNumber' || form_key === 'episodeNumber')
+                ? Number(form_data[form_key])
+                : form_data[form_key];
+        }
+    }
+
+    if (Object.keys(changes).length === 0)
+    {
+        close_filters_window();
+        UI.ShowMessage('No changes to update');
+        return;
+    }
+
+    const response = await Backend.updateEpisode(token, contentId, episode.id, changes);
+    if (!response.success)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage('Failed to update episode: ' + response.message);
+        return;
+    }
+
+    UI.ShowMessage('Episode updated successfully');
+    close_filters_window();
+    await view_content();
+}
+
+function delete_episode_click(contentId, episode)
+{
+    filters_window = create_confirmation_window(
+        `Are you sure you want to delete episode "S${episode.seasonNumber}E${episode.episodeNumber}"?`,
+        async () =>
+        {
+            const response = await Backend.deleteEpisode(token, contentId, episode.id);
+            if (!response.success)
+            {
+                close_filters_window();
+                UI.ShowErrorMessage('Failed to delete episode: ' + response.message);
+                return;
+            }
+
+            UI.ShowMessage('Episode deleted successfully');
+            close_filters_window();
+            await view_content();
+        }
+    );
+}
+
+//=============== Review: Update Window ===============
+// Only rating and comment are editable - id/contentId/episodeId/profileId are fixed
+// once a review is created (there's no route to change what it points to).
+function create_update_review_window(reviewItem)
+{
+    if (!reviewItem || !(reviewItem instanceof Review))
+    {
+        UI.ShowErrorMessage("No review selected");
+        return null;
+    }
+
+    const { overlay, content } = create_modal_shell('Update Review');
+
+    const fields_container = document.createElement('div');
+    fields_container.className = FIELDS_CONTAINER_CLASSES;
+    content.appendChild(fields_container);
+
+    // maps to: { rating, comment } on Review
+    fields_container.appendChild(build_edit_input_field(reviewItem, 'rating', "Rating (1-10)", 'number'));
+    fields_container.appendChild(build_edit_input_field(reviewItem, 'comment', "Comment", 'text'));
+
+    content.appendChild(create_button_row([
+        { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
+        { text: 'Update', className: 'btn btn-primary btn-lg', onClick: () => update_review(reviewItem), listenForEnter: true },
+    ]));
+
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+async function update_review(review)
+{
+    const form_data = get_filters_from_window(filters_window);
+    let changes = {};
+
+    // Same "only send what actually changed" pattern as update_user()/update_content() above.
+    for (const key in form_data)
+    {
+        if (!(key in review)) continue;
+        if (form_data[key] === "") continue;
+
+        const original_value = String(review[key] ?? '');
+        if (form_data[key] !== original_value)
+        {
+            changes[key] = (key === 'rating') ? Number(form_data[key]) : form_data[key];
+        }
+    }
+
+    if (Object.keys(changes).length === 0)
+    {
+        close_filters_window();
+        UI.ShowMessage("No changes to update");
+        return;
+    }
+
+    const response = await Backend.adminUpdateReview(token, review.id, changes);
+    if (!response.success)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage("Update failed, server error: " + response.message);
+        return;
+    }
+    if (!response.review)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage("Review update failed - invalid response from server.");
+        return;
+    }
+
+    UI.ShowMessage("Review updated successfully");
+    current_target = response.review;
+    view_review();
     close_filters_window();
 }
 
@@ -970,8 +1431,15 @@ function create_contents_filters_window(filters)
     const likes_filters = [
         build_search_input_field(filters, 'min_likes', 'Minimum likes', 'number'),
     ];
+    // average_rating/review_count are now real, filterable fields on every content object.
+    const rating_review_filters = [
+        build_search_input_field(filters, 'min_average_rating', 'Min avg rating', 'number'),
+        build_search_input_field(filters, 'max_average_rating', 'Max avg rating', 'number'),
+        build_search_input_field(filters, 'min_review_count', 'Min review count', 'number'),
+        build_search_input_field(filters, 'max_review_count', 'Max review count', 'number'),
+    ];
     const sort_filters = [
-        build_search_select_field(filters, 'sort', 'Sort', ['createdAt', 'likes', 'title', 'age_limit', 'release_date']),
+        build_search_select_field(filters, 'sort', 'Sort', ['createdAt', 'likes', 'title', 'age_limit', 'release_date', 'average_rating', 'review_count']),
         build_search_select_field(filters, 'sortOrder', 'Sort Order', ['greater_to_smaller', 'smaller_to_greater']),
     ];
     const pagination_filters = [
@@ -988,12 +1456,61 @@ function create_contents_filters_window(filters)
     fields_container.appendChild(build_field_group('Release Date', release_date_filters));
     fields_container.appendChild(build_field_group('Age Limit', age_limit_filters));
     fields_container.appendChild(build_field_group('Likes', likes_filters));
+    fields_container.appendChild(build_field_group('Rating & Reviews', rating_review_filters));
     fields_container.appendChild(build_field_group('Sort', sort_filters));
     fields_container.appendChild(build_field_group('Pagination', pagination_filters));
 
     content.appendChild(create_button_row([
         { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
         { text: 'Search', className: 'btn btn-primary btn-lg', onClick: () => search_contents_filters(), listenForEnter: true },
+    ]));
+
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+//=============== Reviews: Search Filters Window ===============
+function create_reviews_filters_window(filters)
+{
+    const { overlay, content } = create_modal_shell('Reviews filters Setup');
+
+    const id_filters = [
+        build_search_input_field(filters, 'content_id', 'Content ID', 'text'),
+        build_search_input_field(filters, 'episode_id', 'Episode ID', 'text'),
+        build_search_input_field(filters, 'profile_id', 'Profile ID', 'text'),
+        build_search_input_field(filters, 'user_id', 'User ID', 'text'),
+    ];
+    const rating_filters = [
+        build_search_input_field(filters, 'rating', 'Exact', 'number'),
+        build_search_input_field(filters, 'min_rating', 'Min', 'number'),
+        build_search_input_field(filters, 'max_rating', 'Max', 'number'),
+    ];
+    const comment_filters = [
+        build_search_input_field(filters, 'comment_starts', 'Starts with', 'text'),
+        build_search_input_field(filters, 'comment_ends', 'Ends with', 'text'),
+        build_search_input_field(filters, 'comment_contains', 'Contains', 'text'),
+    ];
+    const sort_filters = [
+        build_search_select_field(filters, 'sort', 'Sort', ['rating']),
+        build_search_select_field(filters, 'sortOrder', 'Sort Order', ['greater_to_smaller', 'smaller_to_greater']),
+    ];
+    const pagination_filters = [
+        build_search_input_field(filters, 'limit', 'Limit', 'number'),
+        build_search_input_field(filters, 'skip', 'Skip', 'number'),
+    ];
+
+    const fields_container = document.createElement('div');
+    fields_container.className = FIELDS_CONTAINER_CLASSES;
+    content.appendChild(fields_container);
+    fields_container.appendChild(build_field_group('IDs', id_filters));
+    fields_container.appendChild(build_field_group('Rating', rating_filters));
+    fields_container.appendChild(build_field_group('Comment', comment_filters));
+    fields_container.appendChild(build_field_group('Sort', sort_filters));
+    fields_container.appendChild(build_field_group('Pagination', pagination_filters));
+
+    content.appendChild(create_button_row([
+        { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
+        { text: 'Search', className: 'btn btn-primary btn-lg', onClick: () => search_reviews_filters(), listenForEnter: true },
     ]));
 
     document.body.appendChild(overlay);
@@ -1214,6 +1731,117 @@ async function ban_user_confirm(user, hours_to_ban)
     close_filters_window();
 }
 
+//=============== Select by ID Window ===============
+// Generic "jump straight to this ID" modal, shared by all three modes. For Users and
+// Content this fetches directly from the server (works even for an id outside the
+// currently loaded/filtered list, since fetchUserById/getContentByID are dedicated
+// get-by-id endpoints). Reviews has no get-by-id endpoint at all on the backend
+// (searchReviews only filters by content_id/episode_id/profile_id/user_id, not the
+// review's own id) - so that one can only match against whatever's already loaded in
+// the current reviews search results.
+function create_select_by_id_window(entity_label, on_select)
+{
+    const { overlay, content } = create_modal_shell(`Select ${entity_label} by ID`);
+
+    const label_p = document.createElement('p');
+    label_p.className = LABEL_CLASSES;
+    label_p.textContent = `${entity_label} ID:`;
+    content.appendChild(label_p);
+
+    const id_input = document.createElement('input');
+    id_input.type = 'text';
+    id_input.id = 'select_by_id_input';
+    id_input.className = 'form-control w-75 mx-auto mb-4';
+    content.appendChild(id_input);
+
+    content.appendChild(create_button_row([
+        { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
+        {
+            text: 'Select',
+            className: 'btn btn-primary btn-lg',
+            listenForEnter: true,
+            onClick: async () =>
+            {
+                const id = id_input.value.trim();
+                if (!id)
+                {
+                    UI.ShowErrorMessage('Please enter an ID');
+                    return;
+                }
+                await on_select(id);
+            }
+        },
+    ]));
+
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+async function select_user_by_id(id)
+{
+    const response = await Backend.fetchUserById(token, id);
+    if (!response.success || !response.user)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage("User not found: " + (response.message || 'unknown error'));
+        return;
+    }
+    current_target = response.user;
+    close_filters_window();
+    await view_user();
+    rander_mode_selector();
+}
+
+async function select_content_by_id(id)
+{
+    const response = await Backend.getContentByID(id);
+    if (!response.success || !response.content)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage("Content not found: " + (response.message || 'unknown error'));
+        return;
+    }
+    current_target = response.content;
+    close_filters_window();
+    await view_content();
+    rander_mode_selector();
+}
+
+// See the note above create_select_by_id_window() - this can only find a match among
+// whatever's already loaded in the current reviews search results.
+async function select_review_by_id(id)
+{
+    const found = reviews.find(r => r.id === id);
+    if (!found)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage("Review not found in the currently loaded list - try adjusting the review search filters first.");
+        return;
+    }
+    current_target = found;
+    close_filters_window();
+    view_review();
+    rander_mode_selector();
+}
+
+// NOTE: relies on Backend.findUserByProfileId(), which maps to a new admin endpoint
+// (GET /admin/profiles/:profileId/owner) that does not exist on the server yet - see
+// admin-find-user-by-profile.js for the controller code to integrate server-side.
+async function select_user_by_profile_id(profileId)
+{
+    const response = await Backend.findUserByProfileId(token, profileId);
+    if (!response.success || !response.user)
+    {
+        close_filters_window();
+        UI.ShowErrorMessage("User not found for that profile ID: " + (response.message || 'unknown error'));
+        return;
+    }
+    current_target = response.user;
+    close_filters_window();
+    await view_user();
+    rander_mode_selector();
+}
+
 //=============== Confirmation / Delete ===============
 function create_confirmation_window(message, onConfirm)
 {
@@ -1299,6 +1927,35 @@ function delete_user_click(user)
     );
 }
 
+function delete_review_click(review)
+{
+    if (!review || !(review instanceof Review))
+    {
+        UI.ShowErrorMessage("No review selected");
+        return;
+    }
+
+    filters_window = create_confirmation_window(
+        `Are you sure you want to delete this review (Rating: ${review.rating}/10)?`,
+        async () =>
+        {
+            const response = await Backend.adminDeleteReview(token, review.id);
+            if (!response.success)
+            {
+                close_filters_window();
+                UI.ShowErrorMessage("Deletion failed, server error: " + response.message);
+                return;
+            }
+
+            UI.ShowMessage("Review deleted successfully");
+            reviews = reviews.filter(r => r.id !== review.id);
+            if (current_target === review) current_target = null;
+            main_renderer();
+            close_filters_window();
+        }
+    );
+}
+
 function kick_user_click(user)
 {
     if (!user || !(user instanceof UserInfo))
@@ -1327,7 +1984,7 @@ function kick_user_click(user)
 }
 
 //=============== Main Renderer ===============
-// Central switchboard: every mode change (empty/users/contents) re-runs through here.
+// Central switchboard: every mode change (users/contents/reviews) re-runs through here.
 // Each case does 3 things in order: (1) toggle CSS transforms/opacity for the
 // show/hide animation, (2) wire up the mode-specific action buttons, (3) render
 // the selection list + detail view for that mode.
@@ -1335,25 +1992,6 @@ function main_renderer()
 {
     switch (current_mode)
     {
-        
-        case mode.empty:
-        {
-            // Animate out, then actually hide (display:none) once the transition finishes -
-            // hiding immediately would skip the animation entirely.
-            selection_container.style.transform = "scale(1, 0)";
-            selection_counter.style.opacity = "0";
-            view_container.style.transform = "scale(1, 0)";
-            controll_container.style.opacity = "0";
-            setTimeout(() =>
-            {
-                selection_counter.style.display = "none";
-                selection_container.style.display = "none";
-                view_container.style.display = "none";
-                controll_container.style.display = "none";
-            }, 300);
-            break;
-        }
-        
         case mode.users:
         {
             selection_container.style.display = "block";
@@ -1373,6 +2011,8 @@ function main_renderer()
             render_controll_container([
                 {name: "Kick", primary: true, function: () => kick_user_click(current_target)},
                 {name: "Search", function: () => filters_window = create_users_filters_window(users_filters)},
+                {name: "Select by ID", function: () => filters_window = create_select_by_id_window('User', select_user_by_id)},
+                {name: "Select by Profile ID", function: () => filters_window = create_select_by_id_window('Profile', select_user_by_profile_id)},
                 {name: "Update", function: () => filters_window = create_update_user_window(current_target)},
                 {name: "Delete", function: () => delete_user_click(current_target)},
                 {name: "My User", function: () => {current_target = active_user; view_user()}},
@@ -1400,12 +2040,37 @@ function main_renderer()
             render_controll_container([
                 {name: "Add", primary: true, function: () => filters_window = create_update_content_window()},
                 {name: "Search", function: () => filters_window = create_contents_filters_window(contents_filters)},
+                {name: "Select by ID", function: () => filters_window = create_select_by_id_window('Content', select_content_by_id)},
                 {name: "Update", primary: true, function: () => filters_window = create_update_content_window(current_target)},
                 {name: "Delete", function: () => delete_content_click(current_target)},
                 {name: "Statistics", function: () => filters_window = create_statistics_content_window()},
             ]);
             rander_selection_container_to_contents();
             view_content();
+            break;
+        }
+        case mode.reviews:
+        {
+            selection_container.style.display = "block";
+            view_container.style.display = "block";
+            controll_container.style.display = "block";
+            selection_counter.style.display = "block";
+
+            requestAnimationFrame(() =>
+            {
+                selection_container.style.transform = "scale(1, 1)";
+                view_container.style.transform = "scale(1, 1)";
+                controll_container.style.opacity = "1";
+                selection_counter.style.opacity = "1";
+            });
+            render_controll_container([
+                {name: "Search", function: () => filters_window = create_reviews_filters_window(reviews_filters)},
+                {name: "Select by ID", function: () => filters_window = create_select_by_id_window('Review', select_review_by_id)},
+                {name: "Update", primary: true, function: () => filters_window = create_update_review_window(current_target)},
+                {name: "Delete", function: () => delete_review_click(current_target)},
+            ]);
+            rander_selection_container_to_reviews();
+            view_review();
             break;
         }
     }
@@ -1423,6 +2088,7 @@ if (!msg_box) throw new Error("msg_box not found");
 
 search_contents_filters();
 search_users_filters();
+search_reviews_filters();
 UI.ClearMessage();
 
 export { create_update_user_window };
