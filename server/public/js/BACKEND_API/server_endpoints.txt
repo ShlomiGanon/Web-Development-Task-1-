@@ -261,7 +261,7 @@ PROFILE ENDPOINTS (/api/profile)
         likedContentIds: [ contentId, ... ],
         lastWatched:
         [
-          { _id: string, episode_id: string, content_id: string },
+          { episode_id: string, content_id: string },
           ...
         ]
       }
@@ -317,7 +317,7 @@ PROFILE ENDPOINTS (/api/profile)
       },
       lastWatched:
       [
-        { _id: string, episode_id: string, content_id: string },
+        { episode_id: string, content_id: string },
         ...
       ]
     }
@@ -349,7 +349,7 @@ PROFILE ENDPOINTS (/api/profile)
       },
       lastWatched:
       [
-        { _id: string, episode_id: string, content_id: string },
+        { episode_id: string, content_id: string },
         ...
       ]
     }
