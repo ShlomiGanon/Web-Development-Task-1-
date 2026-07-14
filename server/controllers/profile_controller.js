@@ -545,8 +545,6 @@ const findUserByProfileId = async (req, res) =>
             return res.json({ success: false, message: 'Owning user not found (dangling profile reference)' });
         }
  
-        // Mirrors the "safe user" shape returned everywhere else - swap for your existing
-        // toUserSummary()-style helper if one already exists, for consistency.
         const userSummary = safe_user(user);
  
         res.json({ success: true, message: 'User found successfully', user: userSummary });
