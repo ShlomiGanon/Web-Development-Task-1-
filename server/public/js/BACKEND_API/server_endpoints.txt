@@ -386,6 +386,42 @@ PROFILE ENDPOINTS (/api/profile)
       ]
     }
 
+17) GET /api/profile/:profileId/top_picks
+    Purpose: Suggests up to 3 top-rated content items based on this profile's own taste -
+    groups the categories of everything it has watched or liked, takes its top 3 most
+    common categories, then returns the highest-rated other content sharing those
+    categories (excluding anything already watched or liked).
+
+    req.params =
+    {
+      profileId: string
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      content:
+      [
+        {
+          id: string,
+          title: string,
+          description: string,
+          cover_image_name: string,
+          type: "movie" | "series",
+          categories: string[],
+          release_date: string,
+          age_limit: number,
+          likes: number,
+          createdAt: string,
+          imdb_rating: number
+        },
+        ...
+      ]
+    }
+
+    Note: returns an empty list (not an error) if the profile has no watch/like history yet.
+
 --------------------------------------------------
 CONTENT ENDPOINTS (/api/content)
 --------------------------------------------------
@@ -393,7 +429,7 @@ CONTENT ENDPOINTS (/api/content)
 itself - every watchable item is an Episode, including a movie's single episode.)
 (All content endpoints are public - no login needed.)
 
-17) GET /api/content/:contentId
+18) GET /api/content/:contentId
     Purpose: Gets the details of one specific movie/series.
 
     req.params =
@@ -421,7 +457,7 @@ itself - every watchable item is an Episode, including a movie's single episode.
       }
     }
 
-18) GET /api/content/
+19) GET /api/content/
     Purpose: Searches/browses the whole catalog using filters like title, category, or type.
 
     req.query =
@@ -465,7 +501,7 @@ itself - every watchable item is an Episode, including a movie's single episode.
       ]
     }
 
-19) GET /api/content/:contentId/episodes
+20) GET /api/content/:contentId/episodes
     Purpose: Gets every episode of a series, grouped by season. Only works for type "series".
 
     req.params =
@@ -489,7 +525,7 @@ itself - every watchable item is an Episode, including a movie's single episode.
 
     Note: seasons[0] is season 1's episode list, seasons[1] is season 2's, etc.
 
-20) GET /api/content/:contentId/episodes/:episodeId
+21) GET /api/content/:contentId/episodes/:episodeId
     Purpose: Gets the details of one specific episode.
 
     req.params =
@@ -513,7 +549,7 @@ itself - every watchable item is an Episode, including a movie's single episode.
       }
     }
 
-21) GET /api/content/:contentId/episodes/:episodeId/next
+22) GET /api/content/:contentId/episodes/:episodeId/next
     Purpose: Gets the episode that comes right after the given one (crosses into the next
     season if this was the last episode of its season).
 
@@ -538,7 +574,7 @@ itself - every watchable item is an Episode, including a movie's single episode.
       }
     }
 
-22) GET /api/content/:contentId/episodes/:episodeId/prev
+23) GET /api/content/:contentId/episodes/:episodeId/prev
     Purpose: Gets the episode that comes right before the given one (crosses back into the
     previous season if this was the first episode of its season).
 
@@ -569,7 +605,7 @@ REVIEW ENDPOINTS (/api/reviews)
 (A review is one profile's rating (1-10) plus an optional comment, for one specific episode.
 A profile can have at most one review per episode.)
 
-23) POST /api/reviews/:profileId/:contentId/:episodeId
+24) POST /api/reviews/:profileId/:contentId/:episodeId
     Purpose: Adds a review (rating + optional comment) for a specific episode, written by this
     profile. A profile can only review a given episode once. Adding a review automatically
     recalculates that content's average_rating and review_count.
@@ -609,7 +645,7 @@ A profile can have at most one review per episode.)
 
     Note: rating must be a number between 1 and 10. comment has a 500 character limit.
 
-24) PUT /api/reviews/:profileId/:contentId/:episodeId
+25) PUT /api/reviews/:profileId/:contentId/:episodeId
     Purpose: Edits this profile's own review for a specific episode (rating and/or comment).
     Editing the rating automatically recalculates that content's average_rating.
 
@@ -646,7 +682,7 @@ A profile can have at most one review per episode.)
       }
     }
 
-25) DELETE /api/reviews/:profileId/:contentId/:episodeId
+26) DELETE /api/reviews/:profileId/:contentId/:episodeId
     Purpose: Removes this profile's own review for a specific episode. Removing the review
     automatically recalculates that content's average_rating and review_count.
 
@@ -668,7 +704,7 @@ A profile can have at most one review per episode.)
       message: string
     }
 
-26) GET /api/reviews/
+27) GET /api/reviews/
     Purpose: Searches/browses all reviews using query filters. Public, no login needed.
 
     req.query =
@@ -710,7 +746,7 @@ ADMIN ENDPOINTS (/api/admin)
 logged-in user must have admin permission level, unless noted as super-admin-only.)
 (This section consolidates every admin-only action across users, content, and reviews.)
 
-27) GET /api/admin/users
+28) GET /api/admin/users
     Purpose: Lets an admin search/browse through the list of all users.
 
     req.query =
@@ -739,7 +775,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       ]
     }
 
-28) GET /api/admin/users/:user_id
+29) GET /api/admin/users/:user_id
     Purpose: Lets an admin view the details of one specific user.
 
     req.params =
@@ -763,7 +799,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-29) PUT /api/admin/users/:user_id
+30) PUT /api/admin/users/:user_id
     Purpose: Lets an admin update the account details of a specific user.
 
     req.params =
@@ -796,7 +832,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-30) DELETE /api/admin/users/:user_id  (super admin only)
+31) DELETE /api/admin/users/:user_id  (super admin only)
     Purpose: Permanently deletes a user account, and cascades the deletion to that
     user's profiles and reviews (content average ratings are recalculated afterward).
 
@@ -811,7 +847,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       message: string
     }
 
-31) PUT /api/admin/users/:user_id/permission
+32) PUT /api/admin/users/:user_id/permission
     Purpose: Promotes or demotes a user's permission level. An admin cannot assign
     a level higher than their own, and cannot act on a user who is already at or
     above their own level. Permission levels: USER = 0, ADMIN = 1, SUPER_ADMIN = 2.
@@ -832,7 +868,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       message: string
     }
 
-32) GET /api/admin/users/:user_id/tokens_count
+33) GET /api/admin/users/:user_id/tokens_count
     Purpose: Gets how many active login tokens (sessions) a user currently has.
 
     req.params =
@@ -846,7 +882,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       tokens_count: number
     }
 
-33) POST /api/admin/users/:user_id/kick
+34) POST /api/admin/users/:user_id/kick
     Purpose: Invalidates all of a user's active tokens, forcing them to log in again everywhere.
 
     req.params =
@@ -859,7 +895,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       success: boolean
     }
 
-34) POST /api/admin/users/:user_id/ban
+35) POST /api/admin/users/:user_id/ban
     Purpose: Bans a user for a given number of hours (does not kick existing sessions).
 
     req.params =
@@ -877,7 +913,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       success: boolean
     }
 
-35) GET /api/admin/users/:user_id/ban
+36) GET /api/admin/users/:user_id/ban
     Purpose: Checks whether a user is currently banned.
 
     req.params =
@@ -891,7 +927,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       is_banned: boolean
     }
 
-36) POST /api/admin/content
+37) POST /api/admin/content
     Purpose: Adds a brand new movie or series to the catalog.
 
     req.body =
@@ -925,7 +961,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-37) DELETE /api/admin/content/:contentId
+38) DELETE /api/admin/content/:contentId
     Purpose: Removes a movie/series from the catalog completely.
 
     req.params =
@@ -939,7 +975,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       message: string
     }
 
-38) PUT /api/admin/content/:contentId
+39) PUT /api/admin/content/:contentId
     Purpose: Edits the details of an existing movie/series.
 
     req.params =
@@ -978,7 +1014,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-39) POST /api/admin/content/:contentId/episodes
+40) POST /api/admin/content/:contentId/episodes
     Purpose: Adds a new episode to a series (movies cannot have episodes added this way).
 
     req.params =
@@ -1009,7 +1045,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-40) PUT /api/admin/content/:contentId/movie-video
+41) PUT /api/admin/content/:contentId/movie-video
     Purpose: Creates or updates the single video for a movie (movies only - use the
     episode endpoints above for series). Internally this is still backed by a single
     Episode entry (season 1, episode 1), but the caller never needs to know that.
@@ -1039,7 +1075,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-41) PUT /api/admin/content/:contentId/episodes/:episodeId
+42) PUT /api/admin/content/:contentId/episodes/:episodeId
     Purpose: Edits the details of an existing episode. Not restricted by content type -
     a movie's single episode can be edited too.
 
@@ -1072,7 +1108,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-42) DELETE /api/admin/content/:contentId/episodes/:episodeId
+43) DELETE /api/admin/content/:contentId/episodes/:episodeId
     Purpose: Removes a specific episode from a series.
 
     req.params =
@@ -1087,7 +1123,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       message: string
     }
 
-43) PUT /api/admin/reviews/:reviewId
+44) PUT /api/admin/reviews/:reviewId
     Purpose: Edits any review directly by its ID, regardless of who wrote it - e.g. to fix a
     rating or clean up a comment. Editing the rating automatically recalculates that
     content's average_rating.
@@ -1118,7 +1154,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-44) DELETE /api/admin/reviews/:reviewId
+45) DELETE /api/admin/reviews/:reviewId
     Purpose: Deletes any review directly by its ID, regardless of who wrote it - e.g. to remove
     an abusive comment. Recalculates that content's average_rating and review_count.
 

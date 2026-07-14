@@ -3,6 +3,7 @@ const User = require('../models/user');
 const Profile = require('../models/profile');
 const Content = require('../models/content');
 const { toContentSummary } = require('./content_controller');
+
 const getContentOthersEngagedWith = async (req, res) =>
     {
         try
@@ -71,4 +72,77 @@ const getContentOthersEngagedWith = async (req, res) =>
         }
     }
 
-module.exports = { getContentOthersEngagedWith };
+/**
+ * Suggests the profile's top 3 picks based on its own taste, rather than
+ * other profiles' activity: groups the categories of everything this profile
+ * has watched or liked, takes its top 3 most common categories, then suggests
+ * the 3 highest-rated other content items sharing those categories.
+ * Relies on authorizeProfileAccess having attached req.profile.
+ */
+const getTopPicksForProfile = async (req, res) =>
+    {
+        try
+        {
+            const user_id = req.target_user_id;
+            const current_profile = req.profile;
+
+            // Content the profile already watched or liked - used both to build its
+            // taste profile (top categories) and to exclude from the final suggestions
+            const interacted_content_ids = [
+                ...current_profile.last_watched.map((entry) => entry.content_id),
+                ...current_profile.liked_content_ids
+            ];
+
+            if (interacted_content_ids.length === 0)
+            {
+                return res.json({ success: true, message: 'No watch or like history yet - nothing to base recommendations on', content: [] });
+            }
+
+            // GROUP BY category across all content this profile has watched or liked.
+            // Step 1: $match   - only content this profile interacted with
+            // Step 2: $unwind  - turn the categories array into one row per category
+            // Step 3: $group   - GROUP BY category, counting how many interacted items had it
+            // Step 4: $sort    - most common categories for this profile first
+            // Step 5: $limit   - only the top 3 categories, to keep suggestions focused
+            const top_categories = await Content.aggregate(
+            [
+                { $match: { _id: { $in: interacted_content_ids } } },
+                { $unwind: '$categories' },
+                { $group: { _id: '$categories', count: { $sum: 1 } } },
+                { $sort: { count: -1 } },
+                { $limit: 3 }
+            ]);
+
+            const category_names = top_categories.map((row) => row._id);
+
+            if (category_names.length === 0)
+            {
+                return res.json({ success: true, message: 'No categories found in watch/like history', content: [] });
+            }
+
+            // Fetch other content sharing those top categories, excluding anything
+            // the profile already watched or liked, sorted by highest rated first -
+            // limited to the top 3 picks
+            const contents = await Content.find({
+                categories: { $in: category_names },
+                _id: { $nin: interacted_content_ids }
+            }).sort({ average_rating: -1, likes: -1 }).limit(3);
+
+            my_logger.ConsoleLog(`Top picks retrieved successfully for user ${user_id}`, my_logger.Log_Level.INFO);
+            my_logger.OperationLog('getTopPicksForProfile', 'Top picks retrieved successfully for user ' + user_id, { "profile_id": current_profile._id, "top_categories": category_names, "content_count": contents.length }, my_logger.Log_Level.INFO);
+
+            return res.json({
+                success: true,
+                message: 'Top picks retrieved successfully',
+                content: contents.map(content => toContentSummary(content))
+            });
+        }
+        catch (error)
+        {
+            my_logger.ConsoleLog(`Error getting top picks: ${error}`, my_logger.Log_Level.ERROR);
+            my_logger.OperationLog('getTopPicksForProfile', 'Error getting top picks.', { "error": error }, my_logger.Log_Level.ERROR);
+            res.json({ success: false, message: 'Internal server error' });
+        }
+    }
+
+module.exports = { getContentOthersEngagedWith, getTopPicksForProfile };

@@ -43,4 +43,7 @@ router.post('/:profileId/watch/:contentId/:episodeId', authorizeProfileAccess, c
 // Route to get other profiles activity for a specific profile
 router.get('/:profileId/other_profiles_recommendations', authorizeProfileAccess, suggestionsController.getContentOthersEngagedWith);
 
+// Route to get the profile's top 3 picks based on its own watch/like history
+router.get('/:profileId/top_picks', authorizeProfileAccess, suggestionsController.getTopPicksForProfile);
+
 module.exports = router;
