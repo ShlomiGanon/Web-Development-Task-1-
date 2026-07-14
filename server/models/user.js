@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 const Profile = require("./profile");
-
-const MAX_PROFILES_LIMIT = 4;
+const { MAX_PROFILES_LIMIT } = require('../scripts/constants');
 
 /**
  * User Schema

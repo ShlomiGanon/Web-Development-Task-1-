@@ -33,14 +33,19 @@ const reviews_section = document.getElementById('reviews_section');
 
 let User_Search_Value = '';
 let activeProfile = null;
+// Content_Items = whatever's shown in the grid right now (changes per nav click/search).
+// All_Content_Items = the full catalog, fetched once and never overwritten - used for
+// lookups (e.g. My List) so a watched item never "disappears" just because the grid changed.
 let Content_Items = null;
+let All_Content_Items = null;
+// What's drawn in last_watched_container right now: 'details' or 'my_list' - lets
+// handleToggleLike() know whether it needs to redraw this container after a like.
+let Current_Last_Watched_View = null;
 // Episode picker state - only relevant while viewing a "series" content item's details.
 let Current_Series_Content_Id = null;
 let Current_Series_Seasons = null; // Array<Array<Episode>> - seasons[0] = season 1, etc.
 let Current_Selected_Season = 1;
-// Reviews state - tracks whichever content/episode is currently playing, so the reviews
-// section always reflects the episode actually on screen (movie's single episode, or
-// whichever series episode was just selected/resumed).
+// Whichever content/episode is currently playing - keeps the reviews section in sync.
 let Current_Watching_Content_Id = null;
 let Current_Watching_Episode_Id = null;
 const token = ClientSessionManager.getSessionToken();
@@ -69,9 +74,8 @@ function renderField(label, value, seperator = ':', labelClass = 'text-danger', 
 `;
 }
 
-// Renders every field present on the raw content object returned by the server, generically -
-// so nothing is hand-picked/omitted here, and any field the backend adds or removes later
-// (e.g. imdb_rating only being present sometimes) is reflected automatically.
+// Renders every field on the raw content object generically, so any field the backend
+// adds/removes later (e.g. imdb_rating) is reflected automatically.
 function formatContentFieldValue(value)
 {
     if (value === null || value === undefined) return "N/A";
@@ -103,9 +107,7 @@ async function randerContentItems(content_item)
     `;
     last_watched_container.innerHTML = contentHtml;
 
-    // Only series have episodes to pick from. Movies are a single Episode under the hood
-    // (season 1, episode 1), but there's nothing to "pick" - just one video to start -
-    // so a plain "play movie" button is shown instead of an episode list.
+    // Series get an episode picker; movies (single Episode under the hood) just get a play button.
     if (content_item.type === "series")
     {
         await renderEpisodePicker(content_item.id);
@@ -135,10 +137,8 @@ function renderMoviePlayButton(contentId)
     last_watched_container.insertAdjacentHTML('beforeend', playButtonHtml);
 }
 
-// Resumes this content's saved episode if the profile already has watch progress for it,
-// otherwise starts from season 1 / episode 1 (the resume-or-default watch endpoint handles
-// both cases). Used both by the movie "play" button and by auto-resume on a content card
-// click when watch history already exists for that content.
+// Resumes saved progress if it exists, otherwise starts at S1E1. Used by the movie
+// "play" button and by auto-resume when a content card with watch history is clicked.
 async function startOrResumeContentPlayback(contentId)
 {
     const response = await Backend.selectContentItem(token, activeProfileId, contentId);
@@ -158,9 +158,7 @@ async function startOrResumeContentPlayback(contentId)
     await refreshDisplay();
 }
 
-// Starts the movie's video (there's only ever one episode for a movie - season 1,
-// episode 1 - so the resume-or-default watch endpoint is exactly what's needed here,
-// same as it would be for a series with no saved progress yet).
+// A movie only ever has one episode (S1E1), so resume-or-default is exactly what's needed.
 async function handlePlayMovie(contentId)
 {
     await startOrResumeContentPlayback(contentId);
@@ -182,9 +180,8 @@ async function renderEpisodePicker(contentId)
     Current_Series_Content_Id = contentId;
     Current_Series_Seasons = response.seasons ?? [];
 
-    // Default to whichever season contains the episode currently playing (if this content
-    // is the one already being watched), so the "now playing" highlight is visible right
-    // away instead of always resetting to season 1.
+    // Default to the season containing the episode currently playing, if any, so the
+    // "now playing" highlight shows immediately instead of resetting to season 1.
     Current_Selected_Season = 1;
     if (Current_Watching_Content_Id === contentId && Current_Watching_Episode_Id)
     {
@@ -261,11 +258,8 @@ function handleSeasonTabClick(seasonNumber)
     renderEpisodeList(seasonNumber);
 }
 
-// Shared "an episode just started playing" bookkeeping used by every path that starts
-// playback (manual episode pick, resume/default watch, auto-advance on 'ended', and the
-// player's next/previous track buttons): updates the tracking vars, keeps the season-tabs
-// picker in sync (jumping to the right season, refreshing the "now playing" highlight),
-// and refreshes the reviews section for the new episode.
+// Shared bookkeeping for every playback-start path (episode pick, resume, auto-advance,
+// prev/next controls): updates state, syncs the season picker, refreshes reviews.
 async function onEpisodePlaybackStarted(contentId, episode)
 {
     Current_Watching_Content_Id = contentId;
@@ -318,9 +312,7 @@ async function handleEpisodeSelect(episodeId)
     await playEpisodeById(Current_Series_Content_Id, episodeId);
 }
 
-// Auto-advance: called when the video ends, and by the player's "next" control.
-// No-ops quietly if there's nothing currently playing, or if this was the last episode
-// (series finale) / the only episode (movie) - getNextEpisode simply omits `episode`.
+// Auto-advance (video 'ended' + player's "next" control). No-ops on series finale/movie.
 async function playNextEpisode()
 {
     if (!Current_Watching_Content_Id || !Current_Watching_Episode_Id) return;
@@ -352,9 +344,8 @@ async function playPrevEpisode()
     await playEpisodeById(Current_Watching_Content_Id, response.episode.id);
 }
 
-// Fetches all reviews for the given episode and renders both the reviews list and the
-// add/edit form. If the current profile already reviewed this episode, the form switches
-// to edit/delete mode instead of add mode (a profile can only review an episode once).
+// Renders the reviews list + add/edit form. Switches to edit/delete mode if this
+// profile already reviewed the episode (a profile can only review one once).
 async function renderReviewsSection(contentId, episodeId)
 {
     reviews_section.classList.remove('d-none');
@@ -379,7 +370,7 @@ async function renderReviewsSection(contentId, episodeId)
 function renderReviewForm(ownReview)
 {
     if (!review_form_container) return;
-
+    
     if (ownReview)
     {
         review_form_container.innerHTML = `
@@ -417,34 +408,31 @@ function renderReviewForm(ownReview)
     }
 }
 
-// NOTE: no endpoint returns a profile's display name alongside a review (reviews only
-// carry profileId), so there is deliberately no author name shown here - only rating and
-// comment, with the current profile's own review labeled inline since we already know its id.
+// No endpoint returns a profile's display name with a review, so only rating/comment
+// are shown - the current profile's own review is labeled inline since we know its id.
 function renderReviewsList(reviews, ownReview)
 {
     if (!reviews_list_container) return;
 
     if (reviews.length === 0)
     {
-        reviews_list_container.innerHTML = `<div class="col-12 text-center text-white" dir="rtl">אין עדיין תגובות לפרק הזה</div>`;
+        reviews_list_container.innerHTML = `<div class="col-12 text-center text-white bg-dark" dir="rtl">אין עדיין תגובות לפרק הזה</div>`;
         return;
     }
-
+    const empty_review_text = "Empty review[no text].";
     reviews_list_container.innerHTML = reviews.map(review => `
         <div class="col-12">
-            <div class="border border-secondary rounded p-3 text-white" dir="rtl">
+            <div class="border border-secondary rounded p-3 text-white bg-dark" dir="rtl">
                 <div class="fw-bold text-warning">
                     ${escapeHtml(review.rating)}/10 ${ownReview && review.id === ownReview.id ? '(התגובה שלך)' : ''}
                 </div>
-                <div>${escapeHtml(review.comment || '')}</div>
+                <div>${escapeHtml(review.comment || empty_review_text)}</div>
             </div>
         </div>
     `).join('');
 }
 
-// Re-fetches and re-renders the content details view (see randerContentItems) so that
-// average_rating/review_count shown there reflect the review change that was just made.
-// Only relevant if the details currently on screen belong to the content being reviewed.
+// Re-renders content details so average_rating/review_count reflect the review change.
 async function refreshContentDetailsAfterReviewChange()
 {
     if (active_content && active_content.id === Current_Watching_Content_Id)
@@ -507,14 +495,16 @@ function randerProfileDetails()
     }
 }
 
-// NOTE: activeProfile.lastWatched is an array of { episode_id, content_id } entries -
-// one per content the profile has ever watched (holding the last episode watched within
-// that content) - NOT a flat array of content ids. We map by entry.content_id here.
+// lastWatched is { episode_id, content_id } entries, not flat content ids - mapped via
+// content_id. Looks up items in All_Content_Items (not Content_Items), so a watched item
+// never silently disappears just because the grid is currently showing a filtered subset.
 async function renderLastWatched()
 {
+    Current_Last_Watched_View = 'my_list';
+
     last_watched_text.textContent = "Last watched: ";
     const lastWatchedItems = activeProfile.lastWatched
-        .map(entry => Content_Items.find(m => m.id === entry.content_id))
+        .map(entry => All_Content_Items.find(m => m.id === entry.content_id))
         .filter(m => m !== undefined);
 
     last_watched_container.innerHTML = lastWatchedItems.map(item =>
@@ -599,9 +589,8 @@ async function games_link_on_click()
     renderAllContentItems(Content_Items);
 }
 
-// NOTE: query params fixed - the API uses `sort` (which field to sort by) + `sortOrder`
-// (only "greater_to_smaller" / "smaller_to_greater" - not "sort_order" / "desc"), and
-// `released_before` expects a string, not a raw Date object.
+// Query params must be `sort`/`sortOrder` ("greater_to_smaller"/"smaller_to_greater"),
+// and released_before expects a string, not a raw Date.
 async function new_and_popular_link_on_click()
 {
     const current_date = new Date().toISOString();
@@ -694,23 +683,36 @@ async function handleToggleLike(ContentID)
         //update the content item likes 
         const updated_likedContentIds = response.likedContentIds;
         activeProfile.updateLikedContentIds(updated_likedContentIds);
-        let pressed_content = Content_Items.find(content => content.id === ContentID);
-        if (pressed_content)
+
+        // Content_Items and All_Content_Items can hold the same object or two separate
+        // instances for this content - a Set dedupes by identity so `likes` is bumped once.
+        const matchedContentItems = new Set();
+
+        for (const items of [Content_Items, All_Content_Items])
         {
-            if (response.liked)
+            const pressed_content = items ? items.find(content => content.id === ContentID) : undefined;
+            if (pressed_content)
             {
-                pressed_content.likes++;
-            }
-            else
-            {
-                pressed_content.likes--;
+                matchedContentItems.add(pressed_content);
             }
         }
-        else
+
+        for (const pressed_content of matchedContentItems)
+        {
+            pressed_content.likes += response.liked ? 1 : -1;
+        }
+
+        if (matchedContentItems.size === 0)
         {
             console.error("Failed to find content");
         }
+
+        // Redraw whichever container is actually showing, so the like state never goes stale.
         await refreshDisplay();
+        if (Current_Last_Watched_View === 'my_list')
+        {
+            await renderLastWatched();
+        }
     }
 }
 
@@ -745,22 +747,23 @@ function updateVideoPlayer(videoUrl, title)
 // Auto-advance to the next episode once the current one finishes playing.
 screen_video.addEventListener('ended', () => { playNextEpisode(); });
 
-// Clicking a content card no longer plays anything by itself - it only shows that
-// content's details, which in turn shows either the episode picker (series) or a
-// "play movie" button (movie). Actual playback only starts once the person picks a
-// specific episode or presses the play button.
+// A content card click only shows details (episode picker or play button) - playback
+// starts only once an episode/play button is actually pressed.
 async function click_on_content_item(ContentID)
 {
-    active_content = Content_Items.find(content => content.id === ContentID);
+    // Falls back to All_Content_Items in case this content isn't part of whatever
+    // filtered subset the grid currently happens to be showing.
+    active_content = Content_Items.find(content => content.id === ContentID)
+        ?? (All_Content_Items ? All_Content_Items.find(content => content.id === ContentID) : undefined);
     if (!active_content)
     {
         console.error("Failed to find content");
         return;
     }
 
-    // Clicking a content card always hides the player and reviews again, even if an
-    // episode was actively playing - both only reappear once the person explicitly
-    // picks an episode / presses "play movie" again from the details view shown below.
+    Current_Last_Watched_View = 'details';
+
+    // Hide player/reviews again - they reappear only once an episode/play button is pressed.
     screen_video.pause();
     video_player_section.classList.add('d-none');
     reviews_section.classList.add('d-none');
@@ -780,6 +783,53 @@ async function click_on_content_item(ContentID)
 async function refreshDisplay()
 {
     await renderAllContentItems(Content_Items.filter(item => item.title.toLowerCase().includes(User_Search_Value.toLowerCase())));
+}
+
+const CONTINUE_WATCHING_CONTAINER_ID = 'continue_watching_container';
+
+// Shows a floating "Continue Watching"/"Cancel" panel ONCE, right after page load - resumes
+// exactly lastWatched[0] (always the most recent, since watchMedia() unshifts to the front).
+// Either button removes the panel for good - it never reappears in this page session.
+function renderContinueWatchingButtonIfNeeded()
+{
+    if (!activeProfile.lastWatched || activeProfile.lastWatched.length === 0) return;
+
+    const mostRecentlyWatchedEntry = activeProfile.lastWatched[0];
+
+    const continueWatchingContainer = document.createElement('div');
+    continueWatchingContainer.id = CONTINUE_WATCHING_CONTAINER_ID;
+    continueWatchingContainer.className = 'position-fixed d-flex gap-2 shadow';
+    continueWatchingContainer.style.bottom = '24px';
+    continueWatchingContainer.style.right = '24px';
+    continueWatchingContainer.style.zIndex = '1040';
+
+    const continueWatchingButton = document.createElement('button');
+    continueWatchingButton.type = 'button';
+    continueWatchingButton.className = 'btn btn-danger btn-lg';
+    continueWatchingButton.textContent = '▶ המשך צפייה';
+    continueWatchingButton.addEventListener('click', async () =>
+    {
+        removeContinueWatchingButton();
+        // Same function a manual card click runs - shows the details/episode picker and
+        // resumes playback exactly like the person picked this content themselves.
+        await click_on_content_item(mostRecentlyWatchedEntry.content_id);
+    });
+
+    const cancelButton = document.createElement('button');
+    cancelButton.type = 'button';
+    cancelButton.className = 'btn btn-secondary btn-lg';
+    cancelButton.textContent = 'ביטול';
+    cancelButton.addEventListener('click', removeContinueWatchingButton);
+
+    continueWatchingContainer.appendChild(continueWatchingButton);
+    continueWatchingContainer.appendChild(cancelButton);
+    document.body.appendChild(continueWatchingContainer);
+}
+
+function removeContinueWatchingButton()
+{
+    const container = document.getElementById(CONTINUE_WATCHING_CONTAINER_ID);
+    if (container) container.remove();
 }
 
 async function init()
@@ -818,13 +868,22 @@ async function init()
         all_content_container.innerHTML = "ERROR GETTING CONTENT ITEMS";
         return;
     }
-    Content_Items = getAllContent_response.content;
+    // All_Content_Items is the permanent full-catalog reference; Content_Items will get
+    // reassigned to filtered subsets as soon as a nav link (TV Shows/Movies/etc.) is clicked.
+    All_Content_Items = getAllContent_response.content;
+    Content_Items = All_Content_Items;
 
     await refreshDisplay();
+
+    // Show recently-watched right away, without waiting for a "My List" click.
+    await renderLastWatched();
 
     search_button.addEventListener('click', search_on_click);
     search_input.addEventListener('keypress', (e) => { if (e.key === 'Enter') search_on_click(); });
     randerProfileDetails();
+
+    // Shown once only - see the function's own comment.
+    renderContinueWatchingButtonIfNeeded();
 }
 window.click_on_content_item = click_on_content_item;
 window.handleToggleLike = handleToggleLike;

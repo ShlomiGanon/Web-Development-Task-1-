@@ -4,6 +4,9 @@ import { UserInfo, ContentItem, Review } from "./BACKEND_API/backend-interface.j
 import { Backend } from "./config.js";
 import {ClientSessionManager} from "./client-session-manager.js";
 import * as UI from "./ui-utils.js";
+// D3.js is loaded straight from a CDN as an ES module - no extra <script> tag needed in
+// the HTML page, and no other charting library is used anywhere in this file.
+import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 //=============== Session / Auth Bootstrap ===============
 // Order matters here: each check can redirect away, so later lines assume
@@ -1635,80 +1638,270 @@ function create_ban_user_window(user)
 }
 
 //=============== Statistics Window ===============
-function create_statistics_content_window()
-{
-    const { overlay, content } = create_modal_shell('Content Statistics');
+// One "Statistics" button per MODE (users/contents/reviews). Each button calls its own
+// backend endpoint (getUsersStatistics / getContentStatistics / getReviewsStatistics) and
+// renders every number returned as a D3.js bar chart - no other charting library is used.
 
-    const loading_p = document.createElement('p');
-    loading_p.className = 'text-light fs-5';
-    loading_p.textContent = 'Loading statistics...';
-    content.appendChild(loading_p);
+// ----- Small helper: round a number to 2 decimal places (used for average ratings, -----
+// ----- since raw averages like 7.3333333 would otherwise make ugly chart labels).   -----
+function round_to_two_decimal_places(raw_number)
+{
+    return Math.round((raw_number + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Draws one D3.js bar chart into `chart_container_element`.
+ * This single function is reused for every chart in every statistics window below -
+ * every one of our statistics is shaped the same way: an array of objects, each with
+ * one category field (shown on the X axis) and one number field (shown as bar height).
+ *
+ * @param {HTMLElement} chart_container_element - empty <div> the chart will be built inside
+ * @param {Array<Object>} chart_data_points - e.g. [{ Month: "2026-01", NewUsers: 12 }, ...]
+ * @param {string} category_field_name - name of the field to use as the X axis label, e.g. "Month"
+ * @param {string} value_field_name - name of the field to use as the bar height, e.g. "NewUsers"
+ * @param {string} chart_title - text shown above the chart
+ */
+function draw_bar_chart_with_d3(chart_container_element, chart_data_points, category_field_name, value_field_name, chart_title)
+{
+    // Always start from a clean slate, in case this chart is being redrawn.
+    chart_container_element.innerHTML = '';
+
+    // ----- Title, shown above the chart itself -----
+    const chart_title_element = document.createElement('h4');
+    chart_title_element.className = 'text-warning text-center mt-4';
+    chart_title_element.textContent = chart_title;
+    chart_container_element.appendChild(chart_title_element);
+
+    // If there's nothing to draw, say so instead of rendering an empty/broken chart.
+    if (!chart_data_points || chart_data_points.length === 0)
+    {
+        const no_data_message = document.createElement('p');
+        no_data_message.className = 'text-light text-center';
+        no_data_message.textContent = 'No data available.';
+        chart_container_element.appendChild(no_data_message);
+        return;
+    }
+
+    // ----- Overall chart size, split into an outer SVG size and an inner drawing area -----
+    // The margins leave room for the axis labels around the actual bars.
+    const svg_total_width = 520;
+    const svg_total_height = 320;
+    const chart_margin = { top: 20, right: 20, bottom: 80, left: 50 };
+    const drawing_area_width = svg_total_width - chart_margin.left - chart_margin.right;
+    const drawing_area_height = svg_total_height - chart_margin.top - chart_margin.bottom;
+
+    // ----- The SVG canvas itself -----
+    const svg_element = d3.select(chart_container_element)
+        .append('svg')
+        .attr('width', svg_total_width)
+        .attr('height', svg_total_height)
+        .attr('class', 'd-block mx-auto');
+
+    // A <g> group shifted inward by the margins - everything we draw below goes inside
+    // this group, so it never overlaps the axis labels.
+    const drawing_area_group = svg_element.append('g')
+        .attr('transform', `translate(${chart_margin.left}, ${chart_margin.top})`);
+
+    // ----- X axis: one evenly-spaced "band" (slot) per category (e.g. one per month) -----
+    const x_axis_scale = d3.scaleBand()
+        .domain(chart_data_points.map(data_point => String(data_point[category_field_name])))
+        .range([0, drawing_area_width])
+        .padding(0.25);
+
+    // ----- Y axis: linear scale from 0 up to the largest value present in the data -----
+    const largest_value_in_data = d3.max(chart_data_points, data_point => data_point[value_field_name]) || 1;
+    const y_axis_scale = d3.scaleLinear()
+        .domain([0, largest_value_in_data])
+        .range([drawing_area_height, 0]); // SVG's Y axis grows downward, so this flips it
+
+    // ----- Draw the X axis line + category labels along the bottom -----
+    drawing_area_group.append('g')
+        .attr('transform', `translate(0, ${drawing_area_height})`)
+        .call(d3.axisBottom(x_axis_scale))
+        .selectAll('text')
+        .attr('fill', 'white')
+        .attr('transform', 'rotate(-30)') // angled so longer labels (e.g. category names) don't overlap
+        .style('text-anchor', 'end');
+
+    // ----- Draw the Y axis line + numeric ticks along the left -----
+    drawing_area_group.append('g')
+        .call(d3.axisLeft(y_axis_scale).ticks(5))
+        .selectAll('text')
+        .attr('fill', 'white');
+
+    // Both axis lines are black by default, which is invisible on this page's dark
+    // background - force them (and their tick marks) to white so they're visible.
+    drawing_area_group.selectAll('.domain, .tick line').attr('stroke', 'white');
+
+    // ----- One bar per data point -----
+    drawing_area_group.selectAll('.statistics-bar')
+        .data(chart_data_points)
+        .enter()
+        .append('rect')
+        .attr('class', 'statistics-bar')
+        .attr('x', data_point => x_axis_scale(String(data_point[category_field_name])))
+        .attr('y', data_point => y_axis_scale(data_point[value_field_name]))
+        .attr('width', x_axis_scale.bandwidth())
+        .attr('height', data_point => drawing_area_height - y_axis_scale(data_point[value_field_name]))
+        .attr('fill', '#0d6efd');
+
+    // ----- The exact numeric value, printed just above each bar -----
+    drawing_area_group.selectAll('.statistics-bar-label')
+        .data(chart_data_points)
+        .enter()
+        .append('text')
+        .attr('class', 'statistics-bar-label')
+        .attr('x', data_point => x_axis_scale(String(data_point[category_field_name])) + x_axis_scale.bandwidth() / 2)
+        .attr('y', data_point => y_axis_scale(data_point[value_field_name]) - 6)
+        .attr('text-anchor', 'middle')
+        .attr('fill', 'white')
+        .attr('font-size', '12px')
+        .text(data_point => data_point[value_field_name]);
+}
+
+/**
+ * Shared shell for all 3 statistics windows: opens the modal, shows a loading message,
+ * calls `fetch_statistics_function()`, and once it resolves either shows an error message
+ * or hands the returned `statistics` object to `render_charts_function` to draw into
+ * `charts_container_element`.
+ *
+ * @param {string} window_title
+ * @param {() => Promise<Object>} fetch_statistics_function - e.g. () => Backend.getUsersStatistics(token)
+ * @param {(charts_container_element: HTMLElement, statistics: Object) => void} render_charts_function
+ */
+function create_statistics_window(window_title, fetch_statistics_function, render_charts_function)
+{
+    const { overlay, content } = create_modal_shell(window_title, { widthClass: 'col-11 col-lg-8' });
+
+    const loading_message = document.createElement('p');
+    loading_message.className = 'text-light fs-5';
+    loading_message.textContent = 'Loading statistics...';
+    content.appendChild(loading_message);
+
+    // All the charts get appended into this single container once the data arrives.
+    const charts_container_element = document.createElement('div');
+    charts_container_element.className = 'w-100';
+    content.appendChild(charts_container_element);
 
     content.appendChild(create_button_row([
-        { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
+        { text: 'Close', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
     ]));
 
     document.body.appendChild(overlay);
 
-    // Everything below runs async in the background - the overlay above is already
-    // returned/appended, this just fills it in once the 3 queries come back.
+    // Runs in the background - the modal above is already visible with "Loading...",
+    // this just fills it in (or shows an error) once the request comes back.
     (async () =>
     {
-        const [most_liked_res, newest_release_res, recently_added_res] = await Promise.all([
-            Backend.getAllContentItems({ sort: 'likes', sortOrder: 'greater_to_smaller', limit: 5 }),
-            Backend.getAllContentItems({ sort: 'release_date', sortOrder: 'greater_to_smaller', limit: 5 }),
-            Backend.getAllContentItems({ sort: 'createdAt', sortOrder: 'greater_to_smaller', limit: 5 }),
-        ]);
+        const response = await fetch_statistics_function();
+        loading_message.remove();
 
-        loading_p.remove();
-
-        if (!most_liked_res.success || !newest_release_res.success || !recently_added_res.success)
+        if (!response.success || !response.statistics)
         {
-            const error_p = document.createElement('p');
-            error_p.className = 'text-danger fs-5';
-            error_p.textContent = 'Failed to load statistics: ' +
-                (most_liked_res.message || newest_release_res.message || recently_added_res.message || 'unknown error');
-            content.insertBefore(error_p, content.lastElementChild);
+            const error_message = document.createElement('p');
+            error_message.className = 'text-danger fs-5';
+            error_message.textContent = 'Failed to load statistics: ' + (response.message || 'unknown error');
+            charts_container_element.appendChild(error_message);
             return;
         }
 
-        // renderField() returns an HTML string (same helper used in view_content/view_user),
-        // so wrap it in a throwaway div to get back a real element for build_field_group().
-        const build_stat_row = (label, value) =>
-        {
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = renderField(escapeHtml(label), escapeHtml(value));
-            return wrapper.firstElementChild;
-        };
-
-        const stats_container = document.createElement('div');
-        stats_container.className = FIELDS_CONTAINER_CLASSES;
-
-        const most_liked_fields = (most_liked_res.content ?? [])
-            .map(c => build_stat_row(c.title, `${c.likes} likes`));
-        stats_container.appendChild(build_field_group(
-            'Most Liked',
-            most_liked_fields.length ? most_liked_fields : [build_stat_row('No content found', '')]
-        ));
-
-        const newest_release_fields = (newest_release_res.content ?? [])
-            .map(c => build_stat_row(c.title, c.release_date.toLocaleDateString()));
-        stats_container.appendChild(build_field_group(
-            'Newest Release',
-            newest_release_fields.length ? newest_release_fields : [build_stat_row('No content found', '')]
-        ));
-
-        const recently_added_fields = (recently_added_res.content ?? [])
-            .map(c => build_stat_row(c.title, c.createdAt.toLocaleDateString()));
-        stats_container.appendChild(build_field_group(
-            'Recently Added',
-            recently_added_fields.length ? recently_added_fields : [build_stat_row('No content found', '')]
-        ));
-
-        content.insertBefore(stats_container, content.lastElementChild);
+        render_charts_function(charts_container_element, response.statistics);
     })();
 
     return overlay;
+}
+
+// ----- Users mode: 3 charts, matching Backend.getUsersStatistics()'s response shape -----
+function render_users_statistics_charts(charts_container_element, statistics)
+{
+    const profile_distribution_chart = document.createElement('div');
+    charts_container_element.appendChild(profile_distribution_chart);
+    draw_bar_chart_with_d3(profile_distribution_chart, statistics.profileDistribution, 'NumberOfProfiles', 'UsersCount', 'Profiles per User');
+
+    const user_growth_chart = document.createElement('div');
+    charts_container_element.appendChild(user_growth_chart);
+    draw_bar_chart_with_d3(user_growth_chart, statistics.userGrowth, 'Month', 'NewUsers', 'New Users per Month');
+
+    const age_distribution_chart = document.createElement('div');
+    charts_container_element.appendChild(age_distribution_chart);
+    draw_bar_chart_with_d3(age_distribution_chart, statistics.ageDistribution, 'AgeRange', 'UsersCount', 'Users by Age Range');
+}
+
+function create_users_statistics_window()
+{
+    return create_statistics_window(
+        'Users Statistics',
+        () => Backend.getUsersStatistics(token),
+        render_users_statistics_charts
+    );
+}
+
+// ----- Contents mode: 3 charts + one plain-text average, matching Backend.getContentStatistics() -----
+function render_content_statistics_charts(charts_container_element, statistics)
+{
+    const category_distribution_chart = document.createElement('div');
+    charts_container_element.appendChild(category_distribution_chart);
+    draw_bar_chart_with_d3(category_distribution_chart, statistics.categoryDistribution, 'Category', 'TitlesCount', 'Titles per Category');
+
+    // averageEpisodesPerSeries is a single number, not a list - shown as plain text
+    // rather than a (pointless) one-bar chart.
+    const average_episodes_message = document.createElement('p');
+    average_episodes_message.className = 'text-light fs-5 text-center mt-4';
+    average_episodes_message.textContent =
+        `Average Episodes per Series: ${round_to_two_decimal_places(statistics.episodesPerSeriesStats.averageEpisodesPerSeries)}`;
+    charts_container_element.appendChild(average_episodes_message);
+
+    const episodes_distribution_chart = document.createElement('div');
+    charts_container_element.appendChild(episodes_distribution_chart);
+    draw_bar_chart_with_d3(
+        episodes_distribution_chart,
+        statistics.episodesPerSeriesStats.episodesDistribution,
+        'EpisodesRange', 'SeriesCount', 'Series by Episode Count'
+    );
+
+    const age_distribution_chart = document.createElement('div');
+    charts_container_element.appendChild(age_distribution_chart);
+    draw_bar_chart_with_d3(age_distribution_chart, statistics.ageDistribution, 'AgeRange', 'TitlesCount', 'Titles by Age Rating');
+}
+
+function create_content_statistics_window()
+{
+    return create_statistics_window(
+        'Content Statistics',
+        () => Backend.getContentStatistics(token),
+        render_content_statistics_charts
+    );
+}
+
+// ----- Reviews mode: 3 charts, matching Backend.getReviewsStatistics()'s response shape -----
+function render_reviews_statistics_charts(charts_container_element, statistics)
+{
+    const rating_distribution_chart = document.createElement('div');
+    charts_container_element.appendChild(rating_distribution_chart);
+    draw_bar_chart_with_d3(rating_distribution_chart, statistics.ratingDistribution, 'Rating', 'ReviewsCount', 'Reviews by Rating (1-10)');
+
+    // AverageRating values are decimals (e.g. 7.3333) - round them to 2 decimal places
+    // before charting so the bar labels look clean.
+    const rounded_category_average_ratings = statistics.categoryAverageRating.map(entry => ({
+        Category: entry.Category,
+        AverageRating: round_to_two_decimal_places(entry.AverageRating)
+    }));
+    const category_average_rating_chart = document.createElement('div');
+    charts_container_element.appendChild(category_average_rating_chart);
+    draw_bar_chart_with_d3(category_average_rating_chart, rounded_category_average_ratings, 'Category', 'AverageRating', 'Average Rating per Category');
+
+    const monthly_review_count_chart = document.createElement('div');
+    charts_container_element.appendChild(monthly_review_count_chart);
+    draw_bar_chart_with_d3(monthly_review_count_chart, statistics.monthlyAverageRating, 'Month', 'ReviewsCount', 'Reviews Count per Month');
+}
+
+function create_reviews_statistics_window()
+{
+    return create_statistics_window(
+        'Reviews Statistics',
+        () => Backend.getReviewsStatistics(token),
+        render_reviews_statistics_charts
+    );
 }
 // Separated from create_ban_user_window() so the actual API call + list update
 // logic isn't buried inside the button's inline onClick handler.
@@ -2018,6 +2211,7 @@ function main_renderer()
                 {name: "My User", function: () => {current_target = active_user; view_user()}},
                 {name: "Set Permission", function: () => filters_window = create_set_permission_window(current_target)},
                 {name: "Ban", primary: true, function: () => filters_window = create_ban_user_window(current_target)},
+                {name: "Statistics", function: () => filters_window = create_users_statistics_window()},
             ]);
             rander_selection_container_to_users();
             view_user();
@@ -2043,7 +2237,7 @@ function main_renderer()
                 {name: "Select by ID", function: () => filters_window = create_select_by_id_window('Content', select_content_by_id)},
                 {name: "Update", primary: true, function: () => filters_window = create_update_content_window(current_target)},
                 {name: "Delete", function: () => delete_content_click(current_target)},
-                {name: "Statistics", function: () => filters_window = create_statistics_content_window()},
+                {name: "Statistics", function: () => filters_window = create_content_statistics_window()},
             ]);
             rander_selection_container_to_contents();
             view_content();
@@ -2068,6 +2262,7 @@ function main_renderer()
                 {name: "Select by ID", function: () => filters_window = create_select_by_id_window('Review', select_review_by_id)},
                 {name: "Update", primary: true, function: () => filters_window = create_update_review_window(current_target)},
                 {name: "Delete", function: () => delete_review_click(current_target)},
+                {name: "Statistics", function: () => filters_window = create_reviews_statistics_window()},
             ]);
             rander_selection_container_to_reviews();
             view_review();

@@ -350,6 +350,28 @@ export class HttpClient extends Interface_BackendAPI
     }
 
     // ==========================================
+    //  Admin Routes - Statistics (/api/admin/*-statistics)
+    // ==========================================
+    // No query params on any of these - always computed over the entire dataset.
+    // See getUsersStatistics()/getContentStatistics()/getReviewsStatistics() in
+    // backend-interface.js for the full documented shape of `statistics`.
+
+    async getUsersStatistics(sessionToken)
+    {
+        return await this._request('GET', '/admin/users-statistics', { token: sessionToken });
+    }
+
+    async getContentStatistics(sessionToken)
+    {
+        return await this._request('GET', '/admin/content-statistics', { token: sessionToken });
+    }
+
+    async getReviewsStatistics(sessionToken)
+    {
+        return await this._request('GET', '/admin/reviews-statistics', { token: sessionToken });
+    }
+
+    // ==========================================
     //   Backward-compatible aliases (old names)
     // ==========================================
     // Kept so existing call sites written against the old client don't need to change
@@ -416,4 +438,5 @@ export class HttpClient extends Interface_BackendAPI
             return { success: false, message: error.message };
         }
     }
+    
 }

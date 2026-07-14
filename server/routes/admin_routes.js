@@ -6,7 +6,7 @@ const profileController = require('../controllers/profile_controller');
 const adminController = require('../controllers/admin_controller');
 const contentController = require('../controllers/content_controller');
 const reviewController = require('../controllers/review_controller');
-
+const statisticsController = require('../controllers/statistics_controller');
 const tokenManager = require('../middlewares/token_manager');
 const { adminAuthorization, adminAuthorizationPermissionLevel, Permmision_Level } = require('../middlewares/permission_manager');
 const { userAuthorization } = require('../middlewares/user_authorization');
@@ -80,4 +80,8 @@ router.put('/reviews/:reviewId', adminAuthorization, reviewController.adminUpdat
 // Delete any review directly by its ID
 router.delete('/reviews/:reviewId', adminAuthorization, reviewController.adminRemoveReview);
 
+// --- Statistics management ---
+router.get('/users-statistics', adminAuthorization, statisticsController.getUsersStatistics);
+router.get('/content-statistics', adminAuthorization, statisticsController.getContentStatistics);
+router.get('/reviews-statistics', adminAuthorization, statisticsController.getReviewsStatistics);
 module.exports = router;

@@ -1014,4 +1014,80 @@ export class Interface_BackendAPI
     {
         throw new Error("Method 'adminDeleteReview()' must be implemented.");
     }
+
+    // ==========================================
+    //  Admin Routes - Statistics (/api/admin/*-statistics)
+    // ==========================================
+
+    /**
+     * Maps to GET /admin/users-statistics (admin only) - aggregated statistics about all
+     * users on the server. No query params - always computed over the entire user base.
+     *
+     * res.statistics shape:
+     *   profileDistribution: Array<{ NumberOfProfiles: number, UsersCount: number }>
+     *     - one entry per possible profile count, from 1 to MAX_PROFILES_LIMIT (currently 4);
+     *       UsersCount is 0 if no user currently has that exact number of profiles.
+     *   userGrowth: Array<{ Month: string, NewUsers: number }>
+     *     - one entry per month ("YYYY-MM"), covering the last 6 months (including the
+     *       current one); NewUsers is 0 for any month with no new registrations.
+     *   ageDistribution: Array<{ AgeRange: string, UsersCount: number }>
+     *     - one entry per bucket: "Under 18 / Invalid", "18-24", "25-34", "35-44", "45-59",
+     *       "60-119", "120+"; UsersCount is 0 for any bucket with no matching users.
+     * @param {string} sessionToken
+     * @returns {Promise<{success: boolean, message?: string, statistics?: Object}>}
+     */
+    async getUsersStatistics(sessionToken)
+    {
+        throw new Error("Method 'getUsersStatistics()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /admin/content-statistics (admin only) - aggregated statistics about all
+     * content on the server. No query params - always computed over all content.
+     *
+     * res.statistics shape:
+     *   categoryDistribution: Array<{ Category: string, TitlesCount: number }>
+     *     - one entry per category that actually exists on some content item, sorted from
+     *       most titles to least (no fixed/known list of categories, so none are zero-filled).
+     *   episodesPerSeriesStats:
+     *     {
+     *       averageEpisodesPerSeries: number,
+     *       episodesDistribution: Array<{ EpisodesRange: string, SeriesCount: number }>
+     *     }
+     *     - episodesDistribution has one entry per bucket: "0", "1-4", "5-9", "10-19",
+     *       "20-49", "50+"; SeriesCount is 0 for any bucket with no matching series.
+     *       Series with 0 episodes count as 0 in both averageEpisodesPerSeries and the
+     *       "0" bucket.
+     *   ageDistribution: Array<{ AgeRange: string, TitlesCount: number }>
+     *     - based on age_limit, one entry per bucket: "Invalid", "0-6", "7-12", "13-15",
+     *       "16-17", "18+"; TitlesCount is 0 for any bucket with no matching content.
+     * @param {string} sessionToken
+     * @returns {Promise<{success: boolean, message?: string, statistics?: Object}>}
+     */
+    async getContentStatistics(sessionToken)
+    {
+        throw new Error("Method 'getContentStatistics()' must be implemented.");
+    }
+
+    /**
+     * Maps to GET /admin/reviews-statistics (admin only) - aggregated statistics about all
+     * reviews on the server. No query params - always computed over all reviews.
+     *
+     * res.statistics shape:
+     *   ratingDistribution: Array<{ Rating: number, ReviewsCount: number }>
+     *     - one entry per rating value from 1 to 10; ReviewsCount is 0 for any rating with
+     *       no matching reviews.
+     *   categoryAverageRating: Array<{ Category: string, AverageRating: number, ReviewsCount: number }>
+     *     - one entry per category that appears on some reviewed content, sorted from most
+     *       reviewed to least (no fixed/known list of categories, so none are zero-filled).
+     *   monthlyAverageRating: Array<{ Month: string, AverageRating: number, ReviewsCount: number }>
+     *     - one entry per month ("YYYY-MM"), covering the last 6 months (including the
+     *       current one); months with no reviews show AverageRating: 0 and ReviewsCount: 0.
+     * @param {string} sessionToken
+     * @returns {Promise<{success: boolean, message?: string, statistics?: Object}>}
+     */
+    async getReviewsStatistics(sessionToken)
+    {
+        throw new Error("Method 'getReviewsStatistics()' must be implemented.");
+    }
 }

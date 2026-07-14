@@ -1238,6 +1238,119 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       message: string
     }
 
+46) GET /api/admin/users-statistics
+    Purpose: Gets aggregated statistics about all users on the server.
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      statistics:
+      {
+        profileDistribution:
+        [
+          { NumberOfProfiles: number, UsersCount: number },
+          ...
+        ],
+        userGrowth:
+        [
+          { Month: string, NewUsers: number },
+          ...
+        ],
+        ageDistribution:
+        [
+          { AgeRange: string, UsersCount: number },
+          ...
+        ]
+      }
+    }
+
+    Note: profileDistribution has one entry for every possible profile count from 1 to
+    MAX_PROFILES_LIMIT (currently 4), UsersCount is 0 if no user currently has that exact
+    number of profiles.
+    Note: userGrowth has one entry per month ("YYYY-MM"), covering the last 6 months
+    (including the current one), NewUsers is 0 for any month with no new registrations.
+    Note: ageDistribution has one entry per age bucket: "Under 18 / Invalid", "18-24",
+    "25-34", "35-44", "45-59", "60-119", "120+" - UsersCount is 0 for any bucket with no
+    matching users.
+
+47) GET /api/admin/content-statistics
+    Purpose: Gets aggregated statistics about all content on the server.
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      statistics:
+      {
+        categoryDistribution:
+        [
+          { Category: string, TitlesCount: number },
+          ...
+        ],
+        episodesPerSeriesStats:
+        {
+          averageEpisodesPerSeries: number,
+          episodesDistribution:
+          [
+            { EpisodesRange: string, SeriesCount: number },
+            ...
+          ]
+        },
+        ageDistribution:
+        [
+          { AgeRange: string, TitlesCount: number },
+          ...
+        ]
+      }
+    }
+
+    Note: categoryDistribution has one entry per category that actually exists on some
+    content item, sorted from most titles to least (no fixed/known list of categories,
+    so none are zero-filled).
+    Note: episodesDistribution has one entry per episode-count bucket: "0", "1-4", "5-9",
+    "10-19", "20-49", "50+" - SeriesCount is 0 for any bucket with no matching series.
+    Series with 0 episodes count as 0 in both averageEpisodesPerSeries and the "0" bucket.
+    Note: ageDistribution (based on age_limit) has one entry per bucket: "Invalid", "0-6",
+    "7-12", "13-15", "16-17", "18+" - TitlesCount is 0 for any bucket with no matching
+    content.
+
+48) GET /api/admin/reviews-statistics
+    Purpose: Gets aggregated statistics about all reviews on the server.
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      statistics:
+      {
+        ratingDistribution:
+        [
+          { Rating: number, ReviewsCount: number },
+          ...
+        ],
+        categoryAverageRating:
+        [
+          { Category: string, AverageRating: number, ReviewsCount: number },
+          ...
+        ],
+        monthlyAverageRating:
+        [
+          { Month: string, AverageRating: number, ReviewsCount: number },
+          ...
+        ]
+      }
+    }
+
+    Note: ratingDistribution has one entry per rating value from 1 to 10, ReviewsCount is
+    0 for any rating with no matching reviews.
+    Note: categoryAverageRating has one entry per category that appears on some reviewed
+    content, sorted from most reviewed to least (no fixed/known list of categories, so
+    none are zero-filled).
+    Note: monthlyAverageRating has one entry per month ("YYYY-MM"), covering the last 6
+    months (including the current one); months with no reviews show AverageRating: 0 and
+    ReviewsCount: 0.
+
 --------------------------------------------------
 GENERAL NOTES
 --------------------------------------------------
