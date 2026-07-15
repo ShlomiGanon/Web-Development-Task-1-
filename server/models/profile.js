@@ -1,10 +1,11 @@
 const mongoose = require("mongoose");
- 
+
 const DEFAULT_AGE = 0;
 const MIN_AGE = 0;
 const MAX_AGE = 100;
 const DEFAULT_IMAGE_NAME = "UNDEFINED_PROFILE.png";
- 
+const DEFAULT_POSITION_SECONDS = 0;
+
 /**
  * Profile Schema
  * Represents a viewing profile belonging to a User account.
@@ -18,7 +19,7 @@ const profileSchema = new mongoose.Schema(
         required: true, 
         trim: true 
     },
- 
+
     // Age used to restrict content by age_limit
     age: 
     { 
@@ -27,7 +28,7 @@ const profileSchema = new mongoose.Schema(
         min: MIN_AGE, 
         max: MAX_AGE 
     },
- 
+
     // Filename of the profile image
     image_name: 
     { 
@@ -36,7 +37,7 @@ const profileSchema = new mongoose.Schema(
         required: true, 
         trim: true 
     },
- 
+
     // Episodes most recently watched by this profile, oldest to newest
     last_watched: 
     { 
@@ -49,18 +50,26 @@ const profileSchema = new mongoose.Schema(
                     type: mongoose.Schema.Types.ObjectId, 
                     ref: "Episode" 
                 },
- 
+
                 // Parent content of the episode, denormalized to skip an extra populate
                 content_id: 
                 { 
                     type: mongoose.Schema.Types.ObjectId, 
                     ref: "Content" 
+                },
+
+                // How many seconds into the episode the profile alredy watched.
+                position_seconds: 
+                { 
+                    type: Number, 
+                    default: DEFAULT_POSITION_SECONDS, 
+                    min: 0 
                 }
             }
         ], 
         default: [] 
     },
- 
+
     // Content liked by this profile
     liked_content_ids: 
     { 
@@ -68,7 +77,7 @@ const profileSchema = new mongoose.Schema(
         ref: "Content", 
         default: [] 
     },
- 
+
     // Reference to the owning User account
     user_id: 
     { 
@@ -81,7 +90,7 @@ const profileSchema = new mongoose.Schema(
 {
     timestamps: true
 });
- 
+
 /**
  * Builds an unsaved Profile document with default values for a new user.
  */

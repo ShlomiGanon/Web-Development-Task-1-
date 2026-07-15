@@ -4,6 +4,10 @@ import { Backend } from './config.js';
 import { ClientSessionManager } from './client-session-manager.js';
 import * as UI from './ui-utils.js';
 
+// How often (in seconds) to report the current playback position to the server while
+// a video is playing. Also sent once immediately whenever playback is paused.
+const PROGRESS_UPDATE_INTERVAL_SECONDS = 10;
+
 let active_content = null;
 const last_watched_container = document.getElementById('last_watched_container');
 const last_watched_text = document.getElementById('last_watched_text');
@@ -48,6 +52,9 @@ let Current_Selected_Season = 1;
 // Whichever content/episode is currently playing - keeps the reviews section in sync.
 let Current_Watching_Content_Id = null;
 let Current_Watching_Episode_Id = null;
+// Handle of the periodic progress-reporting timer for whatever episode is currently
+// loaded - restarted on every new episode load, so only one timer is ever running.
+let progressUpdateIntervalId = null;
 const token = ClientSessionManager.getSessionToken();
 const activeProfileId = ClientSessionManager.getActiveProfileId();
 
@@ -154,7 +161,13 @@ async function startOrResumeContentPlayback(contentId)
     }
 
     activeProfile.updateLastWatched(response.lastWatched);
-    await onEpisodePlaybackStarted(contentId, response.episode);
+
+    // The entry for this content carries the position_seconds to resume from - the
+    // server already resets it to 0 when this isn't a true resume (see backend notes).
+    const savedEntry = response.lastWatched.find(entry => entry.content_id === contentId);
+    const resumePositionSeconds = savedEntry ? (savedEntry.position_seconds ?? 0) : 0;
+
+    await onEpisodePlaybackStarted(contentId, response.episode, resumePositionSeconds);
     await refreshDisplay();
 }
 
@@ -258,15 +271,44 @@ function handleSeasonTabClick(seasonNumber)
     renderEpisodeList(seasonNumber);
 }
 
+// Reports the current playback position (screen_video.currentTime) to the server for
+// whichever episode is playing right now. Called periodically (every
+// PROGRESS_UPDATE_INTERVAL_SECONDS, via the timer started in updateVideoPlayer) and once
+// immediately whenever playback is paused. No-ops if nothing is currently playing.
+async function sendWatchProgress()
+{
+    if (!Current_Watching_Content_Id || !Current_Watching_Episode_Id) return;
+
+    const positionSeconds = Math.floor(screen_video.currentTime);
+    const response = await Backend.updateWatchProgress(
+        token, activeProfileId, Current_Watching_Content_Id, Current_Watching_Episode_Id, positionSeconds
+    );
+    if (!response || !response.success)
+    {
+        console.error("Failed to update watch progress: ", (response && response.message) || "Unknown error");
+        return;
+    }
+
+    // Keep the in-memory profile's lastWatched entry in sync with what the server just
+    // saved, so anything reading activeProfile.lastWatched reflects the latest position.
+    const savedPositionSeconds = response.positionSeconds ?? positionSeconds;
+    const updatedLastWatched = activeProfile.lastWatched.map(entry =>
+        entry.content_id === Current_Watching_Content_Id
+            ? { ...entry, position_seconds: savedPositionSeconds }
+            : entry
+    );
+    activeProfile.updateLastWatched(updatedLastWatched);
+}
+
 // Shared bookkeeping for every playback-start path (episode pick, resume, auto-advance,
 // prev/next controls): updates state, syncs the season picker, refreshes reviews.
-async function onEpisodePlaybackStarted(contentId, episode)
+async function onEpisodePlaybackStarted(contentId, episode, resumePositionSeconds = 0)
 {
     Current_Watching_Content_Id = contentId;
     Current_Watching_Episode_Id = episode.id;
 
     UI.GoToLink("#");
-    updateVideoPlayer(episode.videoUrl, episode.title);
+    updateVideoPlayer(episode.videoUrl, episode.title, resumePositionSeconds);
 
     if (Current_Series_Content_Id === contentId && Current_Series_Seasons)
     {
@@ -295,7 +337,13 @@ async function playEpisodeById(contentId, episodeId)
     }
 
     activeProfile.updateLastWatched(response.lastWatched);
-    await onEpisodePlaybackStarted(contentId, response.episode);
+
+    // The entry for this content carries the position_seconds to resume from - the
+    // server already resets it to 0 when this isn't a true resume (see backend notes).
+    const savedEntry = response.lastWatched.find(entry => entry.content_id === contentId);
+    const resumePositionSeconds = savedEntry ? (savedEntry.position_seconds ?? 0) : 0;
+
+    await onEpisodePlaybackStarted(contentId, response.episode, resumePositionSeconds);
     await refreshDisplay();
 }
 
@@ -495,9 +543,10 @@ function randerProfileDetails()
     }
 }
 
-// lastWatched is { episode_id, content_id } entries, not flat content ids - mapped via
-// content_id. Looks up items in All_Content_Items (not Content_Items), so a watched item
-// never silently disappears just because the grid is currently showing a filtered subset.
+// lastWatched is { episode_id, content_id, position_seconds } entries, not flat content
+// ids - mapped via content_id. Looks up items in All_Content_Items (not Content_Items),
+// so a watched item never silently disappears just because the grid is currently
+// showing a filtered subset.
 async function renderLastWatched()
 {
     Current_Last_Watched_View = 'my_list';
@@ -718,7 +767,7 @@ async function handleToggleLike(ContentID)
 
 // Shown only once something is actually playing - video_player_section starts hidden
 // (class "d-none" in the HTML) until the first call here.
-function updateVideoPlayer(videoUrl, title)
+function updateVideoPlayer(videoUrl, title, resumePositionSeconds = 0)
 {
     const videoElement = document.getElementById('screen_video');
     const sourceElement = document.getElementById('screen_video_source');
@@ -727,12 +776,32 @@ function updateVideoPlayer(videoUrl, title)
     titleElement.textContent = title;
     sourceElement.setAttribute('src', '/assets/videos/' + videoUrl);
 
+    // Seeking has to wait for 'loadedmetadata' - setting currentTime any earlier (e.g.
+    // right after load()) is unreliable and gets silently ignored in some browsers,
+    // since the video doesn't know its own duration yet. { once: true } is required
+    // because videoElement itself is reused across episodes, not recreated each time.
+    if (resumePositionSeconds > 0)
+    {
+        videoElement.addEventListener('loadedmetadata', () =>
+        {
+            videoElement.currentTime = resumePositionSeconds;
+        }, { once: true });
+    }
+
     videoElement.load();
 
     //autoplay the video
     videoElement.play();
 
     video_player_section.classList.remove('d-none');
+
+    // Restart the periodic progress-reporting timer for the newly loaded episode - only
+    // one timer should ever be running, so the previous episode's timer (if any) is cleared first.
+    if (progressUpdateIntervalId !== null)
+    {
+        clearInterval(progressUpdateIntervalId);
+    }
+    progressUpdateIntervalId = setInterval(sendWatchProgress, PROGRESS_UPDATE_INTERVAL_SECONDS * 1000);
 
     // Wires the player's native previous/next track controls (shown by supporting
     // browsers/OS media overlays) to previous/next episode - not just a title update.
@@ -746,6 +815,10 @@ function updateVideoPlayer(videoUrl, title)
 
 // Auto-advance to the next episode once the current one finishes playing.
 screen_video.addEventListener('ended', () => { playNextEpisode(); });
+
+// Reports the position immediately whenever playback is paused, in addition to the
+// periodic timer started in updateVideoPlayer.
+screen_video.addEventListener('pause', () => { sendWatchProgress(); });
 
 // A content card click only shows details (episode picker or play button) - playback
 // starts only once an episode/play button is actually pressed.

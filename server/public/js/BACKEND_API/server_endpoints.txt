@@ -1,5 +1,5 @@
-API ENDPOINTS - SIMPLE OVERVIEW
-================================
+API ENDPOINTS - SIMPLE OVERVIEW (VERIFIED AGAINST SOURCE CODE)
+================================================================
 Base URL: /api
 Auth: Send token in header -> Authorization: Bearer <token>
 
@@ -15,7 +15,7 @@ USER ENDPOINTS (/api/user)
      email: string,
      phone: string,
      password: string,
-     fullName: string,
+     fullName: string,   // must contain at least a first and last name (split by space)
      birthday: string
    }
 
@@ -24,6 +24,9 @@ USER ENDPOINTS (/api/user)
      success: boolean,
      message: string
    }
+
+   Note: if the server's 18+ age requirement is enabled, registration is rejected for
+   anyone under 18 based on the supplied birthday.
 
 2) POST /api/user/login
    Purpose: Logs a user in and gives them a token to use for future requests.
@@ -41,6 +44,8 @@ USER ENDPOINTS (/api/user)
      token: string
    }
 
+   Note: login is rejected if the account is currently banned.
+
 3) POST /api/user/logout
    Purpose: Logs the user out by cancelling their current token.
 
@@ -56,6 +61,9 @@ USER ENDPOINTS (/api/user)
      success: boolean,
      message: string
    }
+
+   Note: this route reads and validates the token itself directly from the header - it
+   does not go through the shared token-verification step used by other protected routes.
 
 4) GET /api/user/me
    Purpose: Gets the profile info of the user who is currently logged in.
@@ -102,7 +110,7 @@ USER ENDPOINTS (/api/user)
    {
      success: boolean,
      message: string,
-     user:
+     user?:
      {
        id: string,
        email: string,
@@ -114,14 +122,20 @@ USER ENDPOINTS (/api/user)
      }
    }
 
+   Note: at least one field must actually change, otherwise the request is rejected with
+   "No changes to update". A duplicate email/phone is rejected with a clear message
+   rather than a raw database error.
+
 --------------------------------------------------
 PROFILE ENDPOINTS (/api/profile)
 --------------------------------------------------
 (All profile endpoints need: req.headers = { Authorization: "Bearer <token>" })
-(A "profile" is like a Netflix-style profile - one user account can have several profiles, max 4)
+(A "profile" is like a Netflix-style profile - one user account can have several profiles,
+up to a server-configured maximum.)
 
 6) POST /api/profile/
-   Purpose: Creates a new profile under the logged-in user's account (max 4 profiles).
+   Purpose: Creates a new profile under the logged-in user's account (fails once the
+   server-configured maximum profile count is reached).
 
    req.body = {}   (nothing needed)
 
@@ -158,6 +172,9 @@ PROFILE ENDPOINTS (/api/profile)
        ...
      ]
    }
+
+   Note: any profileId in the updates array that does not belong to the logged-in user
+   is silently skipped (no error) rather than rejecting the whole request.
 
 8) GET /api/profile/
    Purpose: Gets the full list of all profiles that belong to the logged-in user.
@@ -261,14 +278,16 @@ PROFILE ENDPOINTS (/api/profile)
         likedContentIds: [ contentId, ... ],
         lastWatched:
         [
-          { episode_id: string, content_id: string },
+          { episode_id: string, content_id: string, position_seconds: number },
           ...
         ]
       }
     }
 
-    Note: lastWatched has one entry per content the profile has ever watched (not one per episode) -
-    each entry holds the specific episode last watched within that content.
+    Note: lastWatched has one entry per content the profile has ever watched (not one per
+    episode) - each entry holds the specific episode last watched within that content,
+    plus how many seconds into that episode the profile last stopped at (position_seconds),
+    and the list is capped at a server-configured maximum length.
 
 13) POST /api/profile/:profileId/likes/:contentId
     Purpose: Adds or removes a "like" on a specific movie/show for a specific profile (toggle).
@@ -289,10 +308,14 @@ PROFILE ENDPOINTS (/api/profile)
       likedContentIds: [ contentId, ... ]
     }
 
+    Note: if the server's age-limit check is enabled, this is rejected when the profile's
+    age is below the content's age_limit.
+
 14) POST /api/profile/:profileId/watch/:contentId
     Purpose: Records that a profile just watched a movie/show, with no specific episode given.
     Behavior: if this content already has a saved entry in the profile's watch history, resumes
-    from that saved episode; otherwise starts from season 1, episode 1.
+    from that saved episode; otherwise starts from season 1, episode 1. Fails with a clear
+    message if the content has no episodes at all yet.
 
     req.params =
     {
@@ -317,10 +340,18 @@ PROFILE ENDPOINTS (/api/profile)
       },
       lastWatched:
       [
-        { episode_id: string, content_id: string },
+        { episode_id: string, content_id: string, position_seconds: number },
         ...
       ]
     }
+
+    Note: if the server's age-limit check is enabled, this is rejected when the profile's
+    age is below the content's age_limit.
+    Note: position_seconds on the resulting entry (lastWatched[0]) is only carried over
+    from before when resuming the SAME episode that was already tracked for this content -
+    switching to a different episode, or having no prior entry, always starts it at 0. Use
+    endpoint 16 below to update position_seconds frequently during playback; this endpoint
+    is only meant to be called once per "started watching this" event, not on every tick.
 
 15) POST /api/profile/:profileId/watch/:contentId/:episodeId
     Purpose: Same as above, but records a specific episode as watched instead of resuming/defaulting.
@@ -349,12 +380,48 @@ PROFILE ENDPOINTS (/api/profile)
       },
       lastWatched:
       [
-        { episode_id: string, content_id: string },
+        { episode_id: string, content_id: string, position_seconds: number },
         ...
       ]
     }
 
-16) GET /api/profile/:profileId/other_profiles_recommendations
+    Note: same position_seconds carry-over rule as endpoint 14 - only kept when the
+    episodeId given here matches the episode that was already tracked for this content.
+
+16) POST /api/profile/:profileId/watch/:contentId/:episodeId/progress
+    Purpose: Updates just the in-episode playback position (position_seconds) for an
+    episode already tracked in the profile's watch history - meant to be called
+    frequently (e.g. every 10-15 seconds during playback, on pause, or before the tab
+    closes), unlike endpoints 14/15 above which represent a one-time "started watching
+    this" event and reorder the watch history. Does not reorder lastWatched and does not
+    write an operation log entry on success, to avoid flooding the logs with a line per
+    progress ping.
+
+    req.params =
+    {
+      profileId: string,
+      contentId: string,
+      episodeId: string
+    }
+
+    req.body =
+    {
+      position_seconds: number
+    }
+
+    res =
+    {
+      success: boolean,
+      message: string,
+      positionSeconds?: number
+    }
+
+    Note: requires an existing lastWatched entry for this content whose episode matches
+    episodeId - call endpoint 14 or 15 first to create it. If no matching entry exists,
+    or position_seconds is missing/negative/not a number, this returns success: false
+    with a message instead of creating or guessing an entry.
+
+17) GET /api/profile/:profileId/other_profiles_recommendations
     Purpose: Suggests content that the user's OTHER profiles (on the same account) have watched or
     liked, excluding anything the requesting profile has already watched or liked itself.
 
@@ -387,7 +454,7 @@ PROFILE ENDPOINTS (/api/profile)
       ]
     }
 
-17) GET /api/profile/:profileId/top_picks
+18) GET /api/profile/:profileId/top_picks
     Purpose: Suggests up to 3 top-rated content items based on this profile's own taste -
     groups the categories of everything it has watched or liked, takes its top 3 most
     common categories, then returns the highest-rated other content sharing those
@@ -422,16 +489,21 @@ PROFILE ENDPOINTS (/api/profile)
       ]
     }
 
-    Note: returns an empty list (not an error) if the profile has no watch/like history yet.
+    Note: returns an empty list (not an error) if the profile has no watch/like history yet,
+    or if none of its top categories match any other content.
 
 --------------------------------------------------
 CONTENT ENDPOINTS (/api/content)
 --------------------------------------------------
 ("Content" means the movies/series in the system. Video files live on episodes, not on content
 itself - every watchable item is an Episode, including a movie's single episode.)
-(All content endpoints are public - no login needed.)
+(All content endpoints are public - no login needed, and no token is verified anywhere on
+this router. Because of this, the age-limit check that exists in the authorization layer
+never actually triggers on these routes - it only activates when a profile is attached to
+the request first, which never happens here. Age is only enforced on the profile-scoped
+routes above (likes, watch, progress) and on review routes below.)
 
-18) GET /api/content/:contentId
+19) GET /api/content/:contentId
     Purpose: Gets the details of one specific movie/series.
 
     req.params =
@@ -462,11 +534,11 @@ itself - every watchable item is an Episode, including a movie's single episode.
     }
 
     Note: imdb_rating is only ever populated by THIS endpoint (fetched live from an external
-    IMDB lookup, not stored in the database), and only while that feature is enabled on the
-    server. Every other endpoint that returns a content object (search, create, update,
-    suggestions, top picks) will NOT include imdb_rating.
+    IMDB lookup, and only while that feature is enabled on the server), and is not persisted
+    to the database. Every other endpoint that returns a content object (search, create,
+    update, suggestions, top picks) will NOT include imdb_rating.
 
-19) GET /api/content/
+20) GET /api/content/
     Purpose: Searches/browses the whole catalog using filters like title, category, or type.
 
     req.query =
@@ -483,10 +555,6 @@ itself - every watchable item is an Episode, including a movie's single episode.
       min_age_limit?: number,
       max_age_limit?: number,
       min_likes?: number,
-      min_average_rating?: number,
-      max_average_rating?: number,
-      min_review_count?: number,
-      max_review_count?: number,
       limit?: number,
       skip?: number,
       sort?: string,
@@ -517,15 +585,13 @@ itself - every watchable item is an Episode, including a movie's single episode.
       ]
     }
 
-    Note (UPDATED): average_rating and review_count are now included directly on every
-    returned content object, in addition to being usable as sort/filter fields (min/max_
-    average_rating, min/max_review_count, and as the "sort" value). Previously these two
-    fields existed only on the underlying content document and were never sent to the
-    client - that is no longer the case; every content object from every endpoint below
-    (search, single lookup, admin create/update, suggestions, top picks) now carries both.
+    Note: sort accepts any field name and is passed straight to the database with no
+    whitelist - unlike the admin user search below, there is no mapping/validation layer
+    for this endpoint's sort field.
 
-20) GET /api/content/:contentId/episodes
-    Purpose: Gets every episode of a series, grouped by season. Only works for type "series".
+21) GET /api/content/:contentId/episodes
+    Purpose: Gets every episode of a series, grouped by season. Only works for type "series"
+    (returns an error for movies).
 
     req.params =
     {
@@ -546,9 +612,10 @@ itself - every watchable item is an Episode, including a movie's single episode.
       ]
     }
 
-    Note: seasons[0] is season 1's episode list, seasons[1] is season 2's, etc.
+    Note: seasons[0] is season 1's episode list, seasons[1] is season 2's, etc. Seasons with
+    no episodes appear as empty arrays rather than being skipped.
 
-21) GET /api/content/:contentId/episodes/:episodeId
+22) GET /api/content/:contentId/episodes/:episodeId
     Purpose: Gets the details of one specific episode.
 
     req.params =
@@ -572,7 +639,7 @@ itself - every watchable item is an Episode, including a movie's single episode.
       }
     }
 
-22) GET /api/content/:contentId/episodes/:episodeId/next
+23) GET /api/content/:contentId/episodes/:episodeId/next
     Purpose: Gets the episode that comes right after the given one (crosses into the next
     season if this was the last episode of its season).
 
@@ -597,7 +664,7 @@ itself - every watchable item is an Episode, including a movie's single episode.
       }
     }
 
-23) GET /api/content/:contentId/episodes/:episodeId/prev
+24) GET /api/content/:contentId/episodes/:episodeId/prev
     Purpose: Gets the episode that comes right before the given one (crosses back into the
     previous season if this was the first episode of its season).
 
@@ -625,13 +692,14 @@ itself - every watchable item is an Episode, including a movie's single episode.
 --------------------------------------------------
 REVIEW ENDPOINTS (/api/reviews)
 --------------------------------------------------
-(A review is one profile's rating (1-10) plus an optional comment, for one specific episode.
+(A review is one profile's rating plus an optional comment, for one specific episode.
 A profile can have at most one review per episode.)
 
-24) POST /api/reviews/:profileId/:contentId/:episodeId
+25) POST /api/reviews/:profileId/:contentId/:episodeId
     Purpose: Adds a review (rating + optional comment) for a specific episode, written by this
-    profile. A profile can only review a given episode once. Adding a review automatically
-    recalculates that content's average_rating and review_count.
+    profile. A profile can only review a given episode once - a second attempt returns
+    "You have already reviewed this episode". Adding a review automatically recalculates
+    that content's average_rating and review_count.
 
     req.headers =
     {
@@ -666,9 +734,12 @@ A profile can have at most one review per episode.)
       }
     }
 
-    Note: rating must be a number between 1 and 10. comment has a 500 character limit.
+    Note: rating must be a valid number, and is validated by the schema (an out-of-range
+    value returns "Rating must be between 1 and 10"). Since this route runs through
+    profile authorization before content authorization, the age-limit check (if enabled)
+    DOES apply here - unlike the public /api/content routes above.
 
-25) PUT /api/reviews/:profileId/:contentId/:episodeId
+26) PUT /api/reviews/:profileId/:contentId/:episodeId
     Purpose: Edits this profile's own review for a specific episode (rating and/or comment).
     Editing the rating automatically recalculates that content's average_rating.
 
@@ -705,7 +776,10 @@ A profile can have at most one review per episode.)
       }
     }
 
-26) DELETE /api/reviews/:profileId/:contentId/:episodeId
+    Note: fails with "You have not reviewed this episode yet" if no review exists yet for
+    this profile/episode pair - this endpoint never creates one.
+
+27) DELETE /api/reviews/:profileId/:contentId/:episodeId
     Purpose: Removes this profile's own review for a specific episode. Removing the review
     automatically recalculates that content's average_rating and review_count.
 
@@ -727,7 +801,7 @@ A profile can have at most one review per episode.)
       message: string
     }
 
-27) GET /api/reviews/
+28) GET /api/reviews/
     Purpose: Searches/browses all reviews using query filters. Public, no login needed.
 
     req.query =
@@ -760,36 +834,28 @@ A profile can have at most one review per episode.)
     }
 
     Note: filter by episode_id to see all reviews of one episode, or by profile_id (together
-    with episode_id) to find one profile's review of one episode.
+    with episode_id) to find one profile's review of one episode. As with content search,
+    sort accepts any field name with no whitelist.
 
 --------------------------------------------------
 ADMIN ENDPOINTS (/api/admin)
 --------------------------------------------------
 (Every admin endpoint requires: req.headers = { Authorization: "Bearer <token>" }, and the
 logged-in user must have admin permission level, unless noted as super-admin-only.)
-(This section consolidates every admin-only action across users, content, and reviews.)
+(This section consolidates every admin-only action across users, content, profiles, and
+reviews.)
 
-28) GET /api/admin/users
+29) GET /api/admin/users
     Purpose: Lets an admin search/browse through the list of all users.
 
     req.query =
     {
-      email_starts?: string,
-      email_ends?: string,
-      email_contains?: string,
-      phone_starts?: string,
-      phone_ends?: string,
-      phone_contains?: string,
-      fullname_starts?: string,
-      fullname_ends?: string,
-      fullname_contains?: string,
-      born_after?: string,
-      born_before?: string,
-      joined_after?: string,
-      joined_before?: string,
+      ...search filters supported by the underlying user query builder (e.g. by email,
+      phone, full name, birth date range, join date range - see your user model's query
+      builder for the exact/current list of supported keys),
       limit?: number,
       skip?: number,
-      sort?: string,
+      sort?: "createdAt" | "birthday" | "fullName" | "email",
       sortOrder?: "greater_to_smaller" | "smaller_to_greater"
     }
 
@@ -804,7 +870,12 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       ]
     }
 
-29) GET /api/admin/users/:user_id
+    Note: unlike content/review search, "sort" here is restricted to a fixed whitelist of
+    4 values (createdAt, birthday, fullName, email) - any other value is rejected with an
+    error listing the valid options, instead of silently doing nothing or erroring at the
+    database level.
+
+30) GET /api/admin/users/:user_id
     Purpose: Lets an admin view the details of one specific user.
 
     req.params =
@@ -828,7 +899,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-30) PUT /api/admin/users/:user_id
+31) PUT /api/admin/users/:user_id
     Purpose: Lets an admin update the account details of a specific user.
 
     req.params =
@@ -849,7 +920,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
     {
       success: boolean,
       message: string,
-      user:
+      user?:
       {
         id: string,
         email: string,
@@ -861,9 +932,10 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-31) DELETE /api/admin/users/:user_id  (super admin only)
+32) DELETE /api/admin/users/:user_id  (super admin only)
     Purpose: Permanently deletes a user account, and cascades the deletion to that
-    user's profiles and reviews (content average ratings are recalculated afterward).
+    user's profiles and reviews (content average ratings are recalculated afterward
+    for every content item affected by the deleted reviews).
 
     req.params =
     {
@@ -876,12 +948,13 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       message: string
     }
 
-32) PUT /api/admin/users/:user_id/permission
-    Purpose: Promotes or demotes a user's permission level. An admin cannot assign
-    a level higher than their own, and cannot act on a user whose current level is
-    already above their own (acting on a user at the same level is allowed, as long
-    as the requested new level differs from their current one). Permission levels:
-    USER = 0, ADMIN = 1, SUPER_ADMIN = 2.
+33) PUT /api/admin/users/:user_id/permission
+    Purpose: Promotes or demotes a user's permission level. An admin cannot assign a
+    level higher than their own, and cannot act on a user whose current level is already
+    above their own. Acting on a user at the same level as the admin is allowed (e.g. one
+    admin can demote another admin back to plain user), as long as the requested new
+    level differs from the target's current one. Permission levels: USER = 0, ADMIN = 1,
+    SUPER_ADMIN = 2.
 
     req.params =
     {
@@ -899,7 +972,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       message: string
     }
 
-32b) GET /api/admin/profiles/:profileId/owner   *** NEW - not yet added to the server ***
+34) GET /api/admin/profiles/:profileId/owner
     Purpose: Finds and returns the user that owns a given profile (there is no dedicated
     admin route for profiles otherwise - the regular /api/profile/* routes are scoped to
     the logged-in user's own profiles only).
@@ -925,11 +998,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-    Note: this endpoint doesn't exist on the server yet - see admin-find-user-by-profile.js
-    for a controller implementation to integrate, plus a route to add in your admin routes
-    file.
-
-33) GET /api/admin/users/:user_id/tokens_count
+35) GET /api/admin/users/:user_id/tokens_count
     Purpose: Gets how many active login tokens (sessions) a user currently has.
 
     req.params =
@@ -943,7 +1012,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       tokens_count: number
     }
 
-34) POST /api/admin/users/:user_id/kick
+36) POST /api/admin/users/:user_id/kick
     Purpose: Invalidates all of a user's active tokens, forcing them to log in again everywhere.
 
     req.params =
@@ -953,10 +1022,11 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
 
     res =
     {
-      success: boolean
+      success: boolean,
+      message?: string   // present only on failure (e.g. user has no active sessions)
     }
 
-35) POST /api/admin/users/:user_id/ban
+37) POST /api/admin/users/:user_id/ban
     Purpose: Bans a user for a given number of hours (does not kick existing sessions).
 
     req.params =
@@ -971,10 +1041,15 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
 
     res =
     {
-      success: boolean
+      success: boolean,
+      message?: string   // present only on failure (e.g. hours_to_ban is not a number)
     }
 
-36) GET /api/admin/users/:user_id/ban
+    Note: there is no server-side minimum/maximum on hours_to_ban - a zero or negative
+    value is accepted and effectively bans the user for zero time or a time already in
+    the past.
+
+38) GET /api/admin/users/:user_id/ban
     Purpose: Checks whether a user is currently banned.
 
     req.params =
@@ -988,7 +1063,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       is_banned: boolean
     }
 
-37) POST /api/admin/content
+39) POST /api/admin/content
     Purpose: Adds a brand new movie or series to the catalog.
 
     req.body =
@@ -1026,7 +1101,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
     Note: a newly created content item has no reviews yet, so average_rating and
     review_count will be whatever the schema's default is (e.g. 0) at creation time.
 
-38) DELETE /api/admin/content/:contentId
+40) DELETE /api/admin/content/:contentId
     Purpose: Removes a movie/series from the catalog completely.
 
     req.params =
@@ -1040,7 +1115,10 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       message: string
     }
 
-39) PUT /api/admin/content/:contentId
+    Note: this does not currently cascade-delete or archive reviews tied to this
+    content - those reviews are left pointing at a deleted contentId.
+
+41) PUT /api/admin/content/:contentId
     Purpose: Edits the details of an existing movie/series.
 
     req.params =
@@ -1083,7 +1161,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
     Note: average_rating/review_count are not writable through this endpoint's req.body -
     they are only ever changed indirectly, by adding/editing/deleting reviews.
 
-40) POST /api/admin/content/:contentId/episodes
+42) POST /api/admin/content/:contentId/episodes
     Purpose: Adds a new episode to a series (movies cannot have episodes added this way).
 
     req.params =
@@ -1114,7 +1192,10 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-41) PUT /api/admin/content/:contentId/movie-video
+    Note: a duplicate (season_number, episode_number) pair for the same content returns
+    "This season/episode number already exists for this content".
+
+43) PUT /api/admin/content/:contentId/movie-video
     Purpose: Creates or updates the single video for a movie (movies only - use the
     episode endpoints above for series). Internally this is still backed by a single
     Episode entry (season 1, episode 1), but the caller never needs to know that.
@@ -1144,7 +1225,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-42) PUT /api/admin/content/:contentId/episodes/:episodeId
+44) PUT /api/admin/content/:contentId/episodes/:episodeId
     Purpose: Edits the details of an existing episode. Not restricted by content type -
     a movie's single episode can be edited too.
 
@@ -1177,7 +1258,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-43) DELETE /api/admin/content/:contentId/episodes/:episodeId
+45) DELETE /api/admin/content/:contentId/episodes/:episodeId
     Purpose: Removes a specific episode from a series.
 
     req.params =
@@ -1192,7 +1273,11 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       message: string
     }
 
-44) PUT /api/admin/reviews/:reviewId
+    Note: this does not currently clean up references to the deleted episode that may
+    remain in profiles' last-watched history or in Reviews - both keep a dangling
+    episode_id.
+
+46) PUT /api/admin/reviews/:reviewId
     Purpose: Edits any review directly by its ID, regardless of who wrote it - e.g. to fix a
     rating or clean up a comment. Editing the rating automatically recalculates that
     content's average_rating.
@@ -1223,7 +1308,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-45) DELETE /api/admin/reviews/:reviewId
+47) DELETE /api/admin/reviews/:reviewId
     Purpose: Deletes any review directly by its ID, regardless of who wrote it - e.g. to remove
     an abusive comment. Recalculates that content's average_rating and review_count.
 
@@ -1238,7 +1323,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       message: string
     }
 
-46) GET /api/admin/users-statistics
+48) GET /api/admin/users-statistics
     Purpose: Gets aggregated statistics about all users on the server.
 
     res =
@@ -1265,16 +1350,16 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
       }
     }
 
-    Note: profileDistribution has one entry for every possible profile count from 1 to
-    MAX_PROFILES_LIMIT (currently 4), UsersCount is 0 if no user currently has that exact
-    number of profiles.
+    Note: profileDistribution has one entry for every possible profile count from 1 up to
+    the server's configured maximum profile count, UsersCount is 0 if no user currently
+    has that exact number of profiles.
     Note: userGrowth has one entry per month ("YYYY-MM"), covering the last 6 months
     (including the current one), NewUsers is 0 for any month with no new registrations.
     Note: ageDistribution has one entry per age bucket: "Under 18 / Invalid", "18-24",
-    "25-34", "35-44", "45-59", "60-119", "120+" - UsersCount is 0 for any bucket with no
+    "25-34", "35-44", "45-59", "60-89", "90+" - UsersCount is 0 for any bucket with no
     matching users.
 
-47) GET /api/admin/content-statistics
+49) GET /api/admin/content-statistics
     Purpose: Gets aggregated statistics about all content on the server.
 
     res =
@@ -1315,7 +1400,7 @@ logged-in user must have admin permission level, unless noted as super-admin-onl
     "7-12", "13-15", "16-17", "18+" - TitlesCount is 0 for any bucket with no matching
     content.
 
-48) GET /api/admin/reviews-statistics
+50) GET /api/admin/reviews-statistics
     Purpose: Gets aggregated statistics about all reviews on the server.
 
     res =
@@ -1356,19 +1441,32 @@ GENERAL NOTES
 --------------------------------------------------
 - Every res always has a "success" field (true or false). Most also have a "message" field,
   except a handful of simple admin actions (tokens_count, kick, ban, ban-check) which only
-  return "success" plus their specific data field.
-- "?" after a field name means it is optional.
-- All admin-only actions now live under /api/admin, consolidated by resource type
-  (users, content, reviews) rather than scattered across each resource's own base path.
+  return "success" plus their specific data field on success.
+- "?" after a field name means it is optional / not always present.
+- All admin-only actions live under /api/admin, consolidated by resource type (users,
+  profiles, content, reviews) rather than scattered across each resource's own base path.
 - req.headers = the request headers (used for the auth token).
 - req.params = values that are part of the URL path (like :user_id).
 - req.query = values after the "?" in the URL (like ?limit=10).
 - req.body = the JSON object sent in the request body.
-- sortOrder uses the same two values everywhere: "greater_to_smaller" (descending, default) or "smaller_to_greater" (ascending). Any other value returns an error.
-- videoUrl now lives only on episodes, never on content itself.
-- Reviews: rating is 1-10, comment is optional with a 500 character limit. A profile can only
-  have one review per episode - adding a second is rejected, not merged or overwritten.
-- UPDATED: average_rating (number) and review_count (number) are now included directly on
-  every content object returned by every endpoint (search, single lookup, admin create/update,
-  suggestions, top picks) - not just usable as sort/filter query params. They stay in sync
-  automatically whenever a review is added, edited, or deleted (see endpoints 24-26 and 44-45).
+- sortOrder uses the same two values everywhere: "greater_to_smaller" (descending, default)
+  or "smaller_to_greater" (ascending). Any other value returns an error. Note that only the
+  admin user-search endpoint restricts which field "sort" can be; content and review search
+  pass "sort" straight through with no validation.
+- videoUrl lives only on episodes, never on content itself.
+- A profile can only have one review per episode - adding a second is rejected, not merged
+  or overwritten.
+- average_rating (number) and review_count (number) are included directly on every content
+  object returned by every endpoint (search, single lookup, admin create/update,
+  suggestions, top picks). They stay in sync automatically whenever a review is added,
+  edited, or deleted (see endpoints 25-27 and 46-47).
+- Age-limit enforcement is conditional on server configuration AND on whether a profile has
+  already been resolved earlier in that route's middleware chain. In practice this means it
+  is enforced on profile-scoped content actions (likes, watch, progress, reviews) but NOT on
+  the public /api/content browsing routes, since those never resolve a profile at all.
+- Every lastWatched entry (endpoints 12, 14, 15) carries a position_seconds field - how
+  many seconds into that episode the profile last stopped at. It is only preserved across
+  a watch call (14/15) when resuming the exact same episode already tracked for that
+  content; switching episodes always resets it to 0. Frequent in-episode updates go through
+  the dedicated progress endpoint (16), not the watch endpoints, to avoid reordering the
+  watch history or flooding the logs on every playback tick.

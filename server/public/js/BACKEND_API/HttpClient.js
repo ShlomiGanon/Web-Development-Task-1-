@@ -103,11 +103,10 @@ export class HttpClient extends Interface_BackendAPI
         return await this._request('GET', `/admin/users/${userId}/ban`, { token: sessionToken });
     }
 
-    // NOTE: not yet implemented on the server - see admin-find-user-by-profile.js for the
-    // controller code to integrate, plus a route to add in the admin routes file.
     // Finds the user that owns a given profile ID (admin only) - there is no regular
     // /api/profile/* route for this since those are scoped to the logged-in user's own
-    // profiles only.
+    // profiles only. This endpoint already exists on the server (admin_routes.js +
+    // profileController.findUserByProfileId).
     async findUserByProfileId(sessionToken, profileId)
     {
         const result = await this._request('GET', `/admin/profiles/${profileId}/owner`, { token: sessionToken });
@@ -137,7 +136,7 @@ export class HttpClient extends Interface_BackendAPI
         return { ...result, profile: result.profile ? Profile.fromJSON(result.profile) : undefined };
     }
 
-    // full profile document, including likedContentIds and lastWatched
+    // full profile document, including likedContentIds and lastWatched (each entry has position_seconds)
     async fetchProfileDetails(sessionToken, profileId)
     {
         const result = await this._request('GET', `/profile/${profileId}/details`, { token: sessionToken });
@@ -179,18 +178,32 @@ export class HttpClient extends Interface_BackendAPI
         return await this._request('POST', `/profile/${profileId}/likes/${contentId}`, { token: sessionToken });
     }
 
-    // resumes from the profile's saved episode for this content, or starts at S1E1 otherwise
+    // resumes from the profile's saved episode for this content, or starts at S1E1 otherwise.
+    // position_seconds on the returned lastWatched entry is only carried over from before
+    // when this resumes that same saved episode - otherwise it starts at 0.
     async recordWatch(sessionToken, profileId, contentId)
     {
         const result = await this._request('POST', `/profile/${profileId}/watch/${contentId}`, { token: sessionToken });
         return { ...result, episode: result.episode ? Episode.fromJSON(result.episode) : undefined };
     }
 
-    // records this specific episode as watched instead of resuming/defaulting
+    // records this specific episode as watched instead of resuming/defaulting.
+    // same position_seconds carry-over rule as recordWatch() above.
     async recordWatchEpisode(sessionToken, profileId, contentId, episodeId)
     {
         const result = await this._request('POST', `/profile/${profileId}/watch/${contentId}/${episodeId}`, { token: sessionToken });
         return { ...result, episode: result.episode ? Episode.fromJSON(result.episode) : undefined };
+    }
+
+    // Updates just the in-episode playback position for an episode already tracked in this
+    // profile's watch history - does not reorder the watch history like recordWatch()/
+    // recordWatchEpisode() do. Should be called on every playback position update (periodic
+    // ticks, pause, before the tab/app closes) so the server always knows where the profile
+    // last stopped. Requires an existing lastWatched entry for this content/episode - call
+    // recordWatch() or recordWatchEpisode() first to create it.
+    async updateWatchProgress(sessionToken, profileId, contentId, episodeId, positionSeconds)
+    {
+        return await this._request('POST', `/profile/${profileId}/watch/${contentId}/${episodeId}/progress`, { token: sessionToken, body: { position_seconds: positionSeconds } });
     }
 
     // content the user's OTHER profiles have watched/liked, excluding this profile's own history

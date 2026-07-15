@@ -46,4 +46,7 @@ router.get('/:profileId/other_profiles_recommendations', authorizeProfileAccess,
 // Route to get the profile's top 3 picks based on its own watch/like history
 router.get('/:profileId/top_picks', authorizeProfileAccess, suggestionsController.getTopPicksForProfile);
 
+// Route to update the watch progress for resume watching on the same spot the user left off
+router.post('/:profileId/watch/:contentId/:episodeId/progress', authorizeProfileAccess, contentAuthorization, profileController.updateWatchProgress);
+
 module.exports = router;

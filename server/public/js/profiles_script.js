@@ -453,11 +453,9 @@ async function saveEditedProfiles()
     // Build the payload to send without touching the live `profiles` array yet.
     const updatedProfiles = profiles.map(profile =>
     {
-        const input = document.getElementById(`profile_input_${profile.id}`);
-        if (!input) return profile;
-        const clone = Profile.fromJSON(JSON.parse(JSON.stringify(profile)));
-        clone.profileName = input.value;
-        return clone;
+            const input = document.getElementById(`profile_input_${profile.id}`);
+            if (!input) return profile;
+            return profile.clone({ profileName: input.value });
     });
 
     try
