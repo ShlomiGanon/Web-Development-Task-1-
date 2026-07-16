@@ -2,6 +2,7 @@ const User = require('../models/user');
 const Content = require('../models/content');
 const Episode = require('../models/episode');
 const Review = require('../models/review');
+const Profile = require('../models/profile');
 const my_logger = require('../scripts/my_logger');
 const constants = require('../scripts/constants');
 
@@ -182,9 +183,10 @@ const getUsersStatistics = async (req, res) => {
 
 const CONTENT_AGE_BOUNDARIES = [0, 7, 13, 16, 18];
 const EPISODE_COUNT_BOUNDARIES = [1, 5, 10, 20, 50];
+const MOST_VIEWED_CONTENT_LIMIT = 5;
 
 /**
- * Get aggregated statistics about all content on the server (category distribution, episodes-per-series stats, age distribution)
+ * Get aggregated statistics about all content on the server (views per category, category distribution, episodes-per-series stats, age distribution)
  * @param {Object} req - The request object
  * @param {Object} res - The response object
  * @returns {Promise<Object>} - The response object
@@ -193,6 +195,9 @@ const EPISODE_COUNT_BOUNDARIES = [1, 5, 10, 20, 50];
 //    success: boolean,
 //    message: string,
 //    statistics: {
+//        viewsByCategory: Array<{ Category: string, ViewsCount: number }>, // one entry per category found in the DB (or "Uncategorized"), sorted by ViewsCount desc.
+//            A "view" is counted once per unique content_id a profile has watched (repeated episodes of the
+//            same series/movie count once). Content belonging to multiple categories contributes once to each.
 //        categoryDistribution: Array<{ Category: string, TitlesCount: number }>, // one entry per category found in the DB, sorted by TitlesCount desc
 //        episodesPerSeriesStats: {
 //            averageEpisodesPerSeries: number, // series with 0 episodes count as 0
@@ -203,13 +208,132 @@ const EPISODE_COUNT_BOUNDARIES = [1, 5, 10, 20, 50];
 //}
 const getContentStatistics = async (req, res) => {
     try {
-        // ---------- 1. Category distribution (across all content) ----------
-
+        // ---------- 1. Views per category ---------- 
+        // Step 1: collect each profile's unique watched content ids (dedupe repeated episodes of the same content)
+        const projectUniqueContentIdsStage = {
+            $project: {
+                uniqueContentIds: { $setUnion: ["$last_watched.content_id", []] }
+            }
+        };
+ 
+        // Step 2: unwind so each (profile, uniquely-watched content) pair becomes its own document = one "view"
+        const unwindUniqueContentIdsStage = {
+            $unwind: "$uniqueContentIds"
+        };
+ 
+        // Step 3: join each view with its Content document
+        const lookupContentStage = {
+            $lookup: {
+                from: "contents", // Mongoose's default pluralized collection name for the "Content" model
+                localField: "uniqueContentIds",
+                foreignField: "_id",
+                as: "watchedContent"
+            }
+        };
+ 
+        // Step 4: drop the array wrapper from the $lookup (also filters out dangling/broken references)
+        const unwindWatchedContentStage = {
+            $unwind: "$watchedContent"
+        };
+ 
+        // Step 5: unwind the content's categories, keeping content with an empty categories array
+        // as a single null entry (handled as "Uncategorized" in the group stage below)
+        const unwindContentCategoriesStage = {
+            $unwind: {
+                path: "$watchedContent.categories",
+                preserveNullAndEmptyArrays: true
+            }
+        };
+ 
+        // Step 6: group and count views per category, labeling missing categories as "Uncategorized"
+        const groupViewsByCategoryStage = {
+            $group: {
+                _id: { $ifNull: ["$watchedContent.categories", "Uncategorized"] },
+                viewsCount: { $sum: 1 }
+            }
+        };
+ 
+        // Step 7: sort from most-viewed category to least-viewed
+        const sortByViewsCountStage = {
+            $sort: { viewsCount: -1 }
+        };
+ 
+        const viewsByCategoryRaw = await Profile.aggregate([
+            projectUniqueContentIdsStage,
+            unwindUniqueContentIdsStage,
+            lookupContentStage,
+            unwindWatchedContentStage,
+            unwindContentCategoriesStage,
+            groupViewsByCategoryStage,
+            sortByViewsCountStage
+        ]);
+ 
+        const viewsByCategory = viewsByCategoryRaw.map(item => ({
+            Category: item._id,
+            ViewsCount: item.viewsCount
+        }));
+ 
+        // ---------- 2. Most viewed content (top MOST_VIEWED_CONTENT_LIMIT titles) ----------
+ 
+        // Same "view" definition as above (one view per unique content_id watched by a
+        // profile), but grouped directly by content instead of by category, so we can
+        // rank individual titles rather than categories.
+ 
+        // Step 1: group views by content id, counting how many profiles have watched each one
+        const groupViewsByContentIdStage = {
+            $group: {
+                _id: "$uniqueContentIds",
+                viewsCount: { $sum: 1 }
+            }
+        };
+ 
+        // Step 2: sort from most-viewed to least-viewed
+        const sortMostViewedContentStage = {
+            $sort: { viewsCount: -1 }
+        };
+ 
+        // Step 3: keep only the top MOST_VIEWED_CONTENT_LIMIT titles
+        const limitMostViewedContentStage = {
+            $limit: MOST_VIEWED_CONTENT_LIMIT
+        };
+ 
+        // Step 4: join each top content id with its Content document to get its title
+        const lookupMostViewedContentStage = {
+            $lookup: {
+                from: "contents", // Mongoose's default pluralized collection name for the "Content" model
+                localField: "_id",
+                foreignField: "_id",
+                as: "contentInfo"
+            }
+        };
+ 
+        // Step 5: drop the array wrapper from the $lookup (also filters out dangling/broken references)
+        const unwindMostViewedContentInfoStage = {
+            $unwind: "$contentInfo"
+        };
+ 
+        const mostViewedContentRaw = await Profile.aggregate([
+            projectUniqueContentIdsStage,
+            unwindUniqueContentIdsStage,
+            groupViewsByContentIdStage,
+            sortMostViewedContentStage,
+            limitMostViewedContentStage,
+            lookupMostViewedContentStage,
+            unwindMostViewedContentInfoStage
+        ]);
+ 
+        const mostViewedContent = mostViewedContentRaw.map(item => ({
+            Title: item.contentInfo.title,
+            ViewsCount: item.viewsCount
+        }));
+ 
+        // ---------- 3. Category distribution (across all content) ----------
+ 
         // Step 1: split each content document into one row per category it belongs to
         const splitContentByCategoryStage = {
             $unwind: "$categories"
         };
-
+ 
         // Step 2: group content rows by category name
         const groupContentByCategoryStage = {
             $group: {
@@ -217,46 +341,46 @@ const getContentStatistics = async (req, res) => {
                 titlesCount: { $sum: 1 }
             }
         };
-
+ 
         // Step 3: sort categories from most titles to least
         const sortByTitlesCountDescStage = {
             $sort: { titlesCount: -1 }
         };
-
+ 
         const categoryDistributionRaw = await Content.aggregate([
             splitContentByCategoryStage,
             groupContentByCategoryStage,
             sortByTitlesCountDescStage
         ]);
-
+ 
         const categoryDistribution = categoryDistributionRaw.map(categoryEntry => ({
             Category: categoryEntry._id,
             TitlesCount: categoryEntry.titlesCount
         }));
-
-        // ---------- 2. Episodes-per-series stats ----------
-
+ 
+        // ---------- 4. Episodes-per-series stats ----------
+ 
         // Step 1: keep only content documents that are series
         const filterSeriesOnlyStage = {
             $match: { type: "series" }
         };
-
+ 
         // Step 2: keep only the _id field of each series
         const keepOnlySeriesIdStage = {
             $project: { _id: 1 }
         };
-
+ 
         const seriesContentDocs = await Content.aggregate([
             filterSeriesOnlyStage,
             keepOnlySeriesIdStage
         ]);
         const seriesContentIds = seriesContentDocs.map(seriesDoc => seriesDoc._id);
-
+ 
         // Step 3: keep only episodes belonging to one of those series
         const filterEpisodesOfSeriesStage = {
             $match: { content_id: { $in: seriesContentIds } }
         };
-
+ 
         // Step 4: count episodes per series
         const groupEpisodesByContentIdStage = {
             $group: {
@@ -264,21 +388,21 @@ const getContentStatistics = async (req, res) => {
                 episodesCount: { $sum: 1 }
             }
         };
-
+ 
         const episodeCountPerSeriesRaw = await Episode.aggregate([
             filterEpisodesOfSeriesStage,
             groupEpisodesByContentIdStage
         ]);
-
+ 
         // Map each series id to its actual episode count, defaulting to 0 for series with no episodes at all
         const episodesCountBySeriesIdMap = new Map(episodeCountPerSeriesRaw.map(item => [item._id.toString(), item.episodesCount]));
         const episodeCountsForAllSeries = seriesContentIds.map(seriesId => episodesCountBySeriesIdMap.get(seriesId.toString()) || 0);
-
+ 
         // Calculate the average episode count across all series
         const totalSeriesCount = episodeCountsForAllSeries.length;
         const totalEpisodesAcrossAllSeries = episodeCountsForAllSeries.reduce((sum, count) => sum + count, 0);
         const averageEpisodesPerSeries = totalSeriesCount > 0 ? (totalEpisodesAcrossAllSeries / totalSeriesCount) : 0;
-
+ 
         // Bucket every series by its episode count, using EPISODE_COUNT_BOUNDARIES (plus a "0" bucket and an open-ended top bucket)
         const episodesDistributionCountMap = new Map();
         episodesDistributionCountMap.set("0", 0);
@@ -289,7 +413,7 @@ const getContentStatistics = async (req, res) => {
         const finalEpisodeBoundary = EPISODE_COUNT_BOUNDARIES[EPISODE_COUNT_BOUNDARIES.length - 1];
         const openEndedEpisodeRangeLabel = `${finalEpisodeBoundary}+`;
         episodesDistributionCountMap.set(openEndedEpisodeRangeLabel, 0);
-
+ 
         for (const episodeCount of episodeCountsForAllSeries) {
             let matchedRangeLabel = openEndedEpisodeRangeLabel;
             if (episodeCount === 0) {
@@ -304,19 +428,19 @@ const getContentStatistics = async (req, res) => {
             }
             episodesDistributionCountMap.set(matchedRangeLabel, episodesDistributionCountMap.get(matchedRangeLabel) + 1);
         }
-
+ 
         const episodesDistribution = Array.from(episodesDistributionCountMap.entries()).map(([rangeLabel, seriesCount]) => ({
             EpisodesRange: rangeLabel,
             SeriesCount: seriesCount
         }));
-
+ 
         const episodesPerSeriesStats = {
             averageEpisodesPerSeries,
             episodesDistribution
         };
-
-        // ---------- 3. Age distribution of content (based on age_limit) ----------
-
+ 
+        // ---------- 5. Age distribution of content (based on age_limit) ----------
+ 
         // Step 1: group content into age-limit ranges (buckets) based on CONTENT_AGE_BOUNDARIES.
         // Infinity is appended so the last real boundary (18) becomes its own open-ended "18+" bucket.
         const groupContentIntoAgeBucketsStage = {
@@ -327,11 +451,11 @@ const getContentStatistics = async (req, res) => {
                 output: { titlesCount: { $sum: 1 } }
             }
         };
-
+ 
         const ageDistributionRaw = await Content.aggregate([
             groupContentIntoAgeBucketsStage
         ]);
-
+ 
         // Fill in every age range derived from CONTENT_AGE_BOUNDARIES, including zeros,
         // plus the "Invalid" default bucket and a final open-ended bucket
         const titlesCountByAgeBucketMap = new Map(ageDistributionRaw.map(item => [item._id, item.titlesCount]));
@@ -350,14 +474,16 @@ const getContentStatistics = async (req, res) => {
             AgeRange: `${finalContentAgeBoundary}+`,
             TitlesCount: titlesCountByAgeBucketMap.get(finalContentAgeBoundary) || 0
         });
-
+ 
         my_logger.ConsoleLog(`getContentStatistics successful.`, my_logger.Log_Level.INFO);
         my_logger.OperationLog('getContentStatistics', 'Content statistics fetched successfully.', {}, my_logger.Log_Level.INFO);
-
+ 
         res.json({
             success: true,
             message: 'Content statistics fetched successfully',
             statistics: {
+                viewsByCategory,
+                mostViewedContent,
                 categoryDistribution,
                 episodesPerSeriesStats,
                 ageDistribution
@@ -369,7 +495,6 @@ const getContentStatistics = async (req, res) => {
         res.json({ success: false, message: 'Internal server error' });
     }
 };
-
 
 const RATING_MIN = 1;
 const RATING_MAX = 10;

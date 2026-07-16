@@ -1915,9 +1915,18 @@ function create_users_statistics_window()
     );
 }
 
-// ----- Contents mode: 3 charts + one plain-text average, matching Backend.getContentStatistics() -----
+// ----- Contents mode: 5 charts + one plain-text average, matching Backend.getContentStatistics()'s NEW response shape -----
+// (viewsByCategory: [{ Category, ViewsCount }] and mostViewedContent: [{ Title, ViewsCount }] added as the first two charts)
 function render_content_statistics_charts(charts_container_element, statistics)
 {
+    const views_by_category_chart = document.createElement('div');
+    charts_container_element.appendChild(views_by_category_chart);
+    draw_bar_chart_with_d3(views_by_category_chart, statistics.viewsByCategory, 'Category', 'ViewsCount', 'Views by Category');
+
+    const most_viewed_content_chart = document.createElement('div');
+    charts_container_element.appendChild(most_viewed_content_chart);
+    draw_bar_chart_with_d3(most_viewed_content_chart, statistics.mostViewedContent, 'Title', 'ViewsCount', 'Most Viewed Content (Top 5)');
+
     const category_distribution_chart = document.createElement('div');
     charts_container_element.appendChild(category_distribution_chart);
     draw_bar_chart_with_d3(category_distribution_chart, statistics.categoryDistribution, 'Category', 'TitlesCount', 'Titles per Category');
