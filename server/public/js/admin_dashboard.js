@@ -911,7 +911,7 @@ async function update_user(user)
 async function create_content()
 {
     const form_data = get_filters_from_window(filters_window);
-    const array_fields = ['categories'];
+    const array_fields = ['categories', 'actors'];
     const contentData = {};
 
     for (const key in form_data)
@@ -953,12 +953,21 @@ async function create_content()
     close_filters_window();
 }
 
+// Optional fields (used only in create mode) get " (Optional)" appended to their label,
+// so the admin can tell at a glance which ones are safe to leave blank - anything left
+// empty just falls back to its schema default, or gets auto-filled from IMDB where relevant.
+function optional_label(is_create_mode, text)
+{
+    return is_create_mode ? `${text} (Optional)` : text;
+}
+
 // contentItem = null -> "Add Content" mode; otherwise "Update Content" mode.
 // NOTE: there is deliberately no "Video URL" field here - video lives only on Episodes now,
 // never on content itself. Use the "Episodes" section in the content detail view (or the
 // "Set Movie Video" control for movies) to manage playback video. average_rating/review_count
 // are also deliberately not editable here - they're read-only, server-computed fields kept
-// in sync via the review endpoints.
+// in sync via the review endpoints. Same goes for imdb_rating/imdb_votes - read-only, set
+// once from IMDB at creation time.
 function create_update_content_window(contentItem = null)
 {
     const is_create_mode = !contentItem;
@@ -974,14 +983,17 @@ function create_update_content_window(contentItem = null)
     fields_container.className = FIELDS_CONTAINER_CLASSES;
     content.appendChild(fields_container);
 
-    // maps to: { title, description, cover_image_name, type, categories, release_date, age_limit } on ContentItem
+    // maps to: { title, description, cover_image_name, type, categories, release_date, age_limit, actors } on ContentItem
+    // title/type/release_date are required (on create); everything else is optional and,
+    // if left blank on create, the server fills it in automatically from IMDB where possible.
     fields_container.appendChild(build_edit_input_field(contentItem, 'title', "Title", 'text'));
-    fields_container.appendChild(build_edit_input_field(contentItem, 'description', "Description", 'text'));
-    fields_container.appendChild(build_edit_input_field(contentItem, 'cover_image_name', "Cover Image Name", 'text'));
+    fields_container.appendChild(build_edit_input_field(contentItem, 'description', optional_label(is_create_mode, "Description"), 'text'));
+    fields_container.appendChild(build_edit_input_field(contentItem, 'cover_image_name', optional_label(is_create_mode, "Cover Image Name"), 'text'));
     fields_container.appendChild(build_edit_select_field(contentItem, 'type', "Type", ['movie', 'series']));
-    fields_container.appendChild(build_edit_input_field(contentItem, 'categories', "Categories", 'text'));
+    fields_container.appendChild(build_edit_input_field(contentItem, 'categories', optional_label(is_create_mode, "Categories"), 'text'));
     fields_container.appendChild(build_edit_input_field(contentItem, 'release_date', "Release Date", 'date'));
-    fields_container.appendChild(build_edit_input_field(contentItem, 'age_limit', "Age Limit", 'number'));
+    fields_container.appendChild(build_edit_input_field(contentItem, 'age_limit', optional_label(is_create_mode, "Age Limit"), 'number'));
+    fields_container.appendChild(build_edit_input_field(contentItem, 'actors', optional_label(is_create_mode, "Actors"), 'text'));
 
     content.appendChild(create_button_row([
         { text: 'Cancel', className: 'btn btn-secondary btn-lg', onClick: () => close_filters_window() },
@@ -1002,7 +1014,7 @@ async function update_content(content)
     const form_data = get_filters_from_window(filters_window);
     let changes = {};
     const date_fields = ['release_date'];
-    const array_fields = ['categories'];
+    const array_fields = ['categories', 'actors'];
 
     // Same "only send what actually changed" pattern as update_user() above,
     // but also has to normalize array fields (categories) for the comparison.

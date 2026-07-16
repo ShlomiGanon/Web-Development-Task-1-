@@ -467,7 +467,8 @@ function renderReviewsList(reviews, ownReview)
         reviews_list_container.innerHTML = `<div class="col-12 text-center text-white bg-dark" dir="rtl">אין עדיין תגובות לפרק הזה</div>`;
         return;
     }
-    const empty_review_text = "Empty review[no text].";
+    //i need to add the reviewer name to the review
+    const empty_review_text = "";
     reviews_list_container.innerHTML = reviews.map(review => `
         <div class="col-12">
             <div class="border border-secondary rounded p-3 text-white bg-dark" dir="rtl">

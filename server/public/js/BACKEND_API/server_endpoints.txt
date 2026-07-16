@@ -529,14 +529,18 @@ routes above (likes, watch, progress) and on review routes below.)
         createdAt: string,
         average_rating: number,
         review_count: number,
-        imdb_rating?: number
+        imdb_rating: number | null,
+        imdb_votes: number | null,
+        actors: string[]
       }
     }
 
-    Note: imdb_rating is only ever populated by THIS endpoint (fetched live from an external
-    IMDB lookup, and only while that feature is enabled on the server), and is not persisted
-    to the database. Every other endpoint that returns a content object (search, create,
-    update, suggestions, top picks) will NOT include imdb_rating.
+    Note: imdb_rating, imdb_votes, and actors are fetched from an external IMDB lookup ONCE,
+    at content creation time (POST /api/admin/content), and persisted to the database from
+    then on - this endpoint just returns whatever is already stored, with no live lookup on
+    every GET. They are null/empty if the lookup failed, found no match, or the IMDB feature
+    was disabled on the server at creation time. Every other endpoint that returns a content
+    object (search, create, update, suggestions, top picks) includes these same three fields.
 
 20) GET /api/content/
     Purpose: Searches/browses the whole catalog using filters like title, category, or type.
@@ -579,7 +583,10 @@ routes above (likes, watch, progress) and on review routes below.)
           likes: number,
           createdAt: string,
           average_rating: number,
-          review_count: number
+          review_count: number,
+          imdb_rating: number | null,
+          imdb_votes: number | null,
+          actors: string[]
         },
         ...
       ]
@@ -1074,7 +1081,8 @@ reviews.)
       description?: string,
       cover_image_name?: string,
       categories?: string[],
-      age_limit?: number
+      age_limit?: number,
+      actors?: string[]
     }
 
     res =
@@ -1094,12 +1102,22 @@ reviews.)
         likes: number,
         createdAt: string,
         average_rating: number,
-        review_count: number
+        review_count: number,
+        imdb_rating: number | null,
+        imdb_votes: number | null,
+        actors: string[]
       }
     }
 
     Note: a newly created content item has no reviews yet, so average_rating and
     review_count will be whatever the schema's default is (e.g. 0) at creation time.
+    Note: right after creation, the server looks up the title on IMDB (only while that
+    feature is enabled) and fills in whichever of description, cover_image_name, categories,
+    age_limit, actors, imdb_rating, and imdb_votes were left blank in req.body - it never
+    overwrites a value the caller actually provided. cover_image_name is only auto-filled
+    this way if the lookup finds a poster image, which is then downloaded and stored under
+    the server's covers folder. If the IMDB lookup fails or finds no match, the content is
+    still created successfully with just the fields the caller supplied.
 
 40) DELETE /api/admin/content/:contentId
     Purpose: Removes a movie/series from the catalog completely.
@@ -1154,12 +1172,18 @@ reviews.)
         likes: number,
         createdAt: string,
         average_rating: number,
-        review_count: number
+        review_count: number,
+        imdb_rating: number | null,
+        imdb_votes: number | null,
+        actors: string[]
       }
     }
 
     Note: average_rating/review_count are not writable through this endpoint's req.body -
     they are only ever changed indirectly, by adding/editing/deleting reviews.
+    Note: imdb_rating, imdb_votes, and actors are also not writable through this endpoint's
+    req.body - they were only ever set once from IMDB at creation time (endpoint 39) and are
+    not re-fetched or otherwise touched by an update.
 
 42) POST /api/admin/content/:contentId/episodes
     Purpose: Adds a new episode to a series (movies cannot have episodes added this way).
@@ -1460,6 +1484,12 @@ GENERAL NOTES
   object returned by every endpoint (search, single lookup, admin create/update,
   suggestions, top picks). They stay in sync automatically whenever a review is added,
   edited, or deleted (see endpoints 25-27 and 46-47).
+- imdb_rating (number | null), imdb_votes (number | null), and actors (string[]) are also
+  included directly on every content object returned by every endpoint. Unlike
+  average_rating/review_count, these are set only once, from an external IMDB lookup done at
+  creation time (endpoint 39) - they are never re-fetched afterward, so they stay whatever
+  they were (or null/empty, if the lookup failed, found no match, or was disabled) for the
+  lifetime of that content item.
 - Age-limit enforcement is conditional on server configuration AND on whether a profile has
   already been resolved earlier in that route's middleware chain. In practice this means it
   is enforced on profile-scoped content actions (likes, watch, progress, reviews) but NOT on

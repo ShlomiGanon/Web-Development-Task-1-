@@ -194,12 +194,13 @@ export class ContentItem
 {
     /**
      * videoUrl lives on Episode, not here. average_rating/review_count are read-only,
-     * kept in sync by the review endpoints.
+     * kept in sync by the review endpoints. imdb_rating/imdb_votes/actors are also
+     * read-only - set once from IMDB at creation time, never re-fetched afterward.
      * res.content shape (all content-returning endpoints): id, title, description,
      * cover_image_name, type, categories, release_date, age_limit, likes, createdAt,
-     * average_rating, review_count, imdb_rating (only on getContentByID).
+     * average_rating, review_count, imdb_rating, imdb_votes, actors.
      */
-    constructor(id, title, cover_image_name, likes = 0, type, categories = [], description, age_limit = 0, release_date, createdAt, imdb_rating = null, average_rating = 0, review_count = 0)
+    constructor(id, title, cover_image_name, likes = 0, type, categories = [], description, age_limit = 0, release_date, createdAt, imdb_rating = null, imdb_votes = null, actors = [], average_rating = 0, review_count = 0)
     {
         this.id = id;
         this.title = title;
@@ -212,6 +213,8 @@ export class ContentItem
         this.release_date = new Date(release_date);
         this.createdAt = new Date(createdAt);
         this.imdb_rating = imdb_rating;
+        this.imdb_votes = imdb_votes;
+        this.actors = Array.isArray(actors) ? actors : [];
         this.average_rating = average_rating;
         this.review_count = review_count;
     }
@@ -231,6 +234,8 @@ export class ContentItem
             overrides.release_date ?? this.release_date,
             overrides.createdAt ?? this.createdAt,
             overrides.imdb_rating ?? this.imdb_rating,
+            overrides.imdb_votes ?? this.imdb_votes,
+            overrides.actors ?? this.actors,
             overrides.average_rating ?? this.average_rating,
             overrides.review_count ?? this.review_count
         );
@@ -253,12 +258,18 @@ export class ContentItem
             rawObject.release_date,
             rawObject.createdAt,
             rawObject.imdb_rating,
+            rawObject.imdb_votes,
+            rawObject.actors,
             rawObject.average_rating,
             rawObject.review_count
         );
     }
 
-    /** Body for POST/PUT /admin/content. Read-only fields (id, likes, createdAt, ratings) are omitted. */
+    /**
+     * Body for POST/PUT /admin/content. Read-only fields (id, likes, createdAt, ratings,
+     * imdb_rating, imdb_votes) are omitted. actors is included since the server accepts it
+     * as an optional field on creation (falls back to an IMDB lookup if left empty there).
+     */
     toJSON()
     {
         return {
@@ -268,7 +279,8 @@ export class ContentItem
             description: this.description,
             cover_image_name: this.cover_image_name,
             categories: this.categories,
-            age_limit: this.age_limit
+            age_limit: this.age_limit,
+            actors: this.actors
         };
     }
 }
