@@ -1,22 +1,25 @@
 const mongoose = require('mongoose');
 const my_logger = require('../scripts/my_logger');
 const Review = require('../models/review');
-
+const Profile = require('../models/profile');
+const User = require('../models/user');
 /**
  * Helper to convert a full Review document into a lightweight object
  * containing only the fields exposed to the client.
  */
-const toReviewSummary = (review) =>
-{
-    return {
-        id: review._id,
-        contentId: review.content_id,
-        episodeId: review.episode_id,
-        profileId: review.profile_id,
-        rating: review.rating,
-        comment: review.comment
-    };
-}
+
+const toReviewSummary = (review, reviewerName = "NONE") =>
+    {
+        return {
+            id: review._id,
+            contentId: review.content_id,
+            episodeId: review.episode_id,
+            profileId: review.profile_id,
+            reviewerName: reviewerName,
+            rating: review.rating,
+            comment: review.comment
+        };
+    }
 
 /**
  * Add a review (rating + optional comment) for a specific episode, written by
@@ -389,9 +392,16 @@ const searchReviews = async (req, res) =>
         }
 
         const reviews = await Review.find(query).limit(limit).skip(skip).sort({ [sort]: sortOrder });
+ 
+        // Fetch profile names for these reviews in one batch query.
+        const profileIds = [...new Set(reviews.map(review => review.profile_id.toString()))];
+        const profiles = await Profile.find({ _id: { $in: profileIds } }, 'profile_name');
+        const profileInfoById = new Map(profiles.map(profile => [profile._id.toString(), { profileName: profile.profile_name }]));
+        const userIds = [...new Set(reviews.map(review => review.user_id.toString()))];
+        const users = await User.find({ _id: { $in: userIds } }, 'full_name');
+        const userInfoById = new Map(users.map(user => [user._id.toString(), { fullName: user.full_name }]));
 
-        res.json({ success: true, message: 'Reviews searched successfully', reviews: reviews.map(toReviewSummary) });
-    }
+        res.json({ success: true, message: 'Reviews searched successfully', reviews: reviews.map(review => toReviewSummary(review, `${userInfoById.get(review.user_id.toString())?.fullName ?? ""} - (${profileInfoById.get(review.profile_id.toString())?.profileName ?? ""})`)) });   }
     catch (error)
     {
         my_logger.ConsoleLog(`Error searching reviews: ${error}`, my_logger.Log_Level.ERROR);

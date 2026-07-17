@@ -345,12 +345,14 @@ const updateAllProfiles = async (req, res) =>
  * Add or remove a like on a content item for a specific profile (toggle behavior).
  * Likes live on Content only (not per-episode), so this still relies only on
  * authorizeProfileAccess (req.profile) and contentAuthorization (req.content).
- * On success, returns the profile's updated liked content list. On any exception, returns an empty list.
+ * On success, returns the profile's updated liked content list plus the content's new
+ * total like count. The client derives the liked/unliked state from likedContentIds.
+ * On any exception, returns an empty list.
  * @param {Object} req - The request object
  * @param {Object} res - The response object
  * @returns {Promise<Object>} - The response object
  */
-//res.json: { success: boolean, message: string, liked: Boolean, likedContentIds: Array }
+//res.json: { success: boolean, message: string, likes: Number, likedContentIds: Array }
 const pressLike = async (req, res) =>
 {
     const userId = req.target_user_id;
@@ -361,26 +363,28 @@ const pressLike = async (req, res) =>
     {
         const likedIndex = profile.liked_content_ids.findIndex((id) => id.toString() === content._id.toString());
 
-        let isLiked;
+        const isLiked = likedIndex === -1;
 
-        if (likedIndex === -1)
+        if (isLiked)
         {
-            await Content.updateOne({ _id: content._id }, { $inc: { likes: 1 } });
             profile.liked_content_ids.push(content._id);
-            isLiked = true;
         }
         else
         {
-            await Content.updateOne({ _id: content._id }, { $inc: { likes: -1 } });
             profile.liked_content_ids.splice(likedIndex, 1);
-            isLiked = false;
         }
+
+        const updatedContent = await Content.findByIdAndUpdate(
+            content._id,
+            { $inc: { likes: isLiked ? 1 : -1 } },
+            { new: true }
+        );
         await profile.save();
 
         res.json({
             success: true,
             message: isLiked ? "Media liked" : "Media unliked",
-            liked: isLiked,
+            likes: updatedContent.likes,
             likedContentIds: profile.liked_content_ids
         });
         my_logger.ConsoleLog(`Media ${isLiked ? 'liked' : 'unliked'} successfully. [user_id: ${userId}, profile_id: ${profile._id}, content_id: ${content._id}]`, my_logger.Log_Level.INFO);

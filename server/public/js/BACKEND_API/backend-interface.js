@@ -362,15 +362,17 @@ export class Review
 {
     /**
      * One profile's rating (1-10) + optional comment, for one episode. Max one review per
-     * profile per episode.
+     * profile per episode. reviewerName is server-computed and read-only - not sent back
+     * via toJSON().
      * @param {string} id
      * @param {string} contentId
      * @param {string} episodeId
      * @param {string} profileId
      * @param {number} rating
      * @param {string} [comment]
+     * @param {string} [reviewerName]
      */
-    constructor(id, contentId, episodeId, profileId, rating, comment)
+    constructor(id, contentId, episodeId, profileId, rating, comment, reviewerName)
     {
         this.id = id;
         this.contentId = contentId;
@@ -378,6 +380,7 @@ export class Review
         this.profileId = profileId;
         this.rating = rating;
         this.comment = comment;
+        this.reviewerName = reviewerName;
     }
 
     /** Returns a copy with any of the given fields overridden. */
@@ -389,7 +392,8 @@ export class Review
             overrides.episodeId ?? this.episodeId,
             overrides.profileId ?? this.profileId,
             overrides.rating ?? this.rating,
-            overrides.comment ?? this.comment
+            overrides.comment ?? this.comment,
+            overrides.reviewerName ?? this.reviewerName
         );
     }
 
@@ -404,11 +408,12 @@ export class Review
             rawObject.episodeId,
             rawObject.profileId,
             rawObject.rating,
-            rawObject.comment
+            rawObject.comment,
+            rawObject.reviewerName
         );
     }
 
-    /** Body for review write routes. id/contentId/episodeId/profileId are URL path only. */
+    /** Body for review write routes. id/contentId/episodeId/profileId/reviewerName are read-only. */
     toJSON()
     {
         return {
