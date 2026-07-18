@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile [Fake netflix]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/browse.css">
+</head>
+<body class="page-browse">
+
+    <!-- NAVBAR (injected by ui.js renderNavbar) -->
+    <div id="navbar_root"></div>
+
+    <!-- CONTENT -->
+
+    <div class="container pt-5 mt-5">
+        <div id="msg_box" class="position-fixed top-0 start-50 translate-middle-x mt-2 mx-auto"></div>
+        <section id="video_player_section" class="position-relative d-flex flex-column text-center bg-dark rounded border border-secondary mb-2 text-white justify-content-center align-items-center d-none">
+            <h1 id="screen_title" class="display-4 p-3 text-light position-absolute top-0 z-2"></h1>
+            <div class="ratio ratio-16x9">
+                <video id="screen_video" controls>
+                    <source id="screen_video_source" type="video/mp4" src="">
+                </video>
+            </div>
+        </section>
+
+
+        <!-- Reviews for whichever episode is currently playing (movie's single episode, or
+             whichever series episode was just selected). Sits above the content details /
+             episode-picker area. -->
+        <section id="reviews_section" class="reviews_section p-5 rounded border border-secondary mb-4 d-none">
+            <h2 id="reviews_text" class="display-4 me-5">Reviews</h2>
+            <div id="review_form_container" class="mb-3"></div>
+            <div id="reviews_list_container" class="row g-3"></div>
+        </section>
+
+        <section class="last_watched p-5 rounded border border-secondary mb-4 bg-black bg-opacity-50">
+            <h2 id = "last_watched_text" class="display-4 me-5"></h2>
+            <div id = "last_watched_container" class="row g-4">
+            </div>
+        </section>
+
+        <div class="all_content p-5 rounded border border-secondary mb-4 bg-black bg-opacity-50">
+            <h2 id = "all_content_text" class="display-4 me-5"></h2>
+            <div id = "all_content_container" class = "row g-4">
+
+                <!-- WILL BE ADDED BY JAVASCRIPT -->
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module" src="../js/profile.js" ></script>
+</body>
+</html>

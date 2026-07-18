@@ -1,73 +1,40 @@
-
-body 
+/* Keep the shared message box invisible until it actually holds a message. */
+.page-browse #msg_box:empty
 {
-    font-family: 'Graphique W01 Regular', sans-serif;
-    font-weight: 400;
-    background-image: url("../assets/profiles_background.png");
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-attachment: fixed;
-    color: white;
+    display: none;
 }
 
-
-.last_watched 
+/* Pinned continue-watching: top-left, just under the fixed navbar. */
+#continue_watching_pinned
 {
-    background-color: rgba(0, 0, 0, 0.6);
-    transition: all 0.3s ease;
+    top: 4.5rem;
+    z-index: 1040;
 }
 
-.last_watched:hover 
+/* Panel base comes from Bootstrap bg-black bg-opacity-50 on the HTML.
+   Hover needs !important because Bootstrap's bg-opacity util is !important. */
+.last_watched,
+.all_content
 {
-    background-color: rgba(0, 0, 0, 0.85);
-    transition: all 0.3s ease;
+    transition: all var(--transition-default);
 }
 
-
-.all_content 
+.last_watched:hover,
+.all_content:hover
 {
-    background-color: rgba(0, 0, 0, 0.6);
-    transition: all 0.3s ease;
+    background-color: var(--overlay-85) !important;
+    transition: all var(--transition-default);
 }
 
-.all_content:hover 
+.all_content:hover
 {
-    border: 5px solid rgba(255, 0, 0, 0.77);
-    background-color: rgba(0, 0, 0, 0.85);
-    transition: all 0.3s ease;
+    border: 5px solid var(--red-overlay);
     cursor: pointer;
 }
 
+/* Card tile classes (.content_item / .content_image / .content_name) live in theme.css. */
 
-
-.content_item 
-{
-    transition: transform 0.3s ease;
-    cursor: pointer;
-}
-
-.content_item:hover 
-{
-    transform: scale(1.1);
-}
-
-.content_image 
-{
-    width: 100%;
-    height: 220px;
-    object-fit: fill;
-    display: block;
-}
-
-.content_name
-{
-    margin-top: 8px;
-    font-size: 0.9rem;
-    color: white;
-}
-
-@media (max-width: 991px) 
+@media (max-width: 991px)
 {
     .navbar-collapse
     {
@@ -75,8 +42,7 @@ body
         top: 100%;
         left: 0;
         width: 100%;
-        background-color: rgba(0, 0, 0, 0.9);
+        background-color: var(--overlay-90);
         padding: 10px 20px;
     }
 }
-

@@ -1,5 +1,4 @@
-import * as Constants from '../constances.js';
-import { Interface_BackendAPI, UserInfo, Profile, ContentItem, Episode, Review } from './backend-interface.js';
+import { Interface_BackendAPI, UserInfo, Profile, ContentItem, Episode, Review } from './models.js';
 
 export class HttpClient extends Interface_BackendAPI
 {
@@ -367,7 +366,7 @@ export class HttpClient extends Interface_BackendAPI
     // ==========================================
     // No query params on any of these - always computed over the entire dataset.
     // See getUsersStatistics()/getContentStatistics()/getReviewsStatistics() in
-    // backend-interface.js for the full documented shape of `statistics`.
+    // models.js for the full documented shape of `statistics`.
 
     async getUsersStatistics(sessionToken)
     {

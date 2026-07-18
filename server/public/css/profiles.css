@@ -2,49 +2,64 @@
     width: 200px;
     height: 200px;
     object-fit: cover;
-    transition: all 0.3s ease;
+    transition: all var(--transition-default);
 }
 
 .profile_name {
     font-size: 1.2rem;
-    transition: all 0.3s ease;
+    transition: all var(--transition-default);
 }
 
 
 .profile:hover img 
 {
     transform: scale(1.1);
-    border-color: white !important;
-    transition: all 0.3s ease;
+    border-color: var(--color-text) !important;
+    transition: all var(--transition-default);
 }
 
 .profile:hover .profile_name 
 {
-    color: white !important;
+    color: var(--color-text) !important;
     font-weight: bold;
     transform: scale(1.1);
-    transition: all 0.3s ease;
+    transition: all var(--transition-default);
 }
 
 
 .profiles_menu_buttons
 {
     min-width: 300px;
-    background-color: rgba(0, 0, 0, 0.414) !important;
-    transition: all 0.3s ease;
+    background-color: var(--overlay-414) !important;
+    transition: all var(--transition-default);
 }
 
 #add-profile-button, #remove-profile-button
 {
     visibility: hidden;
     opacity: 0;
-    transition: all 0.3s ease;
+    transition: all var(--transition-default);
 }
 
 .profiles_menu_buttons:hover 
 {
-    border-color: white !important;
+    border-color: var(--color-text) !important;
     background-color: black !important;
-    color: white !important;
-    transition: all 0.3s ease;
+    color: var(--color-text) !important;
+    transition: all var(--transition-default);
+}
+
+/* Smaller avatars / buttons on phones so multiple profiles fit comfortably. */
+@media (max-width: 575px)
+{
+    .profile img
+    {
+        width: 140px;
+        height: 140px;
+    }
+
+    .profiles_menu_buttons
+    {
+        min-width: min(300px, 100%);
+    }
 }
