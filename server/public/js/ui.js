@@ -72,11 +72,16 @@ export function formatRating(value)
 
 //=============== Message box ===============
 
-const messageBoxElement = document.getElementById('msg_box');
+/** Looks up the message box fresh each time, since it may not exist yet when this module loads. */
+function getMessageBox()
+{
+    return document.getElementById('msg_box');
+}
 
 /** Displays a standard informative message in the UI. */
 export function showMessage(message)
 {
+    const messageBoxElement = getMessageBox();
     if (messageBoxElement) messageBoxElement.innerHTML = `<div class="msg">${message}</div>`;
     else console.log("Message box not found: ", messageBoxElement);
 }
@@ -84,6 +89,7 @@ export function showMessage(message)
 /** Displays an error-styled message in the UI. */
 export function showErrorMessage(message)
 {
+    const messageBoxElement = getMessageBox();
     if (messageBoxElement) messageBoxElement.innerHTML = `<div class="msg error">${message}</div>`;
     else console.log("Message box not found: ", messageBoxElement);
 }
@@ -91,9 +97,9 @@ export function showErrorMessage(message)
 /** Removes all content from the message box. */
 export function clearMessage()
 {
+    const messageBoxElement = getMessageBox();
     if (messageBoxElement) messageBoxElement.innerHTML = '';
 }
-
 //=============== UI locking ===============
 
 export let isUiLocked = false;
