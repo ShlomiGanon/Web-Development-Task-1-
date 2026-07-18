@@ -5,6 +5,22 @@
     animation: MenuAnimation 0.25s ease-out;
 }
 
+.menu-scrollable
+{
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex !important; /* override d-grid from renderAuthCard */
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.menu-scrollable .menu-body
+{
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
 .menu-exit 
 {
     animation: MenuAnimation 0.25s ease-in forwards !important;
@@ -26,20 +42,20 @@
 .custom-list 
 {
     list-style: none;
-    padding-right: 0 !important;
+    padding-left: 0 !important;
 }
 
 .custom-list li 
 {
     position: relative;
-    padding-right: 30px;
+    padding-left: 30px;
 }
 
 .custom-list li::before 
 {
     content: "✔";
     position: absolute;
-    right: 0;
+    left: 0;
     top: 0;
     color: var(--color-check);
     font-weight: bold;

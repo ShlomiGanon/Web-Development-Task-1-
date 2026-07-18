@@ -446,18 +446,24 @@ export function renderNavbar(rootEl, config = {})
  * Replaces a placeholder element with the shared row + menu-container auth card shell.
  * @param {HTMLElement} rootEl - Placeholder element (e.g. #auth_root) to replace.
  * @param {Object} [options]
+ * @param {string} [options.dir='ltr']
+ * @param {string} [options.rounded='rounded-1']
+ * @param {string} [options.padding='p-4']
+ * @param {string} [options.rowClasses]
+ * @param {string} [options.extraCardClasses=''] - Extra Bootstrap/utility classes on the card (e.g. width).
  * @param {string} innerHtml - The page-specific inner markup.
  */
 export function renderAuthCard(rootEl, {
-    dir = 'rtl',
+    dir = 'ltr',
     rounded = 'rounded-1',
     padding = 'p-4',
-    rowClasses = 'row w-100 justify-content-center min-vh-100 align-items-center'
+    rowClasses = 'row w-100 justify-content-center min-vh-100 align-items-center',
+    extraCardClasses = ''
 } = {}, innerHtml = '')
 {
     if (!rootEl) return;
 
-    const cardClasses = `menu-container w-auto bg-black bg-opacity-75 text-light ${rounded} shadow ${padding} d-grid gap-2`;
+    const cardClasses = `menu-container w-auto bg-black bg-opacity-75 text-light ${rounded} shadow ${padding} d-grid gap-2 ${extraCardClasses}`.trim();
 
     rootEl.outerHTML = `
     <div class="${rowClasses}">

@@ -24,10 +24,10 @@ async function handleLoginClick()
 
     const rules =
     [
-        new InputRule(emailOrPhoneInput, "אימייל או טלפון הוא שדה חובה", isNotEmpty),
-        new InputRule(emailOrPhoneInput, "לא נמצא אימייל או נייד תקין", isValidEmailOrPhone),
-        new InputRule(passwordInput, "סיסמה היא שדה חובה", isNotEmpty),
-        new InputRule(passwordInput, `אורך סיסמה לא תקין [${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH}]`, isValidPassword)
+        new InputRule(emailOrPhoneInput, "Email or phone is required.", isNotEmpty),
+        new InputRule(emailOrPhoneInput, "Enter a valid email or phone number.", isValidEmailOrPhone),
+        new InputRule(passwordInput, "Password is required.", isNotEmpty),
+        new InputRule(passwordInput, `Password length must be ${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} characters.`, isValidPassword)
     ];
 
     if (!validateForm(rules))
@@ -36,7 +36,7 @@ async function handleLoginClick()
     }
 
     lockUi(loginButton);
-    showMessage("ממתין לתגובה מהשרת...");
+    showMessage("Signing in...");
 
     try
     {
@@ -49,12 +49,12 @@ async function handleLoginClick()
         if (response && response.success)
         {
             ClientSessionManager.setSessionToken(response.token, rememberMe);
-            showMessage("התחברות בוצעה בהצלחה");
+            showMessage("Signed in successfully.");
             goToLink('../html/profiles.html');
         }
         else
         {
-            const errorMessage = response ? response.message : "שגיאה בהתחברות, נסה שנית מאוחר יותר";
+            const errorMessage = response ? response.message : "Sign in failed. Please try again later.";
             showErrorMessage(errorMessage);
             unlockUi();
         }
@@ -63,17 +63,17 @@ async function handleLoginClick()
     {
         // Backend.login() handles normal failures; reaching here means an unexpected error.
         console.error("Login crashed:", error);
-        showErrorMessage("תקלת תקשורת מול השרת. אנא נסה שוב.");
+        showErrorMessage("Could not reach the server. Please try again.");
         unlockUi();
     }
 }
 
 function handleGetCodeClick()
 {
-    showErrorMessage("אין אפשרות לכניסה עם קוד, נסה שנית");
+    showErrorMessage("Sign in with a code is not available.");
 }
 
 function handleForgotPassClick()
 {
-    showErrorMessage("אין אפשרות לאיפוס סיסמה, נסה שנית");
+    showErrorMessage("Password reset is not available.");
 }

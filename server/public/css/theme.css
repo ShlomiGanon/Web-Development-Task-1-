@@ -43,7 +43,7 @@ body
 .msg
 {
     color: var(--color-text);
-    direction: rtl;
+    direction: ltr;
     font-weight: bold;
     white-space: pre-line;
 }

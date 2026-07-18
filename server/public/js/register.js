@@ -19,18 +19,18 @@ async function handleRegisterClick()
     const isValidFullName = (text) => isValidName(text.split(' ')[0]) && isValidName(text.split(' ')[1]);
     const rules =
     [
-        new InputRule(fullNameInput, "שם מלא הוא שדה חובה", isNotEmpty),
-        new InputRule(fullNameInput, "שם פרטי או שם משפחה אינו תקין", isValidFullName),
-        new InputRule(birthdayInput, "תאריך לידה הוא שדה חובה", isNotEmpty),
-        new InputRule(birthdayInput, "תאריך לידה אינו תקין", isValidBirthday),
-        new InputRule(emailInput, "אימייל הוא שדה חובה", isNotEmpty),
-        new InputRule(emailInput, "האימייל אינו תקין", isValidEmail),
-        new InputRule(phoneInput, "מספר נייד הוא שדה חובה", isNotEmpty),
-        new InputRule(phoneInput, "המספר נייד אינו תקין", isValidPhone),
-        new InputRule(passwordInput, "סיסמה היא שדה חובה", isNotEmpty),
-        new InputRule(passwordInput, `אורך סיסמה לא תקין [${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH}]`, isValidPassword, [MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH]),
-        new InputRule(confirmPasswordInput, "אימות סיסמה הוא שדה חובה", isNotEmpty),
-        new InputRule(confirmPasswordInput, "אימות הסיסמה אינו זהה לסיסמה", (text) => text === passwordInput.value),
+        new InputRule(fullNameInput, "Full name is required.", isNotEmpty),
+        new InputRule(fullNameInput, "Enter a valid first and last name.", isValidFullName),
+        new InputRule(birthdayInput, "Birthday is required.", isNotEmpty),
+        new InputRule(birthdayInput, "Enter a valid birthday.", isValidBirthday),
+        new InputRule(emailInput, "Email is required.", isNotEmpty),
+        new InputRule(emailInput, "Enter a valid email.", isValidEmail),
+        new InputRule(phoneInput, "Phone number is required.", isNotEmpty),
+        new InputRule(phoneInput, "Enter a valid phone number.", isValidPhone),
+        new InputRule(passwordInput, "Password is required.", isNotEmpty),
+        new InputRule(passwordInput, `Password length must be ${MIN_PASSWORD_LENGTH}-${MAX_PASSWORD_LENGTH} characters.`, isValidPassword, [MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH]),
+        new InputRule(confirmPasswordInput, "Confirm password is required.", isNotEmpty),
+        new InputRule(confirmPasswordInput, "Passwords do not match.", (text) => text === passwordInput.value),
     ];
 
     if (!validateForm(rules))
@@ -39,7 +39,7 @@ async function handleRegisterClick()
     }
 
     lockUi(registerButton);
-    showMessage("מבצע רישום...");
+    showMessage("Creating your account...");
 
     try
     {
@@ -57,12 +57,12 @@ async function handleRegisterClick()
 
         if (response && response.success)
         {
-            showMessage("הרשמה בוצעה בהצלחה , אתה מועבר לדף התחברות");
+            showMessage("Account created. Taking you to Sign In...");
             goToLink('../html/login.html');
         }
         else
         {
-            const errorMessage = response ? response.message : "שגיאה בתהליך הרישום, נסה שנית";
+            const errorMessage = response ? response.message : "Sign up failed. Please try again.";
             showErrorMessage(errorMessage);
             unlockUi();
         }
@@ -70,7 +70,7 @@ async function handleRegisterClick()
     catch (error)
     {
         console.error("Registration crashed:", error);
-        showErrorMessage("תקלת תקשורת מול השרת. אנא נסה שוב.");
+        showErrorMessage("Could not reach the server. Please try again.");
         unlockUi();
     }
 }

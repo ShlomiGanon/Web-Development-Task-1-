@@ -72,7 +72,7 @@ function hideCancelButton()
 
 function handleCancelClick()
 {
-    showMessage("השינויים בוטלו");
+    showMessage("Changes discarded.");
     setTimeout(() => { clearMessage(); }, 2000);
     profiles = profilesBeforeChanges.map(profile => Profile.fromJSON(profile));
     profilesBeforeChanges = null;
@@ -96,7 +96,7 @@ async function restoreActiveSession()
     const isValid = await ClientSessionManager.isLoggedIn(true);
     if (!isValid)
     {
-        return { success: false, message: "ההתחברות פגה, אנא התחבר מחדש" };
+        return { success: false, message: "Your session expired. Please sign in again." };
     }
     const userResponse = await Backend.fetchActiveUserInfo(sessionToken);
     if (!userResponse.success)
@@ -312,7 +312,7 @@ async function handleManageProfilesClick()
 
     if (!isEditing)
     {
-        showMessage("לחץ על התמונה כדי לשנות אותה");
+        showMessage("Click an image to change it.");
     }
     if (isDeleting)
     {
@@ -365,7 +365,7 @@ async function handleAddProfileClick()
         }
         else
         {
-            showMessage("הפרופיל נוסף בהצלחה");
+            showMessage("Profile added successfully.");
         }
         // createProfile() always returns the current list, so no fallback fetch needed.
         profiles = response.profiles;
@@ -373,7 +373,7 @@ async function handleAddProfileClick()
     catch (error)
     {
         console.error("createProfile request failed:", error);
-        showErrorMessage("שגיאה בהוספת פרופיל, נסה שוב");
+        showErrorMessage("Could not add profile. Please try again.");
         // Leave profiles as-is; the server's actual state is unknown.
     }
     finally
@@ -388,7 +388,7 @@ function handleRemoveProfileClick()
     if (isUiLocked) return;
     if (profiles.length <= 1)
     {
-        showErrorMessage("אתה לא יכול למחוק את הפרופיל האחרון");
+        showErrorMessage("You cannot delete the last profile.");
         return;
     }
     isDeleting = true;
@@ -397,7 +397,7 @@ function handleRemoveProfileClick()
 
     elements.manageProfileButton.innerText = "Cancel Deletion";
 
-    showMessage("לחץ על פרופיל כדי למחוק אותו");
+    showMessage("Click a profile to delete it.");
 }
 
 async function saveEditedProfiles()
@@ -407,7 +407,7 @@ async function saveEditedProfiles()
         const input = document.getElementById(`profile_input_${profile.id}`);
         if (input && input.value.trim() === "")
         {
-            showErrorMessage(`שם הפרופיל לא יכול להיות ריק`);
+            showErrorMessage(`Profile name cannot be empty.`);
             return false;
         }
     }
@@ -432,14 +432,14 @@ async function saveEditedProfiles()
 
         // Commit locally only after server confirmation.
         profiles = updatedProfiles;
-        showMessage("הפרופילים נשמרו בהצלחה");
+        showMessage("Profiles saved successfully.");
         markAsUnchanged();
         return true;
     }
     catch (error)
     {
         console.error("saveProfiles request failed:", error);
-        showErrorMessage("שגיאה בשמירת הפרופילים, נסה שוב");
+        showErrorMessage("Could not save profiles. Please try again.");
         return false;
     }
 }
@@ -464,12 +464,12 @@ function confirmAndDeleteProfile(profile)
             const response = await Backend.deleteProfile(sessionToken, profile.id);
             if (!response || !response.success)
             {
-                failInModal(response?.message || "שגיאה במחיקת הפרופיל");
+                failInModal(response?.message || "Could not delete profile.");
                 return;
             }
             // deleteProfile() always returns the current list, so no fallback fetch needed.
             profiles = response.profiles;
-            infoInModal("הפרופיל נמחק בהצלחה");
+            infoInModal("Profile deleted successfully.");
             renderProfiles(RENDER_MODE.VIEW);
         }
     ));
@@ -527,7 +527,7 @@ async function handleProfileClick(profile)
         }
         else
         {
-            showMessage("אתה נמצא במצב עריכה, נא ללחוץ על כפתור שמירה כדי לשמור על השינויים");
+            showMessage("You are in edit mode. Click Save Changes to keep your edits.");
             return;
         }
     }
@@ -546,7 +546,7 @@ async function handleProfileClick(profile)
         catch (error)
         {
             console.error("Failed to set active profile:", error);
-            showErrorMessage("שגיאה בבחירת הפרופיל, נסה שנית");
+            showErrorMessage("Could not select profile. Please try again.");
             unlockUiAndProfiles();
         }
     }
@@ -564,20 +564,20 @@ async function handleLogoutClick()
         {
             ClientSessionManager.deleteSessionToken();
             ClientSessionManager.deleteActiveProfileId();
-            showMessage("התנתקות בוצעה בהצלחה , מתבצעת העברה...");
+            showMessage("Signed out. Redirecting...");
             goToLink('../html/login.html');
             // Left locked; already navigating away.
         }
         else
         {
-            showErrorMessage(response?.message || "שגיאה בהתנתקות, נסה שוב");
+            showErrorMessage(response?.message || "Could not sign out. Please try again.");
             unlockUiAndProfiles();
         }
     }
     catch (error)
     {
         console.error("Logout request failed:", error);
-        showErrorMessage("שגיאה בהתנתקות, נסה שוב");
+        showErrorMessage("Could not sign out. Please try again.");
         unlockUiAndProfiles();
     }
 }
@@ -586,7 +586,7 @@ function handleAdminDashboardClick()
 {
     if (activeUser.permission_level == 0)
     {
-        showErrorMessage("אין לך הרשאות לגשת ללוח המנהל");
+        showErrorMessage("You do not have permission to open the admin dashboard.");
         return;
     }
     lockUi(elements.adminDashboardButton);
