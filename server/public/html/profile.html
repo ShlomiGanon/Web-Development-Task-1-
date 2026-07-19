@@ -3,45 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile [Fake netflix]</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../css/nav_styles.css">
-    <link rel="stylesheet" href="../css/out_source.css">
-    <link rel="stylesheet" href="../css/bubble.css">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/browse.css">
 </head>
-<body>
+<body class="page-browse">
 
-    <!-- NAVBAR -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-black bg-opacity-75 fixed-top">
-        <div class="container-fluid">
-            <a class="navbar-brand px-2" href="#"><img src="../assets/netflix_logo.png" width="60" alt="logo"></a>
-    
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto flex-row flex-wrap gap-3 align-items-center">
-                    <li class="nav-item" id="home_link"><a class="nav-link fs-6" href="#all_content_container">Home</a></li>
-                    <li class="nav-item" id="tv_shows_link"><a class="nav-link fs-6" href="#all_content_container">TV Shows</a></li>
-                    <li class="nav-item" id="movies_link"><a class="nav-link fs-6" href="#all_content_container">Movies</a></li>
-                    <li class="nav-item" id="games_link"><a class="nav-link fs-6" href="#all_content_container">Games</a></li>
-                    <li class="nav-item" id="new_and_popular_link"><a class="nav-link fs-6" href="#all_content_container">New & Popular</a></li>
-                    <li class="nav-item" id="my_list_link"><a class="nav-link fs-6" href="#last_watched_container">My List</a></li>
-                </ul>
-            </div>
-    
-            <div class="d-flex align-items-center order-lg-last">
-                <input id="search_input" class="input p-1 me-2 border-0">
-                <button id="search_button" class="btn btn-link p-0 me-2"><img src="../assets/icon1.png" width="18"></button>
-                <img id="profile_image" src="../assets/profiles_images/ERROR.png" width="25" class="me-2">
-                <a href="./profiles.html" class="nav-link me-3"><img src="../assets/down_arrow.png" width="12"></a>
-            </div>
-        </div>
-    </nav>
+    <!-- NAVBAR (injected by ui.js renderNavbar) -->
+    <div id="navbar_root"></div>
 
     <!-- CONTENT -->
-     
+
     <div class="container pt-5 mt-5">
+        <div id="msg_box" class="position-fixed top-0 start-50 translate-middle-x mt-2 mx-auto"></div>
         <section id="video_player_section" class="position-relative d-flex flex-column text-center bg-dark rounded border border-secondary mb-2 text-white justify-content-center align-items-center d-none">
             <h1 id="screen_title" class="display-4 p-3 text-light position-absolute top-0 z-2"></h1>
             <div class="ratio ratio-16x9">
@@ -61,13 +36,13 @@
             <div id="reviews_list_container" class="row g-3"></div>
         </section>
 
-        <section class="last_watched p-5 rounded border border-secondary mb-4">
+        <section class="last_watched p-5 rounded border border-secondary mb-4 bg-black bg-opacity-50">
             <h2 id = "last_watched_text" class="display-4 me-5"></h2>
             <div id = "last_watched_container" class="row g-4">
             </div>
         </section>
 
-        <div class="all_content p-5 rounded border border-secondary mb-4">
+        <div class="all_content p-5 rounded border border-secondary mb-4 bg-black bg-opacity-50">
             <h2 id = "all_content_text" class="display-4 me-5"></h2>
             <div id = "all_content_container" class = "row g-4">
 
@@ -76,6 +51,6 @@
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="module" src="../js/profile_page.js" ></script>
+    <script type="module" src="../js/profile.js" ></script>
 </body>
 </html>

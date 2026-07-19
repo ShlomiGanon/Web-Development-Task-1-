@@ -1,4 +1,4 @@
-import { Backend } from './config.js';
+import { Backend } from '../constants.js';
 const COOKIE_SESSION_KEY = "session_token";
 const STORAGE_PROFILE_KEY = "profile_id";
 export class ClientSessionManager

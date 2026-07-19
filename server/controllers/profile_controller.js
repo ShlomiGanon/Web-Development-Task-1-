@@ -31,12 +31,13 @@ const toProfileSummary = (profile) =>
 }
 
 const toLastWatchedSummary = (lastWatched) =>
-{
-    return lastWatched.map((entry) => ({
-        episode_id: entry.episode_id,
-        content_id: entry.content_id
-    }));
-}
+    {
+        return lastWatched.map((entry) => ({
+            episode_id: entry.episode_id,
+            content_id: entry.content_id,
+            position_seconds: entry.position_seconds
+        }));
+    }
 
 /**
  * Helper to convert an array of full Profile documents into an array of lightweight summaries.
@@ -344,12 +345,14 @@ const updateAllProfiles = async (req, res) =>
  * Add or remove a like on a content item for a specific profile (toggle behavior).
  * Likes live on Content only (not per-episode), so this still relies only on
  * authorizeProfileAccess (req.profile) and contentAuthorization (req.content).
- * On success, returns the profile's updated liked content list. On any exception, returns an empty list.
+ * On success, returns the profile's updated liked content list plus the content's new
+ * total like count. The client derives the liked/unliked state from likedContentIds.
+ * On any exception, returns an empty list.
  * @param {Object} req - The request object
  * @param {Object} res - The response object
  * @returns {Promise<Object>} - The response object
  */
-//res.json: { success: boolean, message: string, liked: Boolean, likedContentIds: Array }
+//res.json: { success: boolean, message: string, likes: Number, likedContentIds: Array }
 const pressLike = async (req, res) =>
 {
     const userId = req.target_user_id;
@@ -360,26 +363,28 @@ const pressLike = async (req, res) =>
     {
         const likedIndex = profile.liked_content_ids.findIndex((id) => id.toString() === content._id.toString());
 
-        let isLiked;
+        const isLiked = likedIndex === -1;
 
-        if (likedIndex === -1)
+        if (isLiked)
         {
-            await Content.updateOne({ _id: content._id }, { $inc: { likes: 1 } });
             profile.liked_content_ids.push(content._id);
-            isLiked = true;
         }
         else
         {
-            await Content.updateOne({ _id: content._id }, { $inc: { likes: -1 } });
             profile.liked_content_ids.splice(likedIndex, 1);
-            isLiked = false;
         }
+
+        const updatedContent = await Content.findByIdAndUpdate(
+            content._id,
+            { $inc: { likes: isLiked ? 1 : -1 } },
+            { new: true }
+        );
         await profile.save();
 
         res.json({
             success: true,
             message: isLiked ? "Media liked" : "Media unliked",
-            liked: isLiked,
+            likes: updatedContent.likes,
             likedContentIds: profile.liked_content_ids
         });
         my_logger.ConsoleLog(`Media ${isLiked ? 'liked' : 'unliked'} successfully. [user_id: ${userId}, profile_id: ${profile._id}, content_id: ${content._id}]`, my_logger.Log_Level.INFO);
@@ -420,17 +425,18 @@ const watchMedia = async (req, res) =>
 
     try
     {
+// Existing entry for this content, if any - used both to resume the saved
+        // episode below (when none was specified), and to decide whether to keep
+        // the previously saved position_seconds (kept only if resuming that same episode)
+        const previousEntry = profile.last_watched.find((entry) => entry.content_id.toString() === content._id.toString());
+
         if (!episode)
         {
             // No specific episode requested - resume from the saved episode for
             // this content if one exists in the history, otherwise start at S1E1
-            const savedEntry = profile.last_watched.find(
-                (entry) => entry.content_id.toString() === content._id.toString()
-            );
-
-            if (savedEntry)
+            if (previousEntry)
             {
-                episode = await Episode.findById(savedEntry.episode_id);
+                episode = await Episode.findById(previousEntry.episode_id);
             }
 
             if (!episode)
@@ -444,6 +450,13 @@ const watchMedia = async (req, res) =>
             }
         }
 
+        // Only carry the saved position over when resuming the SAME episode that
+        // was already tracked for this content - switching episodes (or starting
+        // fresh) always begins at position 0.
+        const resumedPosition = (previousEntry && previousEntry.episode_id.toString() === episode._id.toString())
+            ? previousEntry.position_seconds
+            : 0;
+
         // Remove the content's previous entry from the history, to avoid duplicates
         // (one entry per content, regardless of which episode was previously saved)
         profile.last_watched = profile.last_watched.filter(
@@ -451,7 +464,7 @@ const watchMedia = async (req, res) =>
         );
 
         // Add it to the front, as the most recently watched
-        profile.last_watched.unshift({ episode_id: episode._id, content_id: content._id });
+        profile.last_watched.unshift({ episode_id: episode._id, content_id: content._id, position_seconds: resumedPosition });
 
         // Trim the history to the maximum allowed length
         if (profile.last_watched.length > MAX_LAST_WATCHED_CONTENT_LIMIT)
@@ -477,6 +490,48 @@ const watchMedia = async (req, res) =>
         res.json({ success: false, message: "Internal server error", lastWatched: [] });
     }
 }
+
+
+//req.body: { position_seconds: Number }
+//res.json: { success: boolean, message: string, positionSeconds?: Number }
+const updateWatchProgress = async (req, res) =>
+{
+    const userId = req.target_user_id;
+    const profile = req.profile;
+    const content = req.content;
+    const episode = req.episode;
+    
+    try
+    {
+        const positionSeconds = Number(req.body.position_seconds);
+    
+        if (!Number.isFinite(positionSeconds) || positionSeconds < 0)
+        {
+            return res.json({ success: false, message: "position_seconds must be a number >= 0" });
+        }
+    
+        const entry = profile.last_watched.find(
+            (e) => e.content_id.toString() === content._id.toString() && e.episode_id.toString() === episode._id.toString()
+        );
+    
+        if (!entry)
+        {
+            return res.json({ success: false, message: "No watch entry found for this episode - call the watch endpoint first" });
+        }
+    
+        entry.position_seconds = positionSeconds;
+    
+        await profile.save();
+    
+        res.json({ success: true, message: "Watch progress saved", positionSeconds });
+    }
+    catch (error)
+    {
+        my_logger.ConsoleLog(`Error updating watch position: ${error}`, my_logger.Log_Level.ERROR);
+        my_logger.OperationLog('updateWatchProgress', 'Error updating watch position.', { "user_id": userId, "profile_id": profile && profile._id, "content_id": content && content._id, "error": error }, my_logger.Log_Level.ERROR);
+        res.json({ success: false, message: "Internal server error" });
+    }
+};
 
 /**
  * Getter - returns the full profile document (all fields), unlike other endpoints
@@ -569,6 +624,7 @@ module.exports =
     updateAllProfiles,
     pressLike,
     watchMedia,
+    updateWatchProgress,
     getProfileDetails,
     findUserByProfileId
 };

@@ -1,3 +1,0 @@
-export const MAX_LAST_WATCHED_MEDIA_LIMIT = 5;
-export const MIN_PASSWORD_LENGTH = 4;
-export const MAX_PASSWORD_LENGTH = 16;

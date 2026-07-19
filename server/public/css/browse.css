@@ -1,0 +1,48 @@
+/* Keep the shared message box invisible until it actually holds a message. */
+.page-browse #msg_box:empty
+{
+    display: none;
+}
+
+/* Pinned continue-watching: top-left, just under the fixed navbar. */
+#continue_watching_pinned
+{
+    top: 4.5rem;
+    z-index: 1040;
+}
+
+/* Panel base comes from Bootstrap bg-black bg-opacity-50 on the HTML.
+   Hover needs !important because Bootstrap's bg-opacity util is !important. */
+.last_watched,
+.all_content
+{
+    transition: all var(--transition-default);
+}
+
+.last_watched:hover,
+.all_content:hover
+{
+    background-color: var(--overlay-85) !important;
+    transition: all var(--transition-default);
+}
+
+.all_content:hover
+{
+    border: 5px solid var(--red-overlay);
+    cursor: pointer;
+}
+
+/* Card tile classes (.content_item / .content_image / .content_name) live in theme.css. */
+
+@media (max-width: 991px)
+{
+    .navbar-collapse
+    {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background-color: var(--overlay-90);
+        padding: 10px 20px;
+    }
+}

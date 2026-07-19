@@ -1,0 +1,55 @@
+/* Admin dashboard layout. Panels use Bootstrap bg-black bg-opacity-50 rounded
+   (same as profile); only transitions and phone height overrides live here. */
+
+#mode_selector_container
+{
+    transition: all var(--transition-slow);
+}
+
+#controll_container
+{
+    transition: all var(--transition-slow);
+}
+
+#selection_container
+{
+    max-height: 70vh;
+    min-height: 70vh;
+    transition: all var(--transition-medium);
+}
+
+#selection_counter
+{
+    transition: all var(--transition-medium);
+}
+
+#view_container
+{
+    max-height: 70vh;
+    min-height: 70vh;
+    width: 100%;
+    transition: all var(--transition-medium);
+}
+
+.label_item
+{
+    background-color: transparent;
+    transition: all var(--transition-fast);
+}
+
+.label_item:hover
+{
+    background-color: #333;
+    transition: all var(--transition-fast);
+}
+
+/* Stacked panels on phones: relax the fixed 70vh so the page scrolls naturally. */
+@media (max-width: 767px)
+{
+    #selection_container,
+    #view_container
+    {
+        min-height: auto;
+        max-height: 60vh;
+    }
+}
