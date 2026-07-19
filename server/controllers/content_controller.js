@@ -163,9 +163,13 @@ const searchContent = async (req, res) =>
     try
     {
         const query = Content.buildQuery(req.query);
-        const limit = req.query.limit || 20;
-        const skip = req.query.skip || 0;
-        const sort = req.query.sort || 'release_date';
+        const sort = req.query.sort || 'createdAt';
+        let limit = parseInt(req.query.limit, 10);
+        if (isNaN(limit) || limit < 1) limit = 10;
+
+        let skip = parseInt(req.query.skip, 10);
+        if (isNaN(skip) || skip < 0) skip = 0;
+        
         let sortOrder = 'desc';
         if(req.query.sortOrder == 'greater_to_smaller')
         {

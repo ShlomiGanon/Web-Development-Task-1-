@@ -81,21 +81,28 @@ const searchUsers = async (req, res) =>
         try
         {
             const query = User.buildQuery(req.query);
-            const limit = req.query.limit || 10;
-            const skip = req.query.skip || 0;
+    
+            // limit/skip arrive from req.query as strings, so they must be
+            // converted to numbers before being passed to mongoose.
+            let limit = parseInt(req.query.limit, 10);
+            if (isNaN(limit) || limit < 1) limit = 10;
+    
+            let skip = parseInt(req.query.skip, 10);
+            if (isNaN(skip) || skip < 0) skip = 0;
+    
             const requestedSort = req.query.sort || 'createdAt';
             const sort = USER_SORT_FIELD_MAP[requestedSort];
             if (!sort)
             {
                 return res.json({ success: false, message: `Invalid sort field! [use one of: ${Object.keys(USER_SORT_FIELD_MAP).join(', ')}]` });
             }
-
+    
             let sortOrder = 'desc';
-            if(req.query.sortOrder == 'greater_to_smaller')
+            if (req.query.sortOrder == 'greater_to_smaller')
             {
                 sortOrder = 'desc';
             }
-            else if(req.query.sortOrder == 'smaller_to_greater')
+            else if (req.query.sortOrder == 'smaller_to_greater')
             {
                 sortOrder = 'asc';
             }
@@ -103,7 +110,12 @@ const searchUsers = async (req, res) =>
             {
                 return res.json({ success: false, message: 'Invalid sort order! [use greater_to_smaller or smaller_to_greater]' });
             }
-            const users = await User.find(query).limit(limit).skip(skip).sort({ [sort]: sortOrder });
+    
+            const users = await User.find(query)
+                .limit(limit)
+                .skip(skip)
+                .sort({ [sort]: sortOrder });
+    
             res.json({ success: true, message: 'Users searched successfully', users: users.map(user => safe_user(user)) });
         }
         catch (error)
